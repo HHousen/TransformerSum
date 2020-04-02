@@ -1,0 +1,8 @@
+name: transformerextsum
+channels:
+    - conda-forge
+    - pytorch
+dependencies:
+    - pytorch
+    - scikit-learn
+    - tensorboardX
