@@ -5,4 +5,9 @@ channels:
 dependencies:
     - pytorch
     - scikit-learn
-    - tensorboardX
+    - tensorboard
+    - spacy
+    - pip
+    - pip:
+      - pytorch_lightning
+      - transformers

@@ -107,3 +107,6 @@ dmypy.json
 BertSum
 sentence-transformers
 transformers
+.vscode
+train.source
+train.target
