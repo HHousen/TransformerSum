@@ -3,6 +3,7 @@
 # 3. Run through linear layer
 
 import os
+import sys
 import glob
 import logging
 import json
@@ -17,7 +18,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, RandomSampler, TensorDataset
 from Pooling import Pooling
-from data import SentencesProcessor
+from data import SentencesProcessor, FSIterableDataset, pad_batch_collate
 from convert_to_extractive import greedy_selection, combination_selection
 from transformers import (
     AutoConfig,
@@ -70,9 +71,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         self.loss_func = nn.BCELoss(reduction="none")
 
         # Data
-        self.processors = {}
-        for processor_label in hparams.processors:
-            self.processors[processor_label] = SentencesProcessor(name=processor_label)
+        self.processor = SentencesProcessor(name="main_processor")
 
         self.tokenizer = AutoTokenizer.from_pretrained(
             hparams.tokenizer_name
@@ -94,7 +93,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             "--oracle_mode",
             type=str,
             choices=["none", "greedy", "combination"],
-            default=None,
+            default="none",
         )
         parser.add_argument("--data_path", type=str, required=True)
         parser.add_argument("--num_threads", type=int, default=4)
@@ -136,6 +135,13 @@ class ExtractiveSummarizer(pl.LightningModule):
             help="If model uses bert compatible [CLS] tokens for sentence representations.",
         )
         parser.add_argument(
+            "--only_preprocess",
+            action="store_true",
+            help="""Only preprocess and write the data to disk. Don't train model. 
+            This will force data to be preprocessed, even if it was already computed and 
+            is detected on disk, and any previous processed files will be overwritten.""",
+        )
+        parser.add_argument(
             "--create_token_type_ids",
             type=str,
             choices=["binary", "sequential"],
@@ -143,12 +149,31 @@ class ExtractiveSummarizer(pl.LightningModule):
             help="Create token type ids.",
         )
         parser.add_argument(
-            "--processors",
-            default=["train", "valid", "test"],
-            choices=["train", "valid", "test"],
-            nargs="+",
-            help="which dataset splits to process",
+            "--train_name",
+            type=str,
+            default="train",
+            help="name for set of training files on disk (for loading and saving)",
         )
+        parser.add_argument(
+            "--val_name",
+            type=str,
+            default="val",
+            help="name for set of validation files on disk (for loading and saving)",
+        )
+        parser.add_argument(
+            "--test_name",
+            type=str,
+            default="test",
+            help="name for set of testing files on disk (for loading and saving)",
+        )
+        # parser.add_argument(
+        #     "--data_splits",
+        #     default=["train", "valid", "test"],
+        #     choices=["train", "valid", "test"],
+        #     nargs="+",
+        #     help="which dataset splits to process",
+        # )
+        parser.add_argument("--load_data_from_disk", action="store_true")
         return parser
 
     def forward(
@@ -186,17 +211,35 @@ class ExtractiveSummarizer(pl.LightningModule):
         loss = (loss * mask.float()).sum()
         return loss / loss.numel()
 
-    def json_to_dataset(self, json_file=None, processor=None, oracle_mode=None):
-        logger.info("Processing %s" % json_file)
+    def json_to_dataset(
+        self,
+        tokenizer,
+        hparams,
+        inputs=None,
+        num_files=0,
+        processor=None,
+        oracle_mode=None,
+    ):
+        idx, json_file = inputs
+        logger.info(
+            "Processing "
+            + str(json_file)
+            + " ("
+            + str(idx + 1)  # because starts at 0 but num_files starts at 1
+            + "/"
+            + str(num_files)
+            + ")"
+        )
 
         # open current json file (which is a set of documents)
         # `file_extension` is second and path (without extension) is first
         # `file_extension` only contains last extension so ".json.gz" will output ".gz"
-        file_extension = os.path.splitext(json_file)[1]
+        file_path, file_extension = os.path.splitext(json_file)
         if file_extension == ".json":
             with open(json_file, "r") as json_file_object:
                 documents = json.load(json_file_object)
         elif file_extension == ".gz":
+            file_path = os.path.splitext(file_path)[0]  # remove ".gz"
             # https://stackoverflow.com/a/39451012
             with gzip.open(json_file, "r") as json_gzip:
                 json_bytes = json_gzip.read()
@@ -228,54 +271,104 @@ class ExtractiveSummarizer(pl.LightningModule):
 
         if oracle_mode and oracle_mode != "none":
             # if using `oracle_mode` then add ids to `oracle_ids`
-            processor.add_examples(all_sources, oracle_ids=all_ids)
+            processor.add_examples(
+                all_sources,
+                oracle_ids=all_ids,
+                overwrite_examples=True,
+                overwrite_labels=True,
+            )
         else:
             # otherwise add ids to `labels`
-            processor.add_examples(all_sources, labels=all_ids)
+            processor.add_examples(
+                all_sources,
+                labels=all_ids,
+                overwrite_examples=True,
+                overwrite_labels=True,
+            )
+
+        processor.get_features(
+            tokenizer,
+            bert_compatible_cls=hparams.processor_no_bert_compatible_cls,
+            create_segment_ids=hparams.create_token_type_ids,
+            n_process=hparams.processing_num_threads,
+            max_length=hparams.max_seq_length,
+            pad_on_left=bool(
+                hparams.model_type in ["xlnet"]
+            ),  # pad on the left for xlnet
+            pad_token=tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0],
+            return_type="lists",
+            save_to_path=hparams.data_path,
+            save_to_name=os.path.basename(file_path),
+        )
 
     def prepare_data(self):
         datasets = dict()
 
-        # loop through all processors added during __init__() by the `hparams.processors` argument
-        for corpus_type, processor in self.processors.items():
-            # try to load from file
-            loaded_dataset = processor.load(self.hparams.data_path)
-            if (
-                loaded_dataset
-            ):  # if dataset loaded successfully then store the data and move to next processor
-                datasets[corpus_type] = loaded_dataset
-                continue
-            else:  # if NOT successfully loaded from file then process the data and get features
-                dataset_files = glob.glob(
+        # loop through all data_splits
+        data_splits = [
+            self.hparams.train_name,
+            self.hparams.val_name,
+            self.hparams.test_name,
+        ]
+        # save batch sizes in same order
+        batch_sizes = [
+            self.hparams.train_batch_size,
+            self.hparams.val_batch_size,
+            self.hparams.test_batch_size,
+        ]
+        for corpus_type, batch_size in zip(data_splits, batch_sizes):
+            # get the current list of dataset files. if preprocessing has already happened
+            # then this will be the list of files that should be passed to a FSIterableDataset.
+            # if preprocessing has not happened then `dataset_files` should be an empty list
+            # and the data will be processed
+            dataset_files = glob.glob(
+                os.path.join(self.hparams.data_path, "*" + corpus_type + ".*.pt")
+            )
+            # if no dataset files detected or model is set to `only_preprocess`
+            if (not dataset_files) or (self.hparams.only_preprocess):
+                json_files = glob.glob(
                     os.path.join(self.hparams.data_path, "*" + corpus_type + ".*.json*")
                 )
+
+                num_files = len(json_files)
+
                 # pool = Pool(self.hparams.num_threads)
                 json_to_dataset_processor = partial(
                     self.json_to_dataset,
-                    processor=processor,
+                    self.tokenizer,
+                    self.hparams,
+                    num_files=num_files,
+                    processor=self.processor,
                     oracle_mode=self.hparams.oracle_mode,
                 )
-                for result in map(json_to_dataset_processor, dataset_files):
+
+                for result in map(
+                    json_to_dataset_processor, zip(range(len(json_files)), json_files),
+                ):
                     pass
                 # pool.close()
                 # pool.join()
 
-                logger.info("Beginning feature extraction (tokenization)")
-                datasets[corpus_type] = processor.get_features(
-                    self.tokenizer,
-                    bert_compatible_cls=self.hparams.processor_no_bert_compatible_cls,
-                    create_segment_ids=self.hparams.create_token_type_ids,
-                    n_process=self.hparams.processing_num_threads,
-                    max_length=self.hparams.max_seq_length,
-                    pad_on_left=bool(
-                        self.hparams.model_type in ["xlnet"]
-                    ),  # pad on the left for xlnet
-                    pad_token=self.tokenizer.convert_tokens_to_ids(
-                        [self.tokenizer.pad_token]
-                    )[0],
-                    return_tensors=True,
-                    save_to_path=self.hparams.data_path,
-                )
+            # if set to only preprocess the data then continue to next loop (aka next split of dataset)
+            if self.hparams.only_preprocess:
+                continue
+
+            # always create actual dataset, either after writing the shard ".pt" files to disk
+            # or by skipping that step (because preprocessed ".pt" files detected) and going right to loading.
+            # `FSIterableDataset` needs to know `batch_size` in order to properly tell the DataLoader
+            # how many steps there are per epoch. Since `FSIterableDataset` is an `IterableDataset` the
+            # `DataLoader` will ask the `Dataset` for the length instead of calculating it because
+            # the length of `IterableDatasets` might not be known, but it is in this case.
+            datasets[corpus_type] = FSIterableDataset(
+                dataset_files, batch_size=batch_size
+            )
+
+        # if set to only preprocess the data then exit after all loops have been completed
+        if self.hparams.only_preprocess:
+            logger.warn(
+                "Exiting since data has been preprocessed and written to disk and `hparams.only_preprocess` is True."
+            )
+            sys.exit(0)
 
         self.datasets = datasets
 
@@ -283,29 +376,37 @@ class ExtractiveSummarizer(pl.LightningModule):
         if self.train_dataloader_object:
             return self.train_dataloader_object
 
-        train_dataset = self.datasets["train"]
-        train_sampler = RandomSampler(train_dataset)
+        train_dataset = self.datasets[self.hparams.train_name]
+        # train_sampler = RandomSampler(train_dataset)
         train_dataloader = DataLoader(
             train_dataset,
-            sampler=train_sampler,
+            # sampler=train_sampler,
             batch_size=self.hparams.train_batch_size,
+            collate_fn=pad_batch_collate,
         )
+
         self.train_dataloader_object = train_dataloader
         return train_dataloader
 
     def val_dataloader(self):
-        valid_dataset = self.datasets["valid"]
-        valid_sampler = RandomSampler(valid_dataset)
+        valid_dataset = self.datasets[self.hparams.val_name]
+        # valid_sampler = RandomSampler(valid_dataset)
         valid_dataloader = DataLoader(
-            valid_dataset, sampler=valid_sampler, batch_size=self.hparams.val_batch_size
+            valid_dataset,
+            # sampler=valid_sampler,
+            batch_size=self.hparams.val_batch_size,
+            collate_fn=pad_batch_collate,
         )
         return valid_dataloader
 
     def test_dataloader(self):
-        test_dataset = self.datasets["test"]
-        test_sampler = RandomSampler(test_dataset)
+        test_dataset = self.datasets[self.hparams.test_name]
+        # test_sampler = RandomSampler(test_dataset)
         test_dataloader = DataLoader(
-            test_dataset, sampler=test_sampler, batch_size=self.hparams.test_batch_size
+            test_dataset,
+            # sampler=test_sampler,
+            batch_size=self.hparams.test_batch_size,
+            collate_fn=pad_batch_collate,
         )
         return test_dataloader
 
@@ -366,21 +467,34 @@ class ExtractiveSummarizer(pl.LightningModule):
         return ([optimizer], [scheduler])
 
     def training_step(self, batch, batch_idx):
-        # Get batch information (indices specified in SentencesProcessor.get_features())
-        labels = batch[2]
-        inputs = {
-            "input_ids": batch[0],
-            "attention_mask": batch[1],
-            "token_type_ids": batch[3],
-            "sent_rep_token_ids": batch[4],
-            "sent_rep_mask": batch[5],
-        }
+        # Get batch information
+        labels = batch["labels"]
+
+        # delete labels so now batch contains everything to be inputted into the model
+        del batch["labels"]
+
+        # inputs = {
+        #     "input_ids": batch["input_ids"],
+        #     "attention_mask": batch["attention_mask"],
+        #     "token_type_ids": batch["token_type_ids"],
+        #     "sent_rep_token_ids": batch["sent_rep_token_ids"],
+        #     "sent_rep_mask": batch["sent_rep_mask"],
+        # }
+        # # Get batch information (indices specified in SentencesProcessor.get_features())
+        # labels = batch[2]
+        # inputs = {
+        #     "input_ids": batch[0],
+        #     "attention_mask": batch[1],
+        #     "token_type_ids": batch[3],
+        #     "sent_rep_token_ids": batch[4],
+        #     "sent_rep_mask": batch[5],
+        # }
 
         # Compute model forward
-        outputs = self.forward(**inputs)
+        outputs = self.forward(**batch)
 
         # Compute loss
-        loss = self.compute_loss(outputs, labels, inputs["sent_rep_mask"])
+        loss = self.compute_loss(outputs, labels, batch["sent_rep_mask"])
 
         # Generate logs
         tqdm_dict = {"train_loss": loss}
@@ -390,21 +504,24 @@ class ExtractiveSummarizer(pl.LightningModule):
         return output
 
     def validation_step(self, batch, batch_idx):
-        # Get batch information (indices specified in SentencesProcessor.get_features())
-        labels = batch[2]
-        inputs = {
-            "input_ids": batch[0],
-            "attention_mask": batch[1],
-            "token_type_ids": batch[3],
-            "sent_rep_token_ids": batch[4],
-            "sent_rep_mask": batch[5],
-        }
+        # Get batch information
+        labels = batch["labels"]
+
+        # delete labels so now batch contains everything to be inputted into the model
+        del batch["labels"]
+        # inputs = {
+        #     "input_ids": batch["input_ids"],
+        #     "attention_mask": batch["attention_mask"],
+        #     "token_type_ids": batch["token_type_ids"],
+        #     "sent_rep_token_ids": batch["sent_rep_token_ids"],
+        #     "sent_rep_mask": batch["sent_rep_mask"],
+        # }
 
         # Compute model forward
-        outputs = self.forward(**inputs)
+        outputs = self.forward(**batch)
 
         # Compute loss
-        loss = self.compute_loss(outputs, labels, inputs["sent_rep_mask"])
+        loss = self.compute_loss(outputs, labels, batch["sent_rep_mask"])
 
         # Compute accuracy metrics
         y_hat = outputs
@@ -445,18 +562,14 @@ class ExtractiveSummarizer(pl.LightningModule):
         return result
 
     def test_step(self, batch, batch_idx):
-        # Get batch information (indices specified in SentencesProcessor.get_features())
-        labels = batch[2]
-        inputs = {
-            "input_ids": batch[0],
-            "attention_mask": batch[1],
-            "token_type_ids": batch[3],
-            "sent_rep_token_ids": batch[4],
-            "sent_rep_mask": batch[5],
-        }
+        # Get batch information
+        labels = batch['labels']
 
+        # delete labels so now batch contains everything to be inputted into the model
+        del batch["labels"]
+        
         # Compute model forward
-        outputs = self.forward(**inputs)
+        outputs = self.forward(**batch)
 
         # Compute accuracy metrics
         result = acc_and_f1(

@@ -54,6 +54,8 @@ For each of the URL lists (`all_train.txt`, `all_val.txt` and `all_test.txt`) in
 
 Simply run [convert_to_extractive.py](convert_to_extractive.py) with the path to the data. For example, with the CNN/DM dataset downloaded above: `python convert_to_extractive.py ./cnn_dailymail_processor/cnn_dm`. However, the recommended command is: `python convert_to_extractive.py ./cnn_dailymail_processor/cnn_dm --shard_interval 5000 --compression`, the `--shard_interval` processes the file in chunks of `5000` and writes results to disk in chunks of `5000` (saves RAM) and the `--compression` compresses each output chunk with gzip (depending on the dataset reduces space usage requirement by about 1/2 to 1/3). The default output directory is the input directory that was specified, but the output directory can be changed with `--base_output_path` if desired.
 
+### Script Help
+
 Output of `python convert_to_extractive.py --help`:
 
 ```bash
@@ -104,10 +106,6 @@ optional arguments:
 
 Once the dataset has been converted to the extractive task, it can be used as input to a SentencesProcessor, which has a `add_examples()` function too add sets of `(example, labels)` and a `get_features()` function that returns a TensorDataset of extracted features (`input_ids`, `attention_masks`, `labels`, `token_type_ids`, `sent_rep_token_ids`, `sent_rep_token_ids_masks`). Feature extraction runs in parallel and tokenizes text using the tokenizer appropriate for the model specified with `--model_name_or_path`. The tokenizer can be changed to another huggingface/transformers tokenizer with the `--tokenizer_name` option. 
 
-The actual ExtractiveSummarizer LightningModule (which is similar to an nn.Module but with a built-in training loop, more info at the [pytorch_lightning documentation](https://pytorch-lightning.readthedocs.io/en/latest/)) implements a `prepare_data()` function, which loads each json file outputted by the [convert_to_extractive.py](convert_to_extractive.py) script,  adds it to a `SentencesProcessor` object (there is one `SentencesProcessor` object for each split of the dataset), and runs `get_features()` once all the exampels have been added. This `prepare_data()` function is automatically called by `pytorch_lightning` and it runs in parallel to call `json_to_dataset()`, which is the function that actually adds the loaded examples. 
-
-Data processed into TensorDatasets by a SentencesProcessor will automatically be saved to the path specified by `--data_path`. If the training command is run again, then instead of running `get_features()`, the model will load it from file using `torch.load()`. The data is only saved after `get_features()` finishes running. A single save file is created for each split of the dataset.
-
 Continuing with the CNN/CM dataset, to train a model for 50,000 steps on the data run: `python main.py --data_path ./cnn_dailymail_processor/cnn_dm --default_save_path ./trained_models --max_steps 50000`.
 
 The `--data_path` argument specifies where the extractive dataset json file are located.
@@ -116,7 +114,26 @@ If you prefer to measure training progress by epochs instead of steps, the `--ma
 
 The batch sizes can be changed with the `--train_batch_size`, `--val_batch_size`, and `--test_batch_size` options. 
 
-If the extractive dataset json files are compressed using json, then they will be automatically decompressed during the data preprocessing step of training. 
+If the extractive dataset json files are compressed using json, then they will be automatically decompressed during the data preprocessing step of training.
+
+### Automatic Preprocessing
+
+While the [convert_to_extractive.py](convert_to_extractive.py) script prepares a dataset for the extractive task, the data still needs to be processed for usage with a machine learning model. This preprocessing depends on the chosen model, and thus is implemented in the [model.py](model.py) file.
+
+The actual ExtractiveSummarizer LightningModule (which is similar to an nn.Module but with a built-in training loop, more info at the [pytorch_lightning documentation](https://pytorch-lightning.readthedocs.io/en/latest/)) implements a `prepare_data()` function. This `prepare_data()` function is automatically called by `pytorch_lightning` and it runs in parallel to call `json_to_dataset()`, which is the function that actually loads and processes the examples as described below.
+
+**`prepare_data()` and `json_to_dataset()` Algorithms:**
+For each json file outputted by the [convert_to_extractive.py](convert_to_extractive.py) script:
+  1. Load json file
+  2. Add each document in json file to `SentencesProcessor` defined in `self.processor`, overwriting any previous data in the processor
+  3. Run `processor.get_features()` to save the extracted features to disk as a `.pt` file containing a pickled python list of dictionaries, which each dictionary contains the extracted features
+Memory Usage Note: If sharding was turned off during the `convert_to_extractive` process then the above will run once, loading the entire dataset into memory to process just like the [convert_to_extractive.py](convert_to_extractive.py) script.
+
+There is a `--only_preprocess` argument available to only run this preprocess step and exit the script after all the examples have been written to disk. This option will force data to be preprocessed, even if it was already computed and is detected on disk, and any previous processed files will be overwritten.
+
+**Important Note:** If processed files are detected, they will automatically be loaded from disk. This includes any files that follow the pattern `[dataset_split_name].*.pt`, where `*` is any text of any length.
+
+### Script Help
 
 Output of `python main.py --help`:
 

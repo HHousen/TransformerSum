@@ -74,6 +74,12 @@ if __name__ == "__main__":
         "--gradient_clip_val", default=1.0, type=float, help="Gradient clipping value"
     )
     parser.add_argument(
+        "--overfit_pct",
+        default=0.0,
+        type=float,
+        help="Uses this much data of all datasets (training, validation, test). Useful for quickly debugging or trying to overfit on purpose.",
+    )
+    parser.add_argument(
         "-l",
         "--log",
         dest="logLevel",

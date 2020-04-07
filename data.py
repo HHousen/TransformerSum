@@ -4,6 +4,7 @@ import gc
 import copy
 import csv
 import json
+import random
 import logging
 import torch
 from tqdm import tqdm
@@ -11,26 +12,151 @@ from time import time
 from multiprocessing import Pool
 from functools import partial
 import torch
+import torch.nn.functional as F
+from torch._six import container_abcs
 from torch.utils.data import TensorDataset, IterableDataset
 
 logger = logging.getLogger(__name__)
 
 
-class FSTensorDataset(IterableDataset):
-    def __init__(self, files_list):
-        super(FSTensorDataset).__init__()
+def pad(data, pad_id, width=None, pad_on_left=False):
+    if not width:
+        width = max(len(d) for d in data)
+    if pad_on_left:
+        rtn_data = [d + [pad_id] * (width - len(d)) for d in data]
+    else:
+        rtn_data = [[pad_id] * (width - len(d)) + d for d in data]
+    return rtn_data
+
+
+def pad_tensors(tensors, width=None):
+    if not width:
+        width = max(len(d) for d in tensors)
+    return [
+        F.pad(tensor, pad=(0, (width - len(tensor))), mode="constant", value=0)
+        for tensor in tensors
+    ]
+
+
+def pad_batch_collate(batch):
+    """
+    Collate function to be passed to `DataLoaders`.
+    PyTorch Docs: https://pytorch.org/docs/stable/data.html#dataloader-collate-fn
+
+    Calculates padding (per batch for efficiency) of `labels` and `token_type_ids`
+    if they exist within the batch from the `Dataset`. Also, pads `sent_rep_token_ids`
+    and creates the `sent_rep_mask` to indicate which numbers in the `sent_rep_token_ids`
+    list are actually the locations of sentence representation ids and which are padding.
+    Finally, calculates the `attention_mask` for each set of `input_ids` and pads both the
+    `attention_mask` and the `input_ids`. Converts all inputs to tensors.
+    """
+    elem = batch[0]
+    elem_type = type(elem)
+    final_dictionary = {}
+
+    for key in elem:
+        feature_list = [d[key] for d in batch]
+        if key == "sent_rep_token_ids":
+            feature_list = pad(feature_list, -1)
+            sent_rep_token_ids = torch.tensor(feature_list)
+
+            sent_rep_mask = ~(sent_rep_token_ids == -1)
+            sent_rep_token_ids[sent_rep_token_ids == -1] = 0
+
+            final_dictionary["sent_rep_token_ids"] = sent_rep_token_ids
+            final_dictionary["sent_rep_mask"] = sent_rep_mask
+            continue  # go to next key
+        elif key == "input_ids":
+            input_ids = feature_list
+
+            # Attention
+            # The mask has 1 for real tokens and 0 for padding tokens. Only real
+            # tokens are attended to.
+            attention_mask = [[1] * len(ids) for ids in input_ids]
+
+            input_ids = pad(input_ids, 0)
+            input_ids = torch.tensor(input_ids)
+            attention_mask = pad(attention_mask, 0)
+            attention_mask = torch.tensor(attention_mask)
+
+            final_dictionary["input_ids"] = input_ids
+            final_dictionary["attention_mask"] = attention_mask
+
+            continue
+
+        elif key == "labels" or key == "token_type_ids":
+            feature_list = pad(feature_list, 0)
+
+        feature_list = torch.tensor(feature_list)
+        final_dictionary[key] = feature_list
+
+    return final_dictionary
+
+
+class FSIterableDataset(IterableDataset):
+    """
+    A dataset to yield examples from a list of files that are saved python objects that
+    can be iterated over. These files could be other PyTorch datasets (tested with
+    `TensorDataset`) or other python objects such as lists, for example. Each file
+    will be loaded one at a time until all the examples have been yielded, at which point
+    the next file will be loaded and used to yield examples, and so on. This means a large
+    dataset can be broken into smaller chunks and this class can be used to load samples
+    as if those files were one dataset while only utilizing the ram required for one chunk.
+    
+    Explanation about `batch_size` and `__len__()`:
+    If the __len__ function is needed to be accurate then the `batch_size` must be specified
+    when constructing objects of this class. PyTorch `DataLoader` objects will report accurate
+    lengths by dividing the number of examples in the dataset by the batch size only if the
+    dataset if not an `IterableDataset`. If the dataset is an `IterableDataset` then a `DataLoader`
+    will simply ask the dataset for its length, without diving by the batch size, because
+    in some cases the length of an `IterableDataset` might be difficult or impossible to determine.
+    However, in this case the number of examples (length of dataset) is known. The division by
+    batch size must happen in the dataset (for datasets of type `IterableDataset`) since the
+    `DataLoader` will not calculate this.
+    """
+    # TODO: Add shuffling
+    def __init__(self, files_list, shuffle=True, batch_size=1):
+        super(FSIterableDataset).__init__()
+        if shuffle:
+            random.shuffle(files_list)  # happens in-place
         self.files_list = files_list
+        self.shuffle = shuffle
+        self.batch_size = batch_size
+        self.total_length = None
+        self.num_batches = None
 
     def __iter__(self):
         for data_file in self.files_list:
             dataset_section = torch.load(data_file)
             for example in dataset_section:
                 yield example
+                # input(example)
             # Clear memory usage before loading next file
             dataset_section = None
             gc.collect()
             del dataset_section
             gc.collect()
+
+    def __len__(self):
+        if self.num_batches:
+            return self.num_batches
+        else:
+            logger.debug(
+                "Calculating length of `IterableDataset` by loading each file, getting the length, and unloading, which is slow."
+            )
+            total_length = 0
+            for data_file in self.files_list:
+                dataset_section = torch.load(data_file)
+                total_length += len(dataset_section)
+            self.total_length = total_length
+
+            # Calculate number of batches because the DataLoader `__len__` function directly
+            # calls the `__len__` function of the dataset if the dataset is of type `IterableDataset`
+            # DataLoader code: https://pytorch.org/docs/stable/_modules/torch/utils/data/dataloader.html#DataLoader
+            remainder_batch = 0 if (total_length % self.batch_size == 0) else 1
+            num_batches = int(total_length / self.batch_size) + remainder_batch
+            self.num_batches = num_batches
+            return num_batches
 
 
 class InputExample(object):
@@ -38,13 +164,9 @@ class InputExample(object):
     A single training/test example for simple sequence classification.
 
     Args:
-        guid: Unique id for the example.
-        text_a: string. The untokenized text of the first sequence. For single
-            sequence tasks, only this sequence must be specified.
-        text_b: (Optional) string. The untokenized text of the second sequence.
-            Only must be specified for sequence pair tasks.
-        label: (Optional) string. The label of the example. This should be
-            specified for train and dev examples, but not for test examples.
+        guid: (Optional) Unique id for the example.
+        text: string. The untokenized text of the first sequence
+        labels: list. The labels of the example. 
     """
 
     def __init__(self, guid, text, labels):
@@ -75,7 +197,8 @@ class InputFeatures(object):
             Mask values selected in ``[0, 1]``:
             Usually  ``1`` for tokens that are NOT MASKED, ``0`` for MASKED (padded) tokens.
         token_type_ids: Segment token indices to indicate first and second portions of the inputs.
-        label: Label corresponding to the input
+        labels: Labels corresponding to the input
+        sent_rep_token_ids: The locations of the sentence representation tokens
     """
 
     def __init__(
@@ -97,7 +220,13 @@ class InputFeatures(object):
 
     def to_dict(self):
         """Serializes this instance to a Python dictionary."""
-        output = copy.deepcopy(self.__dict__)
+        # output = copy.deepcopy(self.__dict__)
+        _dict = self.__dict__
+        # removes empty properties from `self.__dict__`
+        output = {}
+        for key, value in _dict.items():
+            if value:
+                output[key] = value
         return output
 
     def to_json_string(self):
@@ -265,6 +394,8 @@ class SentencesProcessor:
         pad_on_left=False,
         pad_token=0,
         mask_padding_with_zero=True,
+        create_attention_mask=True,
+        pad_ids_and_attention=True,
     ):
         ex_index, example, label = input_information
         if ex_index % 1000 == 0:
@@ -327,28 +458,32 @@ class SentencesProcessor:
         # Attention
         # The mask has 1 for real tokens and 0 for padding tokens. Only real
         # tokens are attended to.
-        attention_mask = [1 if mask_padding_with_zero else 0] * len(input_ids)
+        if create_attention_mask:
+            attention_mask = [1 if mask_padding_with_zero else 0] * len(input_ids)
 
         # Padding
         # Zero-pad up to the sequence length.
-        padding_length = max_length - len(input_ids)
-        if pad_on_left:
-            input_ids = ([pad_token] * padding_length) + input_ids
-            attention_mask = (
-                [0 if mask_padding_with_zero else 1] * padding_length
-            ) + attention_mask
-        else:
-            input_ids = input_ids + ([pad_token] * padding_length)
-            attention_mask = attention_mask + (
-                [0 if mask_padding_with_zero else 1] * padding_length
-            )
+        if pad_ids_and_attention:
+            padding_length = max_length - len(input_ids)
+            if pad_on_left:
+                input_ids = ([pad_token] * padding_length) + input_ids
+                attention_mask = (
+                    [0 if mask_padding_with_zero else 1] * padding_length
+                ) + attention_mask
+            else:
+                input_ids = input_ids + ([pad_token] * padding_length)
+                attention_mask = attention_mask + (
+                    [0 if mask_padding_with_zero else 1] * padding_length
+                )
 
-        assert len(input_ids) == max_length, "Error with input length {} vs {}".format(
-            len(input_ids), max_length
-        )
-        assert (
-            len(attention_mask) == max_length
-        ), "Error with input length {} vs {}".format(len(attention_mask), max_length)
+            assert (
+                len(input_ids) == max_length
+            ), "Error with input length {} vs {}".format(len(input_ids), max_length)
+            assert (
+                len(attention_mask) == max_length
+            ), "Error with input length {} vs {}".format(
+                len(attention_mask), max_length
+            )
 
         if ex_index < 5 and self.verbose:
             logger.info("*** Example ***")
@@ -362,19 +497,29 @@ class SentencesProcessor:
                 logger.info(
                     "sent_rep_token_ids: %s" % " ".join([str(x) for x in sent_rep_ids])
                 )
-            logger.info(
-                "attention_mask: %s" % " ".join([str(x) for x in attention_mask])
-            )
+            if create_attention_mask:
+                logger.info(
+                    "attention_mask: %s" % " ".join([str(x) for x in attention_mask])
+                )
             logger.info("labels: %s (id = %s)" % (example.labels, label))
 
         # Return features
-        return InputFeatures(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            labels=label,
-            token_type_ids=segment_ids,
-            sent_rep_token_ids=sent_rep_ids,
-        )
+        # if the attention mask was created then add the mask to the returned features
+        if create_attention_mask:
+            return InputFeatures(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                labels=label,
+                token_type_ids=segment_ids,
+                sent_rep_token_ids=sent_rep_ids,
+            )
+        else:
+            return InputFeatures(
+                input_ids=input_ids,
+                labels=label,
+                token_type_ids=segment_ids,
+                sent_rep_token_ids=sent_rep_ids,
+            )
 
     def get_features(
         self,
@@ -389,7 +534,9 @@ class SentencesProcessor:
         pad_on_left=False,
         pad_token=0,
         mask_padding_with_zero=True,
-        return_tensors=False,
+        create_attention_mask=True,
+        pad_ids_and_attention=True,
+        return_type=None,
         save_to_path=None,
         save_to_name=None,
     ):
@@ -414,6 +561,14 @@ class SentencesProcessor:
             a list of task-specific ``InputFeatures`` which can be fed to the model.
 
         """
+        assert return_type in ["tensors", "lists"] or return_type is None
+        if return_type == "lists":
+            create_attention_mask = False
+            pad_ids_and_attention = False
+        else:  # if `return_type` is None  or "tensors"
+            create_attention_mask = True
+            pad_ids_and_attention = True
+
         if max_length is None:
             max_length = tokenizer.max_len
 
@@ -449,6 +604,8 @@ class SentencesProcessor:
             pad_on_left=pad_on_left,
             pad_token=pad_token,
             mask_padding_with_zero=mask_padding_with_zero,
+            create_attention_mask=create_attention_mask,
+            pad_ids_and_attention=pad_ids_and_attention,
         )
 
         for rtn_features in pool.map(
@@ -460,152 +617,62 @@ class SentencesProcessor:
         pool.close()
         pool.join()
 
-        # for (ex_index, (example, label)) in tqdm(enumerate(zip(self.examples, self.labels)), total=len(self.labels), desc="Creating Features"):
-        #     # if ex_index % 1000 == 0:
-        #     #     logger.info("Tokenizing example %d", ex_index)
-
-        #     if bert_compatible_cls: # adds a '[CLS]' token between each sentence and outputs `input_ids`
-        #         # convert `example.text` to array of sentences
-        #         src_txt = [' '.join(sent) for sent in example.text]
-        #         # separate each sentence with ' [SEP] [CLS] ' and convert to string
-        #         text = ' [SEP] [CLS] '.join(src_txt)
-        #         # tokenize
-        #         src_subtokens = tokenizer.tokenize(text)
-        #         # select first `(max_length-2)` tokens (so the following line of tokens can be added)
-        #         src_subtokens = src_subtokens[:(max_length-2)]
-        #         # add '[CLS]' to beginning and '[SEP]' to end
-        #         src_subtokens = ['[CLS]'] + src_subtokens + ['[SEP]']
-        #         # create `input_ids`
-        #         input_ids = tokenizer.convert_tokens_to_ids(src_subtokens)
-        #     else:
-        #         input_ids = tokenizer.encode(
-        #             example.text, add_special_tokens=True, max_length=min(max_length, tokenizer.max_len),
-        #         )
-
-        #     # Segment (Token Type) IDs
-        #     segment_ids = None
-        #     if create_segment_ids == "binary":
-        #         current_segment_flag = True
-        #         segment_ids = []
-        #         for token in input_ids:
-        #             if token == segment_token_id:
-        #                 current_segment_flag = not current_segment_flag
-        #             segment_ids += [0 if current_segment_flag else 1]
-
-        #     if create_segment_ids == "sequential":
-        #         current_segment = 0
-        #         segment_ids = []
-        #         for token in input_ids:
-        #             if token == segment_token_id:
-        #                 current_segment += 1
-        #             segment_ids += [current_segment]
-
-        #     # Sentence Representation Token IDs
-        #     sent_rep_ids = None
-        #     if create_sent_rep_token_ids:
-        #         # create list of indexes for the `sent_rep` tokens
-        #         sent_rep_ids = [i for i, t in enumerate(input_ids) if t == sent_rep_token_id]
-        #         # truncate `label` to the length of the `cls_ids` aka the number of sentences
-        #         label = label[:len(sent_rep_ids)]
-
-        #     # Attention
-        #     # The mask has 1 for real tokens and 0 for padding tokens. Only real
-        #     # tokens are attended to.
-        #     attention_mask = [1 if mask_padding_with_zero else 0] * len(input_ids)
-
-        #     # Padding
-        #     # Zero-pad up to the sequence length.
-        #     padding_length = max_length - len(input_ids)
-        #     if pad_on_left:
-        #         input_ids = ([pad_token] * padding_length) + input_ids
-        #         attention_mask = ([0 if mask_padding_with_zero else 1] * padding_length) + attention_mask
-        #     else:
-        #         input_ids = input_ids + ([pad_token] * padding_length)
-        #         attention_mask = attention_mask + ([0 if mask_padding_with_zero else 1] * padding_length)
-
-        #     assert len(input_ids) == max_length, "Error with input length {} vs {}".format(
-        #         len(input_ids), max_length
-        #     )
-        #     assert len(attention_mask) == max_length, "Error with input length {} vs {}".format(
-        #         len(attention_mask), max_length
-        #     )
-
-        #     if ex_index < 5 and self.verbose:
-        #         logger.info("*** Example ***")
-        #         logger.info("guid: %s" % (example.guid))
-        #         logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
-        #         if segment_ids is not None:
-        #             logger.info("token_type_ids: %s" % " ".join([str(x) for x in segment_ids]))
-        #         if sent_rep_ids is not None:
-        #             logger.info("sent_rep_token_ids: %s" % " ".join([str(x) for x in sent_rep_ids]))
-        #         logger.info("attention_mask: %s" % " ".join([str(x) for x in attention_mask]))
-        #         logger.info("labels: %s (id = %s)" % (example.labels, label))
-
-        #     # Append to features
-        #     features.append(
-        #         InputFeatures(
-        #             input_ids=input_ids,
-        #             attention_mask=attention_mask,
-        #             labels=label,
-        #             token_type_ids=segment_ids,
-        #             sent_rep_token_ids=sent_rep_ids
-        #         )
-        #     )
-
-        if return_tensors is False:
+        if not return_type:
             return features
-        else:
-
-            def pad(data, pad_id, width=None):
-                if not width:
-                    width = max(len(d) for d in data)
-                rtn_data = [d + [pad_id] * (width - len(d)) for d in data]
-                return rtn_data
-
-            # Pad sentence representation token ids (`sent_rep_token_ids`)
-            all_sent_rep_token_ids_padded = torch.tensor(
-                pad([f.sent_rep_token_ids for f in features], -1), dtype=torch.long
-            )
-            all_sent_rep_token_ids_masks = ~(all_sent_rep_token_ids_padded == -1)
-            all_sent_rep_token_ids_padded[all_sent_rep_token_ids_padded == -1] = 0
+        elif return_type == "tensors":
+            final_tensors = []
 
             all_input_ids = torch.tensor(
                 [f.input_ids for f in features], dtype=torch.long
             )
+            final_tensors.append(all_input_ids)
             all_attention_masks = torch.tensor(
                 [f.attention_mask for f in features], dtype=torch.long
             )
+            final_tensors.append(all_attention_masks)
             all_labels = torch.tensor(
                 pad([f.labels for f in features], 0), dtype=torch.long
             )
-            all_token_type_ids = torch.tensor(
-                pad([f.token_type_ids for f in features], 0), dtype=torch.long
-            )
-            all_sent_rep_token_ids = torch.tensor(
-                all_sent_rep_token_ids_padded, dtype=torch.long
-            )
-            all_sent_rep_token_ids_masks = torch.tensor(
-                all_sent_rep_token_ids_masks, dtype=torch.long
-            )
+            final_tensors.append(all_labels)
 
-            dataset = TensorDataset(
-                all_input_ids,
-                all_attention_masks,
-                all_labels,
-                all_token_type_ids,
-                all_sent_rep_token_ids,
-                all_sent_rep_token_ids_masks,
-            )
-
-            if save_to_path:
-                final_save_name = (
-                    save_to_name if save_to_name else ("dataset_" + self.name)
+            if create_segment_ids:
+                all_token_type_ids = torch.tensor(
+                    pad([f.token_type_ids for f in features], 0), dtype=torch.long
                 )
-                dataset_path = os.path.join(save_to_path, (final_save_name + ".pt"),)
-                logger.info("Saving dataset into cached file %s", dataset_path)
-                torch.save(dataset, dataset_path)
+                final_tensors.append(all_token_type_ids)
+            # Pad sentence representation token ids (`sent_rep_token_ids`)
+            if create_sent_rep_token_ids:
+                all_sent_rep_token_ids = torch.tensor(
+                    pad([f.sent_rep_token_ids for f in features], -1), dtype=torch.long
+                )
+                all_sent_rep_token_ids_masks = ~(all_sent_rep_token_ids == -1)
+                all_sent_rep_token_ids[all_sent_rep_token_ids == -1] = 0
+                final_tensors.append(all_sent_rep_token_ids)
+                final_tensors.append(all_sent_rep_token_ids_masks)
 
-            return dataset
+            dataset = TensorDataset(*final_tensors)
+
+        elif return_type == "lists":
+            dataset = [example.to_dict() for example in features]
+
+            # dataset = {}
+            # dataset["all_input_ids"] = [f.input_ids for f in features]
+            # dataset["all_attention_masks"] = [f.attention_mask for f in features]
+            # dataset["all_labels"] = [f.labels for f in features]
+            # if create_segment_ids:
+            #     dataset["all_token_type_ids"] = [f.token_type_ids for f in features]
+            # if create_sent_rep_token_ids:
+            #     dataset["all_sent_rep_token_ids"] = [
+            #         f.sent_rep_token_ids for f in features
+            #     ]
+
+        if save_to_path:
+            final_save_name = save_to_name if save_to_name else ("dataset_" + self.name)
+            dataset_path = os.path.join(save_to_path, (final_save_name + ".pt"),)
+            logger.info("Saving dataset into cached file %s", dataset_path)
+            torch.save(dataset, dataset_path)
+
+        return dataset
 
     def load(self, load_from_path, dataset_name=None):
         """ Attempts to load the dataset from storage. If that fails, will return None. """
