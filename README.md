@@ -221,7 +221,7 @@ All training arguments can be found in the [pytorch_lightning trainer documentat
 
 Hayden Housen – [haydenhousen.com](https://haydenhousen.com)
 
-Distributed under the MIT license. See the [LICENSE](LICENSE) for more information.
+Distributed under the GNU General Public License v3.0. See the [LICENSE](LICENSE) for more information.
 
 <https://github.com/HHousen>
 
