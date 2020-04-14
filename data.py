@@ -16,24 +16,32 @@ import torch.nn.functional as F
 from torch._six import container_abcs
 from torch.utils.data import TensorDataset, IterableDataset
 
+import numpy as np
+
 logger = logging.getLogger(__name__)
 
 
 def pad(data, pad_id, width=None, pad_on_left=False):
+    """Pad `data` with `pad_id` to `width` on the right by default but if `pad_on_left` then left."""
     if not width:
         width = max(len(d) for d in data)
     if pad_on_left:
-        rtn_data = [d + [pad_id] * (width - len(d)) for d in data]
-    else:
         rtn_data = [[pad_id] * (width - len(d)) + d for d in data]
+    else:
+        rtn_data = [d + [pad_id] * (width - len(d)) for d in data]
     return rtn_data
 
 
-def pad_tensors(tensors, width=None):
+def pad_tensors(tensors, pad_id=0, width=None, pad_on_left=False):
+    """Pad `tensors` with `pad_id` to `width` on the right by default but if `pad_on_left` then left."""
     if not width:
         width = max(len(d) for d in tensors)
+    if pad_on_left:
+        pad_params = ((width - len(tensor)), 0)
+    else:
+        pad_params = (0, (width - len(tensor)))
     return [
-        F.pad(tensor, pad=(0, (width - len(tensor))), mode="constant", value=0)
+        F.pad(tensor, pad=pad_params, mode="constant", value=pad_id)
         for tensor in tensors
     ]
 
@@ -49,12 +57,32 @@ def pad_batch_collate(batch):
     list are actually the locations of sentence representation ids and which are padding.
     Finally, calculates the `attention_mask` for each set of `input_ids` and pads both the
     `attention_mask` and the `input_ids`. Converts all inputs to tensors.
+
+    If `sent_lengths` are found then they will also automatically be padded. However, the
+    padding for sentence lengths is complicated. Each list of sentence lengths needs to be
+    the length of the longest list of sentence lengths and the sum of all the lengths in each
+    list needs to add to the length of the input_ids width (the length of each input_id). The
+    second requirement exists because `torch.split()` (which is used in the `mean_tokens` pooling
+    algorithm to convert word vectors to sentence embeddings in `pooling.py`) will split a
+    tensor into the lengths requested but will error instead of returning any extra. However,
+    `torch.split()` will split a tensor into zero length segments. Thus, to solve this, zeros
+    are added to each sentence length list for each example until one more padding value is needed
+    to get the maximum number of sentences. Once only one more value is needed, the total value
+    needded to reach the width of the `input_ids` is added.
+
+    `source` and `target`, if present, are simply passed on without any processing. Therefore,
+    the standard `collate_fn` function for `DataLoader`s will not work if these are present since
+    they cannot be converted to tensors without padding. This `collate_fun` must be used if 
+    `source` or `target` is present in the loaded dataset. 
     """
     elem = batch[0]
     elem_type = type(elem)
     final_dictionary = {}
 
     for key in elem:
+        if key == "sent_lengths":
+            continue
+
         feature_list = [d[key] for d in batch]
         if key == "sent_rep_token_ids":
             feature_list = pad(feature_list, -1)
@@ -74,14 +102,42 @@ def pad_batch_collate(batch):
             # tokens are attended to.
             attention_mask = [[1] * len(ids) for ids in input_ids]
 
-            input_ids = pad(input_ids, 0)
+            input_ids_width = max(len(ids) for ids in input_ids)
+            input_ids = pad(input_ids, 0, width=input_ids_width)
             input_ids = torch.tensor(input_ids)
             attention_mask = pad(attention_mask, 0)
             attention_mask = torch.tensor(attention_mask)
 
+            if "sent_lengths" in elem:
+                sent_lengths = []
+                sent_lengths_mask = []
+                sent_lengths_width = max(len(d["sent_lengths"]) + 1 for d in batch)
+                for d in batch:
+                    current_sent_lens = d["sent_lengths"]
+                    current_sent_lengths_mask = [True] * len(current_sent_lens)
+                    num_to_add = sent_lengths_width - len(current_sent_lens)
+                    total_value_to_add = input_ids_width - sum(current_sent_lens)
+                    while num_to_add > 1:
+                        num_to_add -= 1
+                        # total_value_to_add -= 1
+                        current_sent_lens.append(0)
+                        current_sent_lengths_mask.append(False)
+                    if total_value_to_add > 0:
+                        current_sent_lens.append(total_value_to_add)
+                        current_sent_lengths_mask.append(False)
+
+                    sent_lengths.append(current_sent_lens)
+                    sent_lengths_mask.append(current_sent_lengths_mask)
+                final_dictionary["sent_lengths"] = sent_lengths
+                final_dictionary["sent_lengths_mask"] = torch.tensor(sent_lengths_mask)
+
             final_dictionary["input_ids"] = input_ids
             final_dictionary["attention_mask"] = attention_mask
 
+            continue
+
+        elif key == "source" or key == "target":
+            final_dictionary[key] = feature_list
             continue
 
         elif key == "labels" or key == "token_type_ids":
@@ -114,19 +170,23 @@ class FSIterableDataset(IterableDataset):
     batch size must happen in the dataset (for datasets of type `IterableDataset`) since the
     `DataLoader` will not calculate this.
     """
+
     # TODO: Add shuffling
-    def __init__(self, files_list, shuffle=True, batch_size=1):
+    def __init__(self, files_list, shuffle=True, batch_size=1, verbose=False):
         super(FSIterableDataset).__init__()
         if shuffle:
             random.shuffle(files_list)  # happens in-place
         self.files_list = files_list
         self.shuffle = shuffle
         self.batch_size = batch_size
+        self.verbose = verbose
         self.total_length = None
         self.num_batches = None
 
     def __iter__(self):
         for data_file in self.files_list:
+            if self.verbose:
+                logger.info("Loading examples from " + str(data_file))
             dataset_section = torch.load(data_file)
             for example in dataset_section:
                 yield example
@@ -160,19 +220,22 @@ class FSIterableDataset(IterableDataset):
 
 
 class InputExample(object):
-    """
-    A single training/test example for simple sequence classification.
-
-    Args:
-        guid: (Optional) Unique id for the example.
-        text: string. The untokenized text of the first sequence
-        labels: list. The labels of the example. 
-    """
-
-    def __init__(self, guid, text, labels):
+    def __init__(self, text, labels, guid=None, target=None):
+        """A single training/test example for simple sequence classification.
+        
+        Arguments:
+            text {list} -- The untokenized (for the appropriate model) text for the example.
+                             Should be broken into sentences and tokens.
+            labels {list} -- The labels of the example.
+        
+        Keyword Arguments:
+            guid {int} -- A unique identification code for this example, not used. (default: {None})
+            target {str} -- The ground truth abstractive summary. (default: {None})
+        """
         self.guid = guid
         self.text = text
         self.labels = labels
+        self.target = target
 
     def __repr__(self):
         return str(self.to_json_string())
@@ -194,11 +257,14 @@ class InputFeatures(object):
     Args:
         input_ids: Indices of input sequence tokens in the vocabulary.
         attention_mask: Mask to avoid performing attention on padding token indices.
-            Mask values selected in ``[0, 1]``:
-            Usually  ``1`` for tokens that are NOT MASKED, ``0`` for MASKED (padded) tokens.
+            Mask values selected in `[0, 1]`:
+            Usually  `1` for tokens that are NOT MASKED, `0` for MASKED (padded) tokens.
         token_type_ids: Segment token indices to indicate first and second portions of the inputs.
-        labels: Labels corresponding to the input
-        sent_rep_token_ids: The locations of the sentence representation tokens
+        labels: Labels corresponding to the input.
+        sent_rep_token_ids: The locations of the sentence representation tokens.
+        sent_lengths: A list of the lengths of each sentence in the `source` and `input_ids`.
+        source: The actual source document as a list of sentences.
+        target: The ground truth abstractive summary.
     """
 
     def __init__(
@@ -208,12 +274,18 @@ class InputFeatures(object):
         token_type_ids=None,
         labels=None,
         sent_rep_token_ids=None,
+        sent_lengths=None,
+        source=None,
+        target=None,
     ):
         self.input_ids = input_ids
         self.attention_mask = attention_mask
         self.token_type_ids = token_type_ids
         self.labels = labels
         self.sent_rep_token_ids = sent_rep_token_ids
+        self.sent_lengths = sent_lengths
+        self.source = source
+        self.target = target
 
     def __repr__(self):
         return str(self.to_json_string())
@@ -222,7 +294,7 @@ class InputFeatures(object):
         """Serializes this instance to a Python dictionary."""
         # output = copy.deepcopy(self.__dict__)
         _dict = self.__dict__
-        # removes empty properties from `self.__dict__`
+        # removes empty and NoneType properties from `self.__dict__`
         output = {}
         for key, value in _dict.items():
             if value:
@@ -236,6 +308,18 @@ class InputFeatures(object):
 
 class SentencesProcessor:
     def __init__(self, name=None, labels=None, examples=None, verbose=False):
+        """Create a `SentencesProcessor`
+        
+        Keyword Arguments:
+            **All Optional
+            name {str} -- a label for the `SentencesProcessor` object, used internally for saving if
+                          a save name is not specified in `get_features()(default: {None})
+            labels {list} -- the label that goes with each sample, can be a list of lists where
+                             the inside lists are the labels for each sentence in the coresponding
+                             example (default: {None})
+            examples {list} -- list of `InputExample`s (default: {None})
+            verbose {bool} -- log extra information (such as examples of processed data points) (default: {False})
+        """
         self.name = name
         self.labels = [] if labels is None else labels
         self.examples = [] if examples is None else examples
@@ -245,33 +329,12 @@ class SentencesProcessor:
         return len(self.examples)
 
     @classmethod
-    def create_from_csv(
-        cls,
-        file_name,
-        split_name="",
-        column_label=0,
-        column_text=1,
-        column_id=None,
-        skip_first_row=False,
-        **kwargs
-    ):
+    def create_from_examples(cls, texts, labels=None, **kwargs):
+        """
+        Create a SentencesProcessor with **kwargs and add `texts` and labels` through add_examples()
+        """
         processor = cls(**kwargs)
-        processor.add_examples_from_csv(
-            file_name,
-            split_name=split_name,
-            column_label=column_label,
-            column_text=column_text,
-            column_id=column_id,
-            skip_first_row=skip_first_row,
-            overwrite_labels=True,
-            overwrite_examples=True,
-        )
-        return processor
-
-    @classmethod
-    def create_from_examples(cls, texts_or_text_and_labels, labels=None, **kwargs):
-        processor = cls(**kwargs)
-        processor.add_examples(texts_or_text_and_labels, labels=labels)
+        processor.add_examples(texts, labels=labels)
         return processor
 
     def add_examples_from_csv(
@@ -314,9 +377,33 @@ class SentencesProcessor:
         labels=None,
         ids=None,
         oracle_ids=None,
+        targets=None,
         overwrite_labels=False,
         overwrite_examples=False,
     ):
+        """Primary method of adding example sets of texts, labels, ids, and targets to the SentencesProcessor
+        
+        Arguments:
+            texts {list} -- A list of documents where each document is a list of sentences where each
+                            sentence is a list of tokens. This is the output of `convert_to_extractive.py`
+                            and is in the 'src' field for each doc. See `ExtractiveSummarizer.prepare_data`
+                            (`main.py`).
+        
+        Keyword Arguments:
+            labels {list} -- A list of the labels for each document where each label is a list of labels
+                             where the index of the label coresponds with the index of the sentence in the
+                             respective entry in `texts.` Similarly to `texts`, this is handled automatically
+                             by `ExtractiveSummarizer.prepare_data`. (default: {None})
+            ids {list} -- A list of ids for each document. Not used by `ExtractiveSummarizer`. (default: {None})
+            oracle_ids {list} -- Similar to labels but is a list of indexes of the chosen sentences
+                                 instead of a one-hot encoded vector. These will be converted to labels. (default: {None})
+            targets {list} -- A list of the abstractive target for each document. (default: {None})
+            overwrite_labels {bool} -- Replace any labels currently stored by the `SentencesProcessor`. (default: {False})
+            overwrite_examples {bool} -- Replace any examples currently stored by the `SentencesProcessor`. (default: {False})
+        
+        Returns:
+            list -- The examples as `InputExample`s that have been added
+        """
         assert texts  # not an empty array
         assert labels is None or len(texts) == len(labels)
         assert ids is None or len(texts) == len(ids)
@@ -338,11 +425,17 @@ class SentencesProcessor:
 
         examples = []
         added_labels = list()
-        for (text_set, label_set, guid) in zip(texts, labels, ids):
+        for idx, (text_set, label_set, guid) in enumerate(zip(texts, labels, ids)):
             if not text_set or not label_set:
                 continue  # input()
             added_labels.append(label_set)
-            examples.append(InputExample(guid=guid, text=text_set, labels=label_set))
+            if targets:
+                example = InputExample(
+                    guid=guid, text=text_set, labels=label_set, target=targets[idx]
+                )
+            else:
+                example = InputExample(guid=guid, text=text_set, labels=label_set)
+            examples.append(example)
 
         # Update examples
         if overwrite_examples:
@@ -358,38 +451,18 @@ class SentencesProcessor:
 
         return self.examples
 
-    # def preprocess_examples(self, examples, labels, min_sentence_ntokens=5, max_sentence_ntokens=200, min_example_nsents=3, max_example_nsents=100):
-    #     for (ex_index, example) in enumerate(examples):
-    #         if ex_index % 10000 == 0:
-    #             logger.info("Preprocessing example %d", ex_index)
-    #         # pick the sentence indexes in `example.text` if they are larger then `min_sentence_ntokens`
-    #         idxs = [i for i, s in enumerate(example.text) if (len(s) > min_sentence_ntokens)]
-    #         # truncate selected source sentences to `max_sentence_ntokens`
-    #         example.text = [example.text[i][:max_sentence_ntokens] for i in idxs]
-    #         # only pick labels for sentences that matched the length requirement
-    #         example.labels = [example.labels[i] for i in idxs]
-    #         # truncate entire source to max number of sentences (`max_example_nsents`)
-    #         example.text = example.text[:max_example_nsents]
-    #         # perform above truncation to `labels`
-    #         example.labels = example.labels[:max_example_nsents]
-
-    #         # if the example does not meet the length requirement then remove it
-    #         if (len(example.text) < min_example_nsents):
-    #             examples.pop(ex_index)
-    #             labels.pop(ex_index)
-    #         return examples, labels
-
     def get_features_process(
         self,
-        features,
         input_information,
         num_examples=0,
         tokenizer=None,
         bert_compatible_cls=True,
         create_sent_rep_token_ids=True,
         sent_rep_token_id=None,
+        create_sent_lengths=True,
         create_segment_ids="binary",
         segment_token_id=None,
+        create_source=False,
         max_length=None,
         pad_on_left=False,
         pad_token=0,
@@ -397,6 +470,11 @@ class SentencesProcessor:
         create_attention_mask=True,
         pad_ids_and_attention=True,
     ):
+        """
+        The process that actually creates the features. self.get_features() is the driving function,
+        look there for a description of how this function works. This function only exists so that
+        processing can easily be done in parallel using Pool.map.
+        """
         ex_index, example, label = input_information
         if ex_index % 1000 == 0:
             logger.info(
@@ -445,8 +523,9 @@ class SentencesProcessor:
                     current_segment += 1
                 segment_ids += [current_segment]
 
-        # Sentence Representation Token IDs
+        # Sentence Representation Token IDs and Sentence Lengths
         sent_rep_ids = None
+        sent_lengths = None
         if create_sent_rep_token_ids:
             # create list of indexes for the `sent_rep` tokens
             sent_rep_ids = [
@@ -454,6 +533,12 @@ class SentencesProcessor:
             ]
             # truncate `label` to the length of the `cls_ids` aka the number of sentences
             label = label[: len(sent_rep_ids)]
+
+            if create_sent_lengths:
+                sent_lengths = [
+                    sent_rep_ids[i] - sent_rep_ids[i - 1]
+                    for i in range(1, len(sent_rep_ids))
+                ]
 
         # Attention
         # The mask has 1 for real tokens and 0 for padding tokens. Only real
@@ -497,6 +582,10 @@ class SentencesProcessor:
                 logger.info(
                     "sent_rep_token_ids: %s" % " ".join([str(x) for x in sent_rep_ids])
                 )
+            if sent_lengths is not None:
+                logger.info(
+                    "sent_lengths: %s" % " ".join([str(x) for x in sent_lengths])
+                )
             if create_attention_mask:
                 logger.info(
                     "attention_mask: %s" % " ".join([str(x) for x in attention_mask])
@@ -505,21 +594,22 @@ class SentencesProcessor:
 
         # Return features
         # if the attention mask was created then add the mask to the returned features
+        outputs = {
+            "input_ids": input_ids,
+            "labels": label,
+            "token_type_ids": segment_ids,
+            "sent_rep_token_ids": sent_rep_ids,
+            "sent_lengths": sent_lengths,
+            "target": example.target,
+        }
         if create_attention_mask:
-            return InputFeatures(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                labels=label,
-                token_type_ids=segment_ids,
-                sent_rep_token_ids=sent_rep_ids,
-            )
-        else:
-            return InputFeatures(
-                input_ids=input_ids,
-                labels=label,
-                token_type_ids=segment_ids,
-                sent_rep_token_ids=sent_rep_ids,
-            )
+            outputs["attention_mask"] = attention_mask
+        if create_source:
+            # convert form individual tokens to only individual sentences
+            source = [" ".join(sentence) for sentence in example.text]
+            outputs["source"] = source
+
+        return InputFeatures(**outputs)
 
     def get_features(
         self,
@@ -527,8 +617,10 @@ class SentencesProcessor:
         bert_compatible_cls=True,
         create_sent_rep_token_ids=True,
         sent_rep_token_id=None,
+        create_sent_lengths=True,
         create_segment_ids="binary",
         segment_token_id=None,
+        create_source=False,
         n_process=2,
         max_length=None,
         pad_on_left=False,
@@ -540,26 +632,72 @@ class SentencesProcessor:
         save_to_path=None,
         save_to_name=None,
     ):
-        """
-        Convert examples in a list of ``InputFeatures``
-
-        Args:
-            tokenizer: Instance of a tokenizer that will tokenize the examples
-            max_length: Maximum example length
-            task: GLUE task
-            label_list: List of labels. Can be obtained from the processor using the ``processor.get_labels()`` method
-            output_mode: String indicating the output mode. Either ``regression`` or ``classification``
-            pad_on_left: If set to ``True``, the examples will be padded on the left rather than on the right (default)
-            pad_token: Padding token
-            mask_padding_with_zero: If set to ``True``, the attention mask will be filled by ``1`` for actual values
-                and by ``0`` for padded values. If set to ``False``, inverts it (``1`` for padded values, ``0`` for
-                actual values)
-
+        """Convert the examples stored by the `SentencesProcessor` to features that can be used by
+        a model. The following processes can be performed: tokenization, token type ids (to separate
+        sentences),sentence representation token ids (the locations of each sentence representation
+        token), sentence lengths, and the attention mask. Padding can be applied to the tokenized
+        examples and the attention masks but it is recommended to instead use the `pad_batch_collate()`
+        function so each batch is padded individually for efficiency (less zeros passed through model).
+        
+        Arguments:
+            tokenizer {transformers.PreTrainedTokenizer} -- The tokenizer used to tokenize the examples.
+        
+        Keyword Arguments:
+            bert_compatible_cls {bool} -- Adds '[CLS]' tokens in front of each sentence. This is useful
+                                          so that the '[CLS]' token can be used to obtain sentence
+                                          embeddings. This only works if the chosen model has the '[CLS]'
+                                          token in its vocabulary. (default: {True})
+            create_sent_rep_token_ids {bool} -- Option to create sentence representation token ids. This
+                                                will store a list of the indexes of all the `sent_rep_token_id`s
+                                                in the tokenized example. (default: {True})
+            sent_rep_token_id {[type]} -- The token id that should be captured for each sentence (should have
+                                          one per sentence and each should represent that sentence)
+                                          (default: {'[CLS]' token if bert_compatible_cls else '[SEP]' token})
+            create_sent_lengths {bool} -- Option to create a list of sentence lengths where each index in
+                                          the list coresponds to the respective sentence in the example. (default: {True})
+            create_segment_ids {str} -- Option to create segment ids (aka token type ids)
+                                        See https://huggingface.co/transformers/glossary.html#token-type-ids for more info
+                                        Set to either "binary", "sequential", or False.
+                                        - `binary` alternates between 0 and 1 for each sentence.
+                                        - `sequential` starts at 0 and increments by 1 for each sentence.
+                                        - `False` does not create any segment ids.
+                                        Note: Many pretrained models that accept token type ids use them
+                                        for question answering ans related tasks where the model receives
+                                        two inputs. Therefore, most models have a token type id vocabulary
+                                        size of 2,which means they only have learned 2 token type ids. The
+                                        "binary" mode exists so that these pretrained models can easily
+                                        be used.
+                                        (default: {"binary"})
+            segment_token_id {str} -- The token id to be used when creating segment ids. Can be set to 'period'
+                                      to treat periods as sentence separation tokens, but this is a terrible
+                                      idea for obvious reasons. (default: {'[SEP]' token id})
+            create_source {bool} -- Option to save the source text (non-tokenized) as a string. (default: {False})
+            n_process {int} -- How many processes to use for multithreading for running get_features_process().
+                               Set higher to run faster and set lower is you experience OOM issues. (default: {2})
+            max_length {int} -- If `pad_ids_and_attention` is True then pad to this amount. (default: {tokenizer.max_len})
+            pad_on_left {bool} -- Optionally, pad on the left instead of right. (default: {False})
+            pad_token {int} -- Which token to use for padding the `input_ids`. (default: {0})
+            mask_padding_with_zero {bool} -- Use zeros to pad the attention. Uses ones otherwise. (default: {True})
+            create_attention_mask {bool} -- Option to create the attention mask. It is recommended to use
+                                            the `pad_batch_collate()` function, which will automatically create
+                                            attention masks and pad them on a per batch level. (default: {False if return_type == "lists" else True})
+            pad_ids_and_attention {bool} -- Pad the `input_ids` with `pad_token` and attention masks
+                                            with 0s or 1s deneding on `mask_padding_with_zero`. Pad both to
+                                            `max_length`. (default: {False if return_type == "lists" else True})
+            return_type {str} -- Either "tensors", "lists", or None. See "Returns" section below. (default: {None})
+            save_to_path {str} -- The folder/directory to save the data to OR None to not save.
+                                  Will save the type specified by `return_type` to disk. (default: {None})
+            save_to_name {str} -- The name of the file to save. The extension '.pt' is automatically
+                                  appended. (default: {'dataset_' + self.name + '.pt})
+        
         Returns:
-            If the ``examples`` input is a ``tf.data.Dataset``, will return a ``tf.data.Dataset``
-            containing the task-specific features. If the input is a list of ``InputExamples``, will return
-            a list of task-specific ``InputFeatures`` which can be fed to the model.
-
+            If `return_type is None`: [list] -- The list of calculated features
+            If `return_type == "tensors"`: [torch.TensorDataset] -- The features converted to tensors and stacked
+                                                             such that features are grouped together into
+                                                             individual tensors.
+            If `return_type == "lists"`: [list] -- The recommended option. Exports each InputFeatures
+                                                   object in the exported `features` list as a dictionary
+                                                   and appends each dictionary to a list. Returns that list.
         """
         assert return_type in ["tensors", "lists"] or return_type is None
         if return_type == "lists":
@@ -579,27 +717,34 @@ class SentencesProcessor:
                 sent_rep_token_id = tokenizer.sep_token_id
             elif sent_rep_token_id == "cls":  # get the cls token id
                 sent_rep_token_id = tokenizer.cls_token_id
-            else:  # default to trying to get the `sep_token_id` if the `sent_rep_token_id` is not set
-                sent_rep_token_id = tokenizer.sep_token_id
+            elif not sent_rep_token_id:  # if the `sent_rep_token_id` is not set
+                # if using `bert_compatible_cls` then default to the `cls_token_id`
+                if bert_compatible_cls:
+                    sent_rep_token_id = tokenizer.cls_token_id
+                else:  # otherwise, get the `sep_token_id`
+                    sent_rep_token_id = tokenizer.sep_token_id
 
         if create_segment_ids:
             if segment_token_id == "period":  # get the token id for a "."
                 segment_token_id = tokenizer.convert_tokens_to_ids(["."])[0]
-            else:  # default to trying to get the `cls_token_id` if the `segment_token_id` is not
-                segment_token_id = tokenizer.cls_token_id
+            elif (
+                not segment_token_id
+            ):  # default to trying to get the `sep_token_id` if the `segment_token_id` is not set
+                segment_token_id = tokenizer.sep_token_id
 
         features = []
         pool = Pool(n_process)
         _get_features_process = partial(
             self.get_features_process,
-            features,
             num_examples=len(self.labels),
             tokenizer=tokenizer,
             bert_compatible_cls=bert_compatible_cls,
             create_sent_rep_token_ids=create_sent_rep_token_ids,
             sent_rep_token_id=sent_rep_token_id,
+            create_sent_lengths=create_sent_lengths,
             create_segment_ids=create_segment_ids,
             segment_token_id=segment_token_id,
+            create_source=create_source,
             max_length=max_length,
             pad_on_left=pad_on_left,
             pad_token=pad_token,
@@ -649,6 +794,12 @@ class SentencesProcessor:
                 all_sent_rep_token_ids[all_sent_rep_token_ids == -1] = 0
                 final_tensors.append(all_sent_rep_token_ids)
                 final_tensors.append(all_sent_rep_token_ids_masks)
+
+                if create_sent_lengths:
+                    all_sent_lengths = torch.tensor(
+                        pad([f.sent_lengths for f in features], 0), dtype=torch.long
+                    )
+                    final_tensors.append(all_sent_lengths)
 
             dataset = TensorDataset(*final_tensors)
 

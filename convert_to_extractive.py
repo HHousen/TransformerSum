@@ -161,9 +161,10 @@ def convert_to_extractive_process(
     ):
         if preprocessed_data is not None:
             # preprocessed_data is (source_doc, labels)
-            dataset.append(
-                {"src": preprocessed_data[0], "labels": preprocessed_data[1]}
-            )
+            to_append = {"src": preprocessed_data[0], "labels": preprocessed_data[1]}
+            if name in args.add_target_to:
+                to_append["tgt"] = target_docs[idx]
+            dataset.append(to_append)
 
     pool.close()
     pool.join()
@@ -450,6 +451,13 @@ if __name__ == "__main__":
         choices=["train", "val", "test"],
         nargs="+",
         help="which splits of dataset to process",
+    )
+    parser.add_argument(
+        "--add_target_to",
+        default=["test"],
+        choices=["train", "val", "test"],
+        nargs="+",
+        help="add the abstractive target to these splits (useful for calculating rouge scores)",
     )
     parser.add_argument(
         "--source_ext", type=str, default="source", help="extension of source files"

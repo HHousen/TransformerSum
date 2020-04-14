@@ -11,3 +11,6 @@ dependencies:
     - pip:
       - pytorch_lightning
       - transformers
+      - qhoptim
+      - wandb
+      - rouge-score
