@@ -17,6 +17,12 @@
 
 None yet. Please wait.
 
+| Name                    | Info | Download   |
+|-------------------------|------|------------|
+| distilbert-base-ext-sum | None | Not yet... |
+| bert-base-ext-sum       | None | Not yet... |
+| albert-base-v2-ext-sum  | None | Not yet... |
+
 ## Install
 
 Installation is made easy due to conda environments. Simply run this command from the root project directory: `conda env create --file environment.yml` and conda will create and environment called `transformerextsum` with all the required packages from [environment.yml](environment.yml). The spacy `en_core_web_sm` model is required for the [convert_to_extractive.py](convert_to_extractive.py) script to detect sentence boundaries.
@@ -131,18 +137,13 @@ By default the model is saved after every epoch to the `--default_save_path`.
 
 While the [convert_to_extractive.py](convert_to_extractive.py) script prepares a dataset for the extractive task, the data still needs to be processed for usage with a machine learning model. This preprocessing depends on the chosen model, and thus is implemented in the [model.py](model.py) file.
 
-The actual ExtractiveSummarizer LightningModule (which is similar to an nn.Module but with a built-in training loop, more info at the [pytorch_lightning documentation](https://pytorch-lightning.readthedocs.io/en/latest/)) implements a `prepare_data()` function. This `prepare_data()` function is automatically called by `pytorch_lightning` and it runs in parallel to call `json_to_dataset()`, which is the function that actually loads and processes the examples as described below.
+The actual ExtractiveSummarizer LightningModule (which is similar to an nn.Module but with a built-in training loop, more info at the [pytorch_lightning documentation](https://pytorch-lightning.readthedocs.io/en/latest/)) implements a `prepare_data()` function. This `prepare_data()` function is automatically called by `pytorch_lightning` to load and process the examples.
 
-**`prepare_data()` and `json_to_dataset()` Algorithms:**
-For each json file outputted by the [convert_to_extractive.py](convert_to_extractive.py) script:
-  1. Load json file
-  2. Add each document in json file to `SentencesProcessor` defined in `self.processor`, overwriting any previous data in the processor
-  3. Run `processor.get_features()` to save the extracted features to disk as a `.pt` file containing a pickled python list of dictionaries, which each dictionary contains the extracted features
-Memory Usage Note: If sharding was turned off during the `convert_to_extractive` process then the above will run once, loading the entire dataset into memory to process just like the [convert_to_extractive.py](convert_to_extractive.py) script.
+Memory Usage Note: If sharding was turned off during the `convert_to_extractive` process then `prepare_data()` will run once, loading the entire dataset into memory to process just like the [convert_to_extractive.py](convert_to_extractive.py) script.
 
 There is a `--only_preprocess` argument available to only run this preprocess step and exit the script after all the examples have been written to disk. This option will force data to be preprocessed, even if it was already computed and is detected on disk, and any previous processed files will be overwritten.
 
-Thus, the command to only preprocess data for use when training a model run: `python main.py --data_path ./cnn_dailymail_processor/cnn_dm --default_save_path ./trained_models --use_logger tensorboard --model_name_or_path bert-base-uncased --model_type bert --do_train --only_preprocess`
+Thus, the command to only preprocess data for use when training a model run: `python main.py --data_path ./cnn_dailymail_processor/cnn_dm --use_logger tensorboard --model_name_or_path bert-base-uncased --model_type bert --do_train --only_preprocess`
 
 **Important Note:** If processed files are detected, they will automatically be loaded from disk. This includes any files that follow the pattern `[dataset_split_name].*.pt`, where `*` is any text of any length.
 

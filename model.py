@@ -113,7 +113,11 @@ class ExtractiveSummarizer(pl.LightningModule):
         else:
             self.pooling_model = Pooling(sent_rep_tokens=False, mean_tokens=True)
 
-        self.encoder = Classifier(self.word_embedding_model.config.hidden_size)
+        self.encoder = Classifier(
+            self.word_embedding_model.config.hidden_size,
+            first_dropout=hparams.classifier_dropout,
+            second_dropout=hparams.classifier_dropout,
+        )
 
         # BCELoss: https://pytorch.org/docs/stable/nn.html#bceloss
         # `reduction` is "none" so the mean can be computed with padding ignored.
@@ -317,6 +321,21 @@ class ExtractiveSummarizer(pl.LightningModule):
         )
 
     def prepare_data(self):
+        """
+        Runs `json_to_dataset()` in parallel. `json_to_dataset()` is the function that actually
+        loads and processes the examples as described below.
+        Algorithm:
+        For each json file outputted by the convert_to_extractive.py script:
+            1. Load json file.
+            2. Add each document in json file to `SentencesProcessor` defined in `self.processor`,
+            overwriting any previous data in the processor.
+            3. Run `processor.get_features()` to save the extracted features to disk as a `.pt`
+            file containing a pickled python list of dictionaries, which each dictionary contains
+            the extracted features.
+        Memory Usage Note: If sharding was turned off during the `convert_to_extractive` process
+        then `prepare_data()` will run once, loading the entire dataset into memory to process
+        just like the convert_to_extractive.py script.
+        """
         datasets = dict()
 
         # loop through all data_splits
@@ -927,6 +946,12 @@ class ExtractiveSummarizer(pl.LightningModule):
             help="Set to not train with `token_type_ids` (don't pass them into the model).",
         )
         parser.add_argument(
+            "--classifier_dropout",
+            type=float,
+            default=0.1,
+            help="The value for the dropout layers in the classifier."
+        )
+        parser.add_argument(
             "--train_name",
             type=str,
             default="train",
@@ -947,14 +972,14 @@ class ExtractiveSummarizer(pl.LightningModule):
         parser.add_argument(
             "--test_id_method",
             type=str,
-            default="greater_k",
+            default="top_k",
             choices=["greater_k", "top_k"],
             help="How to chose the top predictions from the model for ROUGE scores.",
         )
         parser.add_argument(
             "--test_k",
             type=float,
-            default=0.5,
-            help="The `k` parameter for the `--test_id_method`. Must be set if using `top_k` option. (default: 0.5)",
+            default=3,
+            help="The `k` parameter for the `--test_id_method`. Must be set if using the `greater_k` option. (default: 3)",
         )
         return parser

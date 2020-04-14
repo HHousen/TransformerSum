@@ -11,8 +11,10 @@ from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 def main(args):
     model = ExtractiveSummarizer(hparams=args)
     if args.load_weights:
-        checkpoint = torch.load(args.load_weights, map_location=lambda storage, loc: storage)
-        model.load_state_dict(checkpoint['state_dict'])
+        checkpoint = torch.load(
+            args.load_weights, map_location=lambda storage, loc: storage
+        )
+        model.load_state_dict(checkpoint["state_dict"])
 
     if args.use_logger == "wandb":
         wandb_logger = WandbLogger(project="transformerextsum", log_model=True)
@@ -23,10 +25,7 @@ def main(args):
 
     if args.use_custom_checkpoint_callback:
         args.checkpoint_callback = ModelCheckpoint(
-            filepath=models_path,
-            save_top_k=-1,
-            period=1,
-            verbose=True,
+            filepath=models_path, save_top_k=-1, period=1, verbose=True,
         )
 
     trainer = Trainer.from_argparse_args(args)
@@ -41,9 +40,7 @@ if __name__ == "__main__":
 
     # parametrize the network: general options
     parser.add_argument(
-        "--default_save_path",
-        type=str,
-        help="Default path for logs and weights",
+        "--default_save_path", type=str, help="Default path for logs and weights",
     )
     parser.add_argument(
         "--learning_rate",
@@ -148,7 +145,8 @@ if __name__ == "__main__":
         "--load_weights",
         default=False,
         type=str,
-        help="Loads the model weights from a given checkpoint"
+        help="Loads the model weights from a given checkpoint",
+    )
     parser.add_argument(
         "--use_custom_checkpoint_callback",
         action="store_true",
