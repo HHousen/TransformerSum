@@ -116,7 +116,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         self.encoder = Classifier(
             self.word_embedding_model.config.hidden_size,
             first_dropout=hparams.classifier_dropout,
-            second_dropout=hparams.classifier_dropout,
+            last_dropout=hparams.classifier_dropout,
         )
 
         # BCELoss: https://pytorch.org/docs/stable/nn.html#bceloss
@@ -409,6 +409,7 @@ class ExtractiveSummarizer(pl.LightningModule):
     def train_dataloader(self):
         if self.train_dataloader_object:
             return self.train_dataloader_object
+        self.global_step_tracker = 0
 
         train_dataset = self.datasets[self.hparams.train_name]
         # train_sampler = RandomSampler(train_dataset)
@@ -449,29 +450,18 @@ class ExtractiveSummarizer(pl.LightningModule):
         return test_dataloader
 
     def configure_optimizers(self):
-        self.train_dataloader_object = (
-            self.train_dataloader()
-        )  # create the train dataloader so the number of examples can be determined
-        if (
-            self.hparams.max_steps and self.hparams.max_steps > 0
-        ):  # check that max_steps is not None and is greater than 0
-            t_total = self.hparams.max_steps
-            # set `max_epochs` if it has not been set
-            if not self.hparams.max_epochs:
-                self.hparams.max_epochs = (
-                    self.hparams.max_steps
-                    // (
-                        len(self.train_dataloader_object)
-                        // self.hparams.accumulate_grad_batches
-                    )
-                    + 1
-                )
+        # create the train dataloader so the number of examples can be determined
+        self.train_dataloader_object = self.train_dataloader()
+        # check that max_steps is not None and is greater than 0
+        if self.hparams.max_steps and self.hparams.max_steps > 0:
+            # pytorch_lightning steps the scheduler every batch but only updates
+            # the global_step every gradient accumulation cycle. Therefore, the
+            # scheduler needs to have `accumulate_grad_batches` * `max_steps` in
+            # order to reach `max_steps`.
+            # See: https://github.com/PyTorchLightning/pytorch-lightning/blob/f293c9b5f4b4f9fabb2eec0c369f08a66c57ef14/pytorch_lightning/trainer/training_loop.py#L624
+            t_total = self.hparams.max_steps * self.hparams.accumulate_grad_batches
         else:
-            t_total = (
-                len(self.train_dataloader_object)
-                // self.hparams.accumulate_grad_batches
-                * self.hparams.max_epochs
-            )
+            t_total = len(self.train_dataloader_object) * self.hparams.max_epochs
 
         # Prepare optimizer and schedule (linear warmup and decay)
         no_decay = ["bias", "LayerNorm.weight"]
@@ -531,9 +521,13 @@ class ExtractiveSummarizer(pl.LightningModule):
 
         if self.hparams.use_scheduler:
             if self.hparams.use_scheduler == "linear":
+                # multiply by `hparams.accumulate_grad_batches` because pytorch_lightning
+                # steps are for each batch, except for the `trainer.global_step`, which tracks
+                # the actual number of steps
                 scheduler = get_linear_schedule_with_warmup(
                     optimizer,
-                    num_warmup_steps=self.hparams.warmup_steps,
+                    num_warmup_steps=self.hparams.warmup_steps
+                    * self.hparams.accumulate_grad_batches,
                     num_training_steps=t_total,
                 )
             elif self.hparams.use_scheduler == "onecycle":
@@ -546,41 +540,12 @@ class ExtractiveSummarizer(pl.LightningModule):
                     + str(self.hparams.use_scheduler)
                     + " for `--use_scheduler` is invalid."
                 )
+            # the below interval is called "step" but the scheduler is moved forward
+            # every batch.
             scheduler_dict = {"scheduler": scheduler, "interval": "step"}
             return ([optimizer], [scheduler_dict])
         else:
             return optimizer
-
-    def on_batch_end(self):
-        """
-        PyTorch Lightning hook to do the following:
-        1. Log the learning_rate
-        2. Begin training the `word_embedding_model` after `num_frozen_steps` steps
-        """
-        if self.hparams.use_scheduler:
-            last_lrs = self.trainer.lr_schedulers[0]["scheduler"].get_last_lr()
-            # if the logger is tensorboard then use the `add_scalar` method
-            if isinstance(self.logger, pl.loggers.tensorboard.TensorBoardLogger):
-                self.logger.experiment.add_scalar(
-                    "learning_rate",
-                    (last_lrs[0] if isinstance(last_lrs, list) else last_lrs),
-                    self.trainer.global_step,
-                )
-            # if the logger is for wandb.ai
-            elif isinstance(self.logger, pl.loggers.wandb.WandbLogger):
-                self.logger.experiment.log(
-                    {
-                        "learning_rate": (
-                            last_lrs[0] if isinstance(last_lrs, list) else last_lrs
-                        ),
-                    }
-                )
-
-        if self.emd_model_frozen and (
-            self.trainer.global_step > self.hparams.num_frozen_steps
-        ):
-            self.emd_model_frozen = False
-            self.unfreeze_web_model()
 
     def training_step(self, batch, batch_idx):
         # Get batch information
@@ -588,6 +553,37 @@ class ExtractiveSummarizer(pl.LightningModule):
 
         # delete labels so now batch contains everything to be inputted into the model
         del batch["labels"]
+
+        # If global_step has increased by 1:
+        # 1. Log the learning_rate
+        # 2. Begin training the `word_embedding_model` after `num_frozen_steps` steps
+        if (self.global_step_tracker + 1) == self.trainer.global_step:
+            self.global_step_tracker = self.trainer.global_step
+            if self.hparams.use_scheduler:
+                last_lrs = self.trainer.lr_schedulers[0]["scheduler"].get_last_lr()
+                # if the logger is tensorboard then use the `add_scalar` method
+                if isinstance(self.logger, pl.loggers.tensorboard.TensorBoardLogger):
+                    self.logger.experiment.add_scalar(
+                        "learning_rate",
+                        (last_lrs[0] if isinstance(last_lrs, list) else last_lrs),
+                        self.trainer.global_step,
+                    )
+                # if the logger is for wandb.ai
+                elif isinstance(self.logger, pl.loggers.wandb.WandbLogger):
+                    self.logger.experiment.log(
+                        {
+                            "learning_rate": (
+                                last_lrs[0] if isinstance(last_lrs, list) else last_lrs
+                            ),
+                        },
+                        step=self.trainer.global_step,
+                    )
+
+            if self.emd_model_frozen and (
+                self.trainer.global_step > self.hparams.num_frozen_steps
+            ):
+                self.emd_model_frozen = False
+                self.unfreeze_web_model()
 
         # Compute model forward
         outputs = self.forward(**batch)
@@ -610,7 +606,11 @@ class ExtractiveSummarizer(pl.LightningModule):
             "train_loss_avg": loss_avg,
         }
         output = OrderedDict(
-            {"loss": loss_total, "progress_bar": tqdm_dict, "log": tqdm_dict}
+            {
+                "loss": tqdm_dict["train_" + self.hparams.loss_key],
+                "progress_bar": tqdm_dict,
+                "log": tqdm_dict,
+            }
         )
         return output
 
@@ -639,7 +639,9 @@ class ExtractiveSummarizer(pl.LightningModule):
         y_hat[y_hat <= 0.5] = 0
         y_hat = torch.flatten(y_hat)
         y_true = torch.flatten(labels)
-        result = acc_and_f1(y_hat.detach().cpu().numpy(), y_true.detach().cpu().numpy())
+        result = acc_and_f1(
+            y_hat.detach().cpu().numpy(), y_true.float().detach().cpu().numpy()
+        )
         acc = torch.tensor(result["acc"])
         f1 = torch.tensor(result["f1"])
         acc_f1 = torch.tensor(result["acc_and_f1"])
@@ -689,7 +691,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         result = {
             "progress_bar": tqdm_dict,
             "log": tqdm_dict,
-            "val_loss": avg_loss_avg_seq_sum,
+            "val_loss": tqdm_dict["val_" + self.hparams.loss_key],
         }
         return result
 
@@ -713,7 +715,9 @@ class ExtractiveSummarizer(pl.LightningModule):
         y_hat[y_hat <= 0.5] = 0
         y_hat = torch.flatten(y_hat)
         y_true = torch.flatten(labels)
-        result = acc_and_f1(y_hat.detach().cpu().numpy(), y_true.detach().cpu().numpy())
+        result = acc_and_f1(
+            y_hat.detach().cpu().numpy(), y_true.float().detach().cpu().numpy()
+        )
         acc = torch.tensor(result["acc"])
         f1 = torch.tensor(result["f1"])
         acc_f1 = torch.tensor(result["acc_and_f1"])
@@ -855,12 +859,12 @@ class ExtractiveSummarizer(pl.LightningModule):
             choices=["sent_rep_tokens", "mean_tokens"],
             help="How word vectors should be converted to sentence embeddings.",
         )
-        parser.add_argument(
-            "--web_learning_rate",
-            default=1e-05,
-            type=float,
-            help="Word embedding model specific learning rate.",
-        )
+        # parser.add_argument(
+        #     "--web_learning_rate",
+        #     default=1e-05,
+        #     type=float,
+        #     help="Word embedding model specific learning rate.",
+        # )
         parser.add_argument(
             "--adam_epsilon",
             default=1e-8,
@@ -949,7 +953,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             "--classifier_dropout",
             type=float,
             default=0.1,
-            help="The value for the dropout layers in the classifier."
+            help="The value for the dropout layers in the classifier.",
         )
         parser.add_argument(
             "--train_name",
@@ -982,4 +986,5 @@ class ExtractiveSummarizer(pl.LightningModule):
             default=3,
             help="The `k` parameter for the `--test_id_method`. Must be set if using the `greater_k` option. (default: 3)",
         )
+        parser.add_argument("--loss_key", type=str, default="loss_total")
         return parser

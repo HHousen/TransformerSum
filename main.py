@@ -1,20 +1,42 @@
 import os
 import logging
 import torch
+import numpy as np
+import random
 from pytorch_lightning import Trainer
 from model import ExtractiveSummarizer
 from argparse import ArgumentParser
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 
+logger = logging.getLogger(__name__)
+
+
+def set_seed(seed):
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    logger.warn(
+        "Deterministic mode can have a performance impact, depending on your model. This means that due to the deterministic nature of the model, the processing speed (i.e. processed batch items per second) can be lower than when the model is non-deterministic."
+    )
+
 
 def main(args):
-    model = ExtractiveSummarizer(hparams=args)
+    if args.seed:
+        set_seed(args.seed)
+
     if args.load_weights:
+        model = ExtractiveSummarizer(hparams=args)
         checkpoint = torch.load(
             args.load_weights, map_location=lambda storage, loc: storage
         )
         model.load_state_dict(checkpoint["state_dict"])
+    elif args.load_from_checkpoint:
+        model = ExtractiveSummarizer.load_from_checkpoint(args.load_from_checkpoint)
+    else:
+        model = ExtractiveSummarizer(hparams=args)
 
     if args.use_logger == "wandb":
         wandb_logger = WandbLogger(project="transformerextsum", log_model=True)
@@ -76,7 +98,8 @@ if __name__ == "__main__":
         "--accumulate_grad_batches",
         default=1,
         type=int,
-        help="Accumulates grads every k batches or as set up in the dict.",
+        help="""Accumulates grads every k batches. A single step is one gradient accumulation cycle,
+        so setting this value to 2 will cause 2 batches to be processed for each step.""",
     )
     parser.add_argument(
         "--check_val_every_n_epoch",
@@ -110,6 +133,12 @@ if __name__ == "__main__":
         type=int,
         default=32,
         help="Full precision (32), half precision (16). Can be used on CPU, GPU or TPUs.",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Seed for reproducible results. Can negatively impact performace in some cases.",
     )
     parser.add_argument(
         "--profiler",
@@ -146,6 +175,12 @@ if __name__ == "__main__":
         default=False,
         type=str,
         help="Loads the model weights from a given checkpoint",
+    )
+    parser.add_argument(
+        "--load_from_checkpoint",
+        default=False,
+        type=str,
+        help="Loads the model weights and hyperparameters from a given checkpoint.",
     )
     parser.add_argument(
         "--use_custom_checkpoint_callback",

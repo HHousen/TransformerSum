@@ -457,6 +457,8 @@ class SentencesProcessor:
         num_examples=0,
         tokenizer=None,
         bert_compatible_cls=True,
+        sep_token=None,
+        cls_token=None,
         create_sent_rep_token_ids=True,
         sent_rep_token_id=None,
         create_sent_lengths=True,
@@ -488,14 +490,15 @@ class SentencesProcessor:
         ):  # adds a '[CLS]' token between each sentence and outputs `input_ids`
             # convert `example.text` to array of sentences
             src_txt = [" ".join(sent) for sent in example.text]
-            # separate each sentence with ' [SEP] [CLS] ' and convert to string
-            text = " [SEP] [CLS] ".join(src_txt)
+            # separate each sentence with ' [SEP] [CLS] ' (or model equivalent tokens) and convert to string
+            separation_string = " " + sep_token + " " + cls_token + " "
+            text = separation_string.join(src_txt)
             # tokenize
             src_subtokens = tokenizer.tokenize(text)
             # select first `(max_length-2)` tokens (so the following line of tokens can be added)
             src_subtokens = src_subtokens[: (max_length - 2)]
-            # add '[CLS]' to beginning and '[SEP]' to end
-            src_subtokens = ["[CLS]"] + src_subtokens + ["[SEP]"]
+            # add '[CLS]' to beginning and '[SEP]' to end (or model equivalent tokens)
+            src_subtokens = [cls_token] + src_subtokens + [sep_token]
             # create `input_ids`
             input_ids = tokenizer.convert_tokens_to_ids(src_subtokens)
         else:
@@ -739,6 +742,8 @@ class SentencesProcessor:
             num_examples=len(self.labels),
             tokenizer=tokenizer,
             bert_compatible_cls=bert_compatible_cls,
+            sep_token=tokenizer.sep_token,
+            cls_token=tokenizer.cls_token,
             create_sent_rep_token_ids=create_sent_rep_token_ids,
             sent_rep_token_id=sent_rep_token_id,
             create_sent_lengths=create_sent_lengths,
