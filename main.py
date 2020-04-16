@@ -72,7 +72,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--min_epochs",
-        default=3,
+        default=1,
         type=int,
         help="Limits training to a minimum number of epochs",
     )
@@ -84,13 +84,13 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--min_steps",
-        default=0,
+        default=None,
         type=int,
         help="Limits training to a minimum number number of steps",
     )
     parser.add_argument(
         "--max_steps",
-        default=1_000_000,
+        default=None,
         type=int,
         help="Limits training to a max number number of steps",
     )

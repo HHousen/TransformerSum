@@ -462,6 +462,9 @@ class ExtractiveSummarizer(pl.LightningModule):
             t_total = self.hparams.max_steps * self.hparams.accumulate_grad_batches
         else:
             t_total = len(self.train_dataloader_object) * self.hparams.max_epochs
+            if self.hparams.overfit_pct > 0.0:
+                t_total *= self.hparams.overfit_pct
+
 
         # Prepare optimizer and schedule (linear warmup and decay)
         no_decay = ["bias", "LayerNorm.weight"]
@@ -874,6 +877,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         parser.add_argument(
             "--optimizer_type",
             type=str,
+            default="adam",
             help="""Which optimizer to use:
             1. `ranger` optimizer (combination of RAdam and LookAhead)
             2. `adamw`
