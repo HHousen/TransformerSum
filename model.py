@@ -101,7 +101,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         self.word_embedding_model = AutoModel.from_pretrained(
             hparams.model_name_or_path, config=embedding_model_config
         )
-        self.word_embedding_model.train()
+        # self.hparams.data_path = "/media/hhhgohn/Main/Downloads/bert-base-uncased/"
 
         self.emd_model_frozen = False
         if hparams.num_frozen_steps > 0:
@@ -177,17 +177,11 @@ class ExtractiveSummarizer(pl.LightningModule):
             param.requires_grad = False
 
     def compute_loss(self, outputs, labels, mask):
-        # The below is the same as BCELoss(reduction="mean") except the below
-        # ignores padding values in the calculation of the mean.
-        # In other words, this:
-        # loss_func = nn.BCELoss(reduction="mean")
-        # final_loss = loss_func(outputs, labels.float())
-        # is the same as this:
-        # loss_func = nn.BCELoss(reduction="none")
-        # loss = loss_func(outputs, labels.float())
-        # total_loss = loss.sum()
-        # final_loss = total_loss / loss.numel()
-        # but for the below code `loss.numel()` is replaced with the number of non-padding elements
+        # self.loss_func() is nn.BCELoss(reduction="none")
+        # The nn.BCEWithLogitsLoss (which combines a Sigmoid layer and the BCELoss in one single class
+        # and takes advantage of the log-sum-exp trick for numerical stability) was not used because
+        # the output of the Sigmoid needs to have the padded values removed. For example, with padding
+        # values of zero a sigmoid will output 0.5 for each of them, thus offsetting the loss calculation.
         loss = self.loss_func(outputs, labels.float())
         # set all padding values to zero
         loss = loss * mask.float()
@@ -227,7 +221,6 @@ class ExtractiveSummarizer(pl.LightningModule):
         inputs=None,
         num_files=0,
         processor=None,
-        oracle_mode=None,
     ):
         idx, json_file = inputs
         logger.info(
@@ -270,36 +263,18 @@ class ExtractiveSummarizer(pl.LightningModule):
                 target = doc["tgt"]
                 all_targets.append(target)
 
-            if oracle_mode and oracle_mode != "none":
-                # source and tgt are now arrays of sentences where each sentence is an array of tokens
-                if oracle_mode == "greedy":
-                    ids = greedy_selection(source, tgt, 3)
-                elif oracle_mode == "combination":
-                    ids = combination_selection(source, tgt, 3)
-            else:  # default is not to extract oracle ids
-                ids = doc["labels"]
+            ids = doc["labels"]
 
             all_sources.append(source)
             all_ids.append(ids)
 
-        if oracle_mode and oracle_mode != "none":
-            # if using `oracle_mode` then add ids to `oracle_ids`
-            processor.add_examples(
-                all_sources,
-                oracle_ids=all_ids,
-                targets=all_targets if all_targets else None,
-                overwrite_examples=True,
-                overwrite_labels=True,
-            )
-        else:
-            # otherwise add ids to `labels`
-            processor.add_examples(
-                all_sources,
-                labels=all_ids,
-                targets=all_targets if all_targets else None,
-                overwrite_examples=True,
-                overwrite_labels=True,
-            )
+        processor.add_examples(
+            all_sources,
+            labels=all_ids,
+            targets=all_targets if all_targets else None,
+            overwrite_examples=True,
+            overwrite_labels=True,
+        )
 
         processor.get_features(
             tokenizer,
@@ -373,7 +348,6 @@ class ExtractiveSummarizer(pl.LightningModule):
                     self.hparams,
                     num_files=num_files,
                     processor=self.processor,
-                    oracle_mode=self.hparams.oracle_mode,
                 )
 
                 for result in map(
@@ -464,7 +438,6 @@ class ExtractiveSummarizer(pl.LightningModule):
             t_total = len(self.train_dataloader_object) * self.hparams.max_epochs
             if self.hparams.overfit_pct > 0.0:
                 t_total *= self.hparams.overfit_pct
-
 
         # Prepare optimizer and schedule (linear warmup and decay)
         no_decay = ["bias", "LayerNorm.weight"]
@@ -781,10 +754,9 @@ class ExtractiveSummarizer(pl.LightningModule):
             zip(sources, selected_ids, targets)
         ):
             current_prediction = ""
-            target = " ".join(target)
             for i in source_ids:
                 candidate = source[i].strip()
-                current_prediction += candidate
+                current_prediction += (candidate + " ")
             result = self.rouge_scorer.score(target, current_prediction)
             for key, item in result.items():
                 if key not in rouge_outputs:
@@ -845,13 +817,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         parser.add_argument("--tokenizer_name", type=str, default="")
         parser.add_argument("--tokenizer_lowercase", action="store_true")
         parser.add_argument("--max_seq_length", type=int, default=512)
-        parser.add_argument(
-            "--oracle_mode",
-            type=str,
-            choices=["none", "greedy", "combination"],
-            default="none",
-        )
-        parser.add_argument("--data_path", type=str, required=True)
+        parser.add_argument("--data_path", type=str, help="Directory containing the dataset.")
         parser.add_argument("--num_threads", type=int, default=4)
         parser.add_argument("--processing_num_threads", type=int, default=2)
         parser.add_argument("--weight_decay", default=1e-2, type=float)
@@ -990,5 +956,17 @@ class ExtractiveSummarizer(pl.LightningModule):
             default=3,
             help="The `k` parameter for the `--test_id_method`. Must be set if using the `greater_k` option. (default: 3)",
         )
-        parser.add_argument("--loss_key", type=str, default="loss_total")
+        parser.add_argument(
+            "--loss_key",
+            type=str,
+            choices=[
+                "loss_total",
+                "loss_total_norm_batch",
+                "loss_avg_seq_sum",
+                "loss_avg_seq_mean",
+                "loss_avg",
+            ],
+            default="loss_avg_seq_mean",
+            help="Which reduction method to use with BCELoss. See the `experiments/loss_functions/` folder for info on how the default (`loss_avg_seq_mean`) was chosen.",
+        )
         return parser

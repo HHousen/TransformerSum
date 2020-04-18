@@ -375,6 +375,10 @@ optional arguments:
 
 All training arguments can be found in the [pytorch_lightning trainer documentation](https://pytorch-lightning.readthedocs.io/en/latest/trainer.html).
 
+## Experiments
+
+Please see [experiments/README.md](experiments/README.md).
+
 ## Meta
 
 Hayden Housen – [haydenhousen.com](https://haydenhousen.com)

@@ -35,6 +35,11 @@ def main(args):
         model.load_state_dict(checkpoint["state_dict"])
     elif args.load_from_checkpoint:
         model = ExtractiveSummarizer.load_from_checkpoint(args.load_from_checkpoint)
+        # The model is loaded with sel.hparams.data_path set to the directory where the data
+        # was located during training. When loading the model, it may be desired to change
+        # the data path, which the below line accomplishes.
+        if args.data_path:
+            model.hparams.data_path = args.data_path
     else:
         model = ExtractiveSummarizer(hparams=args)
 

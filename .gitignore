@@ -111,3 +111,4 @@ transformers
 train.source
 train.target
 wandb
+*.ckpt
