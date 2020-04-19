@@ -17,11 +17,31 @@
 
 None yet. Please wait.
 
-| Name                    | Info | Download   |
-|-------------------------|------|------------|
-| distilbert-base-ext-sum | None | Not yet... |
-| bert-base-ext-sum       | None | Not yet... |
-| albert-base-v2-ext-sum  | None | Not yet... |
+| Name                            | Comments | Download   |
+|---------------------------------|----------|------------|
+| distilbert-base-uncased-ext-sum | None     | Not yet... |
+| distilroberta-base-ext-sum      | None     | Not yet... |
+| bert-base-uncased-ext-sum       | None     | Not yet... |
+| roberta-base-ext-sum            | None     | Not yet... |
+| albert-base-v2-ext-sum          | None     | Not yet... |
+| bert-large-uncased-ext-sum      | None     | Not yet... |
+| roberta-large-ext-sum           | None     | Not yet... |
+| albert-xlarge-v2                | None     | Not yet... |
+
+### ROUGE Scores
+
+Test set results on the CNN/DailyMail dataset using ROUGE F<sub>1</sub>.
+
+| Name                            | ROUGE-1    | ROUGE-2    | ROUGE-L    |
+|---------------------------------|------------|------------|------------|
+| distilbert-base-uncased-ext-sum | Not yet... | Not yet... | Not yet... |
+| distilroberta-base-ext-sum      | Not yet... | Not yet... | Not yet... |
+| bert-base-uncased-ext-sum       | Not yet... | Not yet... | Not yet... |
+| roberta-base-ext-sum            | Not yet... | Not yet... | Not yet... |
+| albert-base-v2-ext-sum          | Not yet... | Not yet... | Not yet... |
+| bert-large-uncased-ext-sum      | Not yet... | Not yet... | Not yet... |
+| roberta-large-ext-sum           | Not yet... | Not yet... | Not yet... |
+| albert-xlarge-v2-ext-sum        | Not yet... | Not yet... | Not yet... |
 
 ## Install
 
@@ -147,12 +167,19 @@ Thus, the command to only preprocess data for use when training a model run: `py
 
 **Important Note:** If processed files are detected, they will automatically be loaded from disk. This includes any files that follow the pattern `[dataset_split_name].*.pt`, where `*` is any text of any length.
 
+## Pooling Modes
+
+The pooling model determines how word vectors should be converted to sentence embeddings. The implementation can be found in [pooling.py](pooling.py). The `--pooling_mode` argument can be set to either `sent_rep_tokens` or `mean_tokens`. While the [pooling nn.Module](pooling.py) allows multiple methods to be used at once (it will concatenate and return the results), the training script does not.
+
+* `sent_rep_tokens`: Use the sentence representation token vectors as sentence embeddings.
+* `mean_tokens`: Take the mean of all the token vectors in each sentence.
+
 ### Script Help
 
 Output of `python main.py --help`:
 
 ```
-usage: main.py [-h] --default_save_path DEFAULT_SAVE_PATH
+usage: main.py [-h] [--default_save_path DEFAULT_SAVE_PATH]
                [--learning_rate LEARNING_RATE] [--min_epochs MIN_EPOCHS]
                [--max_epochs MAX_EPOCHS] [--min_steps MIN_STEPS]
                [--max_steps MAX_STEPS]
@@ -160,21 +187,21 @@ usage: main.py [-h] --default_save_path DEFAULT_SAVE_PATH
                [--check_val_every_n_epoch CHECK_VAL_EVERY_N_EPOCH]
                [--gpus GPUS] [--gradient_clip_val GRADIENT_CLIP_VAL]
                [--overfit_pct OVERFIT_PCT] [--amp_level AMP_LEVEL]
-               [--precision PRECISION] [--profiler]
+               [--precision PRECISION] [--seed SEED] [--profiler]
                [--progress_bar_refresh_rate PROGRESS_BAR_REFRESH_RATE]
                [--num_sanity_val_steps NUM_SANITY_VAL_STEPS]
                [--use_logger {tensorboard,wandb}] [--do_train] [--do_test]
+               [--load_weights LOAD_WEIGHTS]
+               [--load_from_checkpoint LOAD_FROM_CHECKPOINT]
                [--use_custom_checkpoint_callback]
                [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL}]
                [--model_name_or_path MODEL_NAME_OR_PATH]
                [--model_type MODEL_TYPE] [--tokenizer_name TOKENIZER_NAME]
                [--tokenizer_lowercase] [--max_seq_length MAX_SEQ_LENGTH]
-               [--oracle_mode {none,greedy,combination}] --data_path DATA_PATH
-               [--num_threads NUM_THREADS]
+               [--data_path DATA_PATH] [--num_threads NUM_THREADS]
                [--processing_num_threads PROCESSING_NUM_THREADS]
                [--weight_decay WEIGHT_DECAY]
                [--pooling_mode {sent_rep_tokens,mean_tokens}]
-               [--web_learning_rate WEB_LEARNING_RATE]
                [--adam_epsilon ADAM_EPSILON] [--optimizer_type OPTIMIZER_TYPE]
                [--ranger-k RANGER_K] [--warmup_steps WARMUP_STEPS]
                [--use_scheduler USE_SCHEDULER]
@@ -184,9 +211,12 @@ usage: main.py [-h] --default_save_path DEFAULT_SAVE_PATH
                [--test_batch_size TEST_BATCH_SIZE]
                [--processor_no_bert_compatible_cls] [--only_preprocess]
                [--create_token_type_ids {binary,sequential}]
-               [--no_use_token_type_ids] [--train_name TRAIN_NAME]
-               [--val_name VAL_NAME] [--test_name TEST_NAME]
-               [--test_id_method {greater_k,top_k}] [--test_k TEST_K]
+               [--no_use_token_type_ids]
+               [--classifier_dropout CLASSIFIER_DROPOUT]
+               [--train_name TRAIN_NAME] [--val_name VAL_NAME]
+               [--test_name TEST_NAME] [--test_id_method {greater_k,top_k}]
+               [--test_k TEST_K]
+               [--loss_key {loss_total,loss_total_norm_batch,loss_avg_seq_sum,loss_avg_seq_mean,loss_avg}]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -203,8 +233,10 @@ optional arguments:
   --max_steps MAX_STEPS
                         Limits training to a max number number of steps
   --accumulate_grad_batches ACCUMULATE_GRAD_BATCHES
-                        Accumulates grads every k batches or as set up in the
-                        dict.
+                        Accumulates grads every k batches. A single step is
+                        one gradient accumulation cycle, so setting this value
+                        to 2 will cause 2 batches to be processed for each
+                        step.
   --check_val_every_n_epoch CHECK_VAL_EVERY_N_EPOCH
                         Check val every n train epochs.
   --gpus GPUS           Number of GPUs to train on or Which GPUs to train on.
@@ -222,6 +254,8 @@ optional arguments:
   --precision PRECISION
                         Full precision (32), half precision (16). Can be used
                         on CPU, GPU or TPUs.
+  --seed SEED           Seed for reproducible results. Can negatively impact
+                        performace in some cases.
   --profiler            To profile individual steps during training and assist
                         in identifying bottlenecks.
   --progress_bar_refresh_rate PROGRESS_BAR_REFRESH_RATE
@@ -241,13 +275,26 @@ optional arguments:
                         automatically be uploaded to wandb.ai.
   --do_train            Run the training procedure.
   --do_test             Run the testing procedure.
+  --load_weights LOAD_WEIGHTS
+                        Loads the model weights from a given checkpoint
+  --load_from_checkpoint LOAD_FROM_CHECKPOINT
+                        Loads the model weights and hyperparameters from a
+                        given checkpoint.
   --use_custom_checkpoint_callback
                         Use the custom checkpointing callback specified in
                         main() by `args.checkpoint_callback`. By default this
                         custom callback saves the model every epoch and never
                         deletes and saved weights files. Set this option and
                         `--use_logger` to `wandb` to automatically upload
-                        model weights to wandb.ai.
+                        model weights to wandb.ai. DO NOT set this and
+                        `--user_logger` to "tensorboard" because a custom
+                        TensorBoardLogger is not created. Thus, when the
+                        trainer attempts to save the model, the program will
+                        crash since `--default_save_path` is set and a custom
+                        checkpoint callback is passed. See: https://pytorch-li
+                        ghtning.readthedocs.io/en/latest/trainer.html#default-
+                        root-dir ("Default path for logs and weights when **no
+                        logger or ModelCheckpoint callback** passed.")
   -l {DEBUG,INFO,WARNING,ERROR,CRITICAL}, --log {DEBUG,INFO,WARNING,ERROR,CRITICAL}
                         Set the logging level (default: 'Info').
   --model_name_or_path MODEL_NAME_OR_PATH
@@ -304,16 +351,14 @@ optional arguments:
   --tokenizer_name TOKENIZER_NAME
   --tokenizer_lowercase
   --max_seq_length MAX_SEQ_LENGTH
-  --oracle_mode {none,greedy,combination}
   --data_path DATA_PATH
+                        Directory containing the dataset.
   --num_threads NUM_THREADS
   --processing_num_threads PROCESSING_NUM_THREADS
   --weight_decay WEIGHT_DECAY
   --pooling_mode {sent_rep_tokens,mean_tokens}
                         How word vectors should be converted to sentence
                         embeddings.
-  --web_learning_rate WEB_LEARNING_RATE
-                        Word embedding model specific learning rate.
   --adam_epsilon ADAM_EPSILON
                         Epsilon for Adam optimizer.
   --optimizer_type OPTIMIZER_TYPE
@@ -358,6 +403,8 @@ optional arguments:
   --no_use_token_type_ids
                         Set to not train with `token_type_ids` (don't pass
                         them into the model).
+  --classifier_dropout CLASSIFIER_DROPOUT
+                        The value for the dropout layers in the classifier.
   --train_name TRAIN_NAME
                         name for set of training files on disk (for loading
                         and saving)
@@ -370,7 +417,11 @@ optional arguments:
                         How to chose the top predictions from the model for
                         ROUGE scores.
   --test_k TEST_K       The `k` parameter for the `--test_id_method`. Must be
-                        set if using `top_k` option. (default: 0.5)
+                        set if using the `greater_k` option. (default: 3)
+  --loss_key {loss_total,loss_total_norm_batch,loss_avg_seq_sum,loss_avg_seq_mean,loss_avg}
+                        Which reduction method to use with BCELoss. See the
+                        `experiments/loss_functions/` folder for info on how
+                        the default (`loss_avg_seq_mean`) was chosen.
 ```
 
 All training arguments can be found in the [pytorch_lightning trainer documentation](https://pytorch-lightning.readthedocs.io/en/latest/trainer.html).

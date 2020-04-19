@@ -10,7 +10,7 @@ class Pooling(nn.Module):
         Keyword Arguments:
             sent_rep_tokens {bool} -- Use the sentence representation token vectors as sentence
                                       embeddings. (default: {True})
-            mean_tokens {bool} -- Take the mean of all the token vectors in each sentence (default: {False})
+            mean_tokens {bool} -- Take the mean of all the token vectors in each sentence. (default: {False})
         """
         super(Pooling, self).__init__()
 
