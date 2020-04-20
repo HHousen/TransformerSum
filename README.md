@@ -1,18 +1,6 @@
 # TransformerExtSum
 > A model to perform neural extractive summarization using machine learning transformer models and a tool to convert abstractive summarization datasets to the extractive task.
 
-**Attributions:**
-
-* Code heavily inspired by the following projects:
-  * Adapting BERT for Extractive Summariation: [BertSum](https://github.com/nlpyang/BertSum)
-  * Word/Sentence Embeddings: [sentence-transformers](https://github.com/UKPLab/sentence-transformers)
-  * CNN/CM Dataset: [cnn-dailymail](https://github.com/artmatsak/cnn-dailymail)
-  * PyTorch Lightning Classifier: [lightning-text-classification](https://github.com/ricardorei/lightning-text-classification)
-* Important projects utilized:
-  * PyTorch: [pytorch](https://github.com/pytorch/pytorch/)
-  * Training code: [pytorch_lightning](https://github.com/PyTorchLightning/pytorch-lightning/)
-  * Transformer Models: [huggingface/transformers](https://github.com/huggingface/transformers)
-
 ## Pre-trained Models
 
 None yet. Please wait.
@@ -430,6 +418,50 @@ All training arguments can be found in the [pytorch_lightning trainer documentat
 
 Please see [experiments/README.md](experiments/README.md).
 
+## Difference from BertSum
+
+This project accomplishes a task similar to [BertSum](https://github.com/nlpyang/BertSum) (and is based on their research). However, `TransformerExtSum` improves various aspects and adds several features on top of `BertSum`. The most notable improvements include:
+
+**General**
+
+* This project uses `pytorch_lighting`, which is a template to better organize PyTorch code. It automates most of the training loop. It also results in easier to read code than plain PyTorch because everything is organized.
+* `TransformerExtSum` contains comments explaining design decisions and how code works. Significant functions also have detailed docstrings. See `get_features()` in [data.py](data.py) for an example (this is the longest docstring in the project).
+* Easy pre-trained model loading and modification thanks to `pytorch_lightning`'s `load_from_checkpoint()` that is automatically inherited by every `pl.LightningModule`.
+
+**Converting a Dataset to Extractive**
+
+* Separation between the dataset conversion from abstractive to extractive and the training process. This means the same converted dataset can be used by any transformer model with further automatic processing.
+* The [convert_to_extractive.py](convert_to_extractive.py) script uses the more up-to-date `spacy` whereas BertSum utilizes `Stanford CoreNLP`. Spacy has the added benefit of being a python library (while CoreNLP is a java application), which means easier to understand code.
+* Supports the same `greedy_selection` and `combination_selection` of `BertSum`.
+* A more robust CLI that allows for various desired outputs.
+* Built in optional gzip compression.
+
+**Pooling**
+
+* Supports the `sent_rep_tokens` and `mean_tokens` pooling methods whereas `BertSum` only supports `sent_rep_tokens`. See below `Pooling Modes` for more info.
+* Pooling is separated from the main model's `forward()` function for easy extendability.
+
+**Data**
+
+* The data processing and loading uses normal PyTorch `DataLoader`s and `Dataset`s instead of recreations of these classes as in `BertSum`.
+* A `collate_fn` function converts the data from the dataset to tensors suitable for input to the model, as is stand PyTorch convention.
+* The `collate_fn` function also performs "smart batching." It performs padding on the necessary information for each batch, which is more efficient than padding for the entire dataset or each chunk.
+* The `FSIterableDataset` class loads a dataset in chunks and is a subclass of `torch.utils.data.IterableDataset`. While `BertSum` also supports chunked loading to lower RAM usage, `TransformerExtSum`'s technique is more robust and directly integrates with PyTorch.
+
+**Model and Training**
+
+* **Compatible with every huggingface/transformers transformer encoder model.** `BertSum` can only use Bert, whereas this project supports all encoders by only changing two options when training.
+* The classifier component of `TransformerExtSum` is larger (it contains two linear layers) than `BertSum` (which contains one linear layer). The additional layer was found the greatly improve performance.
+* The reduction method for the BCE loss function  is different in `TransformerExtSum` than `BertSum`. `BertSum` takes the sum of the losses for each sentence (ignoring padding) even though it [looks like it uses the mean](https://github.com/nlpyang/BertSum/blob/master/src/models/trainer.py#L325). Five different reduction methods were tested (see the [loss function experiments](experiments/README.md)). There did not appear to a significant difference, but the best was chosen.
+* The batch size parameter of `BertSum` is not the real batch size (which is likely caused by the custom `DataLoader`). In this project batch size is the number of documents processed on the GPU at once.
+* Multiple optimizers are supported "out-of-the-box" in `TransformerExtSum` without any need to modify the code.
+* The `OneCycle` and `linear_schedule_with_warmup` schedulers are supported in `TransformerExtSum` "out-of-the-box."
+* Logging of all five loss functions (for both the train and validation sets), accuracy, and more is supported. Weights & Biases and Tensorboard are supported "out-of-the-box" but `pytorch_lightning` can integrate several other loggers.
+
+**Where `BertSum` is Better**
+
+* `BertSum` supports three classifiers, whereas this project only supports one. The classifier is responsible for removing the hidden features from each sentence embedding and converting them to a single number. However, the [BertSum paper](https://arxiv.org/pdf/1903.10318.pdf) indicates that the difference between these classifiers is not major. `BertSum`'s three options are a linear layer, a transformer, and a LSTM network.
+
 ## Meta
 
 Hayden Housen – [haydenhousen.com](https://haydenhousen.com)
@@ -438,7 +470,23 @@ Distributed under the GNU General Public License v3.0. See the [LICENSE](LICENSE
 
 <https://github.com/HHousen>
 
+### Attributions
+
+* Code heavily inspired by the following projects:
+  * Adapting BERT for Extractive Summariation: [BertSum](https://github.com/nlpyang/BertSum)
+  * Word/Sentence Embeddings: [sentence-transformers](https://github.com/UKPLab/sentence-transformers)
+  * CNN/CM Dataset: [cnn-dailymail](https://github.com/artmatsak/cnn-dailymail)
+  * PyTorch Lightning Classifier: [lightning-text-classification](https://github.com/ricardorei/lightning-text-classification)
+* Important projects utilized:
+  * PyTorch: [pytorch](https://github.com/pytorch/pytorch/)
+  * Training code: [pytorch_lightning](https://github.com/PyTorchLightning/pytorch-lightning/)
+  * Transformer Models: [huggingface/transformers](https://github.com/huggingface/transformers)
+
 ## Contributing
+
+All Pull Requests are greatly welcomed.
+
+Questions? Commends? Issues? Don't hesitate to open an [issue](https://github.com/HHousen/TransformerExtSum/issues/new) and briefly describe what you are experiencing (with any error logs if necessary). Thanks.
 
 1. Fork it (<https://github.com/HHousen/TransformerExtSum/fork>)
 2. Create your feature branch (`git checkout -b feature/fooBar`)
