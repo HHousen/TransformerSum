@@ -1,0 +1,18 @@
+name: transformerextsum-longformer
+channels:
+    - conda-forge
+    - pytorch
+dependencies:
+    - cudatoolkit=10.0
+    - pytorch
+    - scikit-learn
+    - tensorboard
+    - spacy
+    - pip
+    - pip:
+      - pytorch_lightning
+      - transformers==2.0.0
+      - qhoptim
+      - wandb
+      - rouge-score
+      - git+https://github.com/HHousen/longformer.git

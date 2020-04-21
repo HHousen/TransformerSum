@@ -106,6 +106,7 @@ dmypy.json
 # Custom
 BertSum
 sentence-transformers
+custom_models
 transformers
 .vscode
 train.source

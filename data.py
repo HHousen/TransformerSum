@@ -46,7 +46,7 @@ def pad_tensors(tensors, pad_id=0, width=None, pad_on_left=False):
     ]
 
 
-def pad_batch_collate(batch):
+def pad_batch_collate(batch, modifier=None):
     """
     Collate function to be passed to `DataLoaders`.
     PyTorch Docs: https://pytorch.org/docs/stable/data.html#dataloader-collate-fn
@@ -74,12 +74,18 @@ def pad_batch_collate(batch):
     the standard `collate_fn` function for `DataLoader`s will not work if these are present since
     they cannot be converted to tensors without padding. This `collate_fun` must be used if 
     `source` or `target` is present in the loaded dataset. 
+
+    The `modifier` argument accepts a function that takes the `final_dictionary` and returns a
+    modified `final_dictionary`. The `modifier` function will be called directly before
+    `final_dictionary` is returned in `pad_batch_collate()`. This allows for easy extendability
+    and, specifically, is used for the `longformer` custom model.
     """
     elem = batch[0]
     elem_type = type(elem)
     final_dictionary = {}
 
     for key in elem:
+        # don't process `sent_lengths`
         if key == "sent_lengths":
             continue
 
@@ -100,12 +106,12 @@ def pad_batch_collate(batch):
             # Attention
             # The mask has 1 for real tokens and 0 for padding tokens. Only real
             # tokens are attended to.
-            attention_mask = [[1] * len(ids) for ids in input_ids]
+            attention_mask = [[0] * len(ids) for ids in input_ids]
 
             input_ids_width = max(len(ids) for ids in input_ids)
             input_ids = pad(input_ids, 0, width=input_ids_width)
             input_ids = torch.tensor(input_ids)
-            attention_mask = pad(attention_mask, 0)
+            attention_mask = pad(attention_mask, -1)
             attention_mask = torch.tensor(attention_mask)
 
             if "sent_lengths" in elem:
@@ -146,8 +152,10 @@ def pad_batch_collate(batch):
         feature_list = torch.tensor(feature_list)
         final_dictionary[key] = feature_list
 
-    return final_dictionary
+    if modifier:
+        final_dictionary = modifier(final_dictionary)
 
+    return final_dictionary
 
 class FSIterableDataset(IterableDataset):
     """

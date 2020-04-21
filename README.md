@@ -155,12 +155,36 @@ Thus, the command to only preprocess data for use when training a model run: `py
 
 **Important Note:** If processed files are detected, they will automatically be loaded from disk. This includes any files that follow the pattern `[dataset_split_name].*.pt`, where `*` is any text of any length.
 
-## Pooling Modes
+### Pooling Modes
 
 The pooling model determines how word vectors should be converted to sentence embeddings. The implementation can be found in [pooling.py](pooling.py). The `--pooling_mode` argument can be set to either `sent_rep_tokens` or `mean_tokens`. While the [pooling nn.Module](pooling.py) allows multiple methods to be used at once (it will concatenate and return the results), the training script does not.
 
 * `sent_rep_tokens`: Use the sentence representation token vectors as sentence embeddings.
 * `mean_tokens`: Take the mean of all the token vectors in each sentence.
+
+### Custom Models
+
+You can use any transformer model for the word embedding model as long as it was saved in the `huggingface/transformers` format with the `--model_name_or_path` CLI argument. Any model that is loaded with this option by specifying a path is considered "custom" in this project. The below "custom" models are "officially" supported.
+
+#### Longformer
+
+"`Longformer` is a BERT-like model for long documents."
+
+Original Repo: [allenai/longformer](https://github.com/allenai/longformer)
+
+Forked Repo (which this project uses): [hhousen/longformer](https://github.com/hhousen/longformer)
+
+Paper: <https://arxiv.org/abs/2004.05150>
+
+Video Going Over The Paper: [Longformer: The Long-Document Transformer](https://www.youtube.com/watch?v=_8KNb5iqblE)
+
+**How to Use with `TransformerExtSum:`**
+
+1. To use `longformer` run `conda env create --file environment-longformer.yml` in this project's root and then activate the environment with `conda activate transformerextsum-longformer`.
+2. Set `--no_use_token_type_ids`, `--tokenizer_name` to `roberta-base`, `--model_type` to `longformer`, and `--model_name_or_path` to the path to the model directory downloaded from [the repo]((https://github.com/allenai/longformer)) (example: `./custom_models/longformer-base-4096`).
+3. Also, make sure not to use the `linear` scheduler (`--use_scheduler`) because the older version of `huggingface/transformers` that `longformer` requires does not contain the scheduler code.
+
+The global attention is automatically applied to all the `[CLS]` (or equivalent) tokens.
 
 ### Script Help
 

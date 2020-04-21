@@ -63,9 +63,10 @@ Tested Models:
 
 *The huggingface/transformers documentation says "ALBERT uses repeating layers which results in a small memory footprint." This may be true but I found that the normal batch sizes I used for the base and large models would crash the training script when `albert` models were used. Thus, the batch sizes were decreased.
 
-All models were trained for 3 epochs (which will result in different numbers of steps but will ensure that each model saw the same amount of information), using the AdamW optimizer with a linear scheduler with 1800 steps of warmup. Gradients were accumulated every 2 batches and clipped at 1.0. Only 60% of the data was used (to decrease training time, but also will provide similar results if all the data was used). `--no_use_token_type_ids` was set if the model was not compatible with token type ids.
+All models were trained for 3 epochs (which will result in different numbers of steps but will ensure that each model saw the same amount of information), using the AdamW optimizer with a linear scheduler with 1800 steps of warmup. Gradients were accumulated every 2 batches and clipped at 1.0. **Only 60% of the data was used** (to decrease training time, but also will provide similar results if all the data was used). `--no_use_token_type_ids` was set if the model was not compatible with token type ids.
 
 Full command used to run the tests:
+
 ```
 !python main.py \
 --model_name_or_path [Model Name] \
@@ -102,35 +103,61 @@ More information about distil* models found in the [huggingface/transformers exa
 
 **Training Times:**
 
-| Model Key                 | Time           |
-|---------------------------|----------------|
-| `distilbert-base-uncased` | 4h 5m 30s      |
-| `distilroberta-base`      | Coming soon... |
+| Model Key                 | Time       |
+|---------------------------|------------|
+| `distilbert-base-uncased` | 4h 5m 30s  |
+| `distilroberta-base`      | 4h 12m 53s |
 
 **ROUGE Scores:**
 
 | Name                    | ROUGE-1    | ROUGE-2    | ROUGE-L    |
 |-------------------------|------------|------------|------------|
 | distilbert-base-uncased | Not yet... | Not yet... | Not yet... |
-| distilroberta-base      | Not yet... | Not yet... | Not yet... |
+| distilroberta-base      | 40.9       | 18.7       | 26.4       |
+
+**Outliers Included:**
+
+<img src="word_embedding_models/distil_loss_avg_seq_mean_outliers.png" width="450" /> <img src="word_embedding_models/distil_loss_total_outliers.png" width="450" />
+
+**No Outliers:**
+
+<img src="word_embedding_models/distil_loss_avg_seq_sum.png" width="450" /> <img src="word_embedding_models/distil_loss_avg_seq_sum.png" width="450" />
+
+<img src="word_embedding_models/distil_loss_total_norm_batch.png" width="450" /> <img src="word_embedding_models/distil_loss_total_norm_batch.png" width="450" />
+
+<img src="word_embedding_models/distil_loss_total.png" width="450" /> <img src="word_embedding_models/distil_loss_avg_seq_mean_val_only.png" width="450" />
 
 #### Base Models
 
+**Important Note:** `roberta-base` does not accept token type ids. So set `--no_use_token_type_ids` while training using the above command.
+
 **Training Times:**
 
-| Model Key           | Time           |
-|---------------------|----------------|
-| `bert-base-uncased` | Coming soon... |
-| `roberta-base`      | Coming soon... |
-| `albert-base-v2`    | Coming soon... |
+| Model Key           | Time       |
+|---------------------|------------|
+| `bert-base-uncased` | 7h 56m 39s |
+| `roberta-base`      | 7h 52m 0s  |
+| `albert-base-v2`    | 7h 32m 19s |
 
 **ROUGE Scores:**
 
-| Name              | ROUGE-1    | ROUGE-2    | ROUGE-L    |
-|-------------------|------------|------------|------------|
-| bert-base-uncased | Not yet... | Not yet... | Not yet... |
-| roberta-base      | Not yet... | Not yet... | Not yet... |
-| albert-base-v2    | Not yet... | Not yet... | Not yet... |
+| Name              | ROUGE-1 | ROUGE-2 | ROUGE-L |
+|-------------------|---------|---------|---------|
+| bert-base-uncased | 40.2    | 18.2    | 26.1    |
+| roberta-base      | 42.3    | 20.1    | 27.4    |
+| albert-base-v2    | 40.5    | 18.4    | 26.1    |
+
+**Outliers Included:**
+
+<img src="word_embedding_models/base_loss_avg_seq_mean_outliers.png" width="450" /> <img src="word_embedding_models/base_loss_total_outliers.png" width="450" />
+
+**No Outliers:**
+
+<img src="word_embedding_models/base_loss_avg_seq_sum.png" width="450" /> <img src="word_embedding_models/base_loss_avg_seq_sum.png" width="450" />
+
+<img src="word_embedding_models/base_loss_total_norm_batch.png" width="450" /> <img src="word_embedding_models/base_loss_total_norm_batch.png" width="450" />
+
+<img src="word_embedding_models/base_loss_total.png" width="450" /> <img src="word_embedding_models/base_loss_avg_seq_mean_val_only.png" width="450" />
 
 
 #### Large Models

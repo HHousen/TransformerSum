@@ -21,22 +21,59 @@ from torch.utils.data import DataLoader, RandomSampler, TensorDataset
 from pooling import Pooling
 from data import SentencesProcessor, FSIterableDataset, pad_batch_collate
 from convert_to_extractive import greedy_selection, combination_selection
+
+logger = logging.getLogger(__name__)
+
+try:
+    from transformers import get_linear_schedule_with_warmup
+
+    NO_LINEAR_SCHEDULE = False
+except ImportError:
+    NO_LINEAR_SCHEDULE = True
+    logger.warn(
+        "Could not import `get_linear_schedule_with_warmup` from `transformers`. The linear scheduler is not available."
+    )
+
+try:
+    from transformers.activations import get_activation
+except ImportError:
+    logger.warn(
+        "Could not import `get_activation` from `transformers.activations`. Only GELU will be available for use in the classifier."
+    )
+
 from transformers import (
-    ALL_PRETRAINED_MODEL_ARCHIVE_MAP,
     AutoConfig,
     AutoModel,
     AutoTokenizer,
-    get_linear_schedule_with_warmup,
 )
 from transformers.data.metrics import acc_and_f1
-from transformers.activations import get_activation
 
-from transformers.modeling_auto import MODEL_MAPPING
+CUSTOM_MODELS = ("longformer-base-4096", "longformer-large-4096")
+CUSTOM_MODEL_CLASSES = tuple("longformer")
 
-ALL_MODELS = tuple(ALL_PRETRAINED_MODEL_ARCHIVE_MAP)
-MODEL_CLASSES = tuple(m.model_type for m in MODEL_MAPPING)
+try:
+    from transformers import ALL_PRETRAINED_MODEL_ARCHIVE_MAP
+    from transformers.modeling_auto import MODEL_MAPPING
 
-logger = logging.getLogger(__name__)
+    ALL_MODELS = tuple(ALL_PRETRAINED_MODEL_ARCHIVE_MAP) + CUSTOM_MODELS
+    MODEL_CLASSES = tuple(m.model_type for m in MODEL_MAPPING) + CUSTOM_MODEL_CLASSES
+except ImportError:
+    logger.warn(
+        "Could not import `ALL_PRETRAINED_MODEL_ARCHIVE_MAP` or `MODEL_MAPPING` from transformers because it is an old version."
+    )
+
+    ALL_MODELS = (
+        tuple(
+            "Note: Only showing custom models because old version of `transformers` detected."
+        )
+        + CUSTOM_MODELS
+    )
+    MODEL_CLASSES = (
+        tuple(
+            "Note: Only showing custom models because old version of `transformers` detected."
+        )
+        + CUSTOM_MODEL_CLASSES
+    )
 
 
 class Classifier(nn.Module):
@@ -67,9 +104,15 @@ class Classifier(nn.Module):
         self.linear2 = nn.Linear(linear_hidden, 1)
         self.sigmoid = nn.Sigmoid()
 
-        self.activation = (
-            get_activation(activation_string) if activation_string else nn.Identity()
-        )
+        # support older versions of huggingface/transformers
+        if activation_string == "gelu":
+            self.activation = torch.nn.GELU()
+        else:
+            self.activation = (
+                get_activation(activation_string)
+                if activation_string
+                else nn.Identity()
+            )
 
     def forward(self, x):
         x = self.dropout1(x)
@@ -93,15 +136,21 @@ class ExtractiveSummarizer(pl.LightningModule):
         super(ExtractiveSummarizer, self).__init__()
 
         self.hparams = hparams
+        # if a custom model type was selected
+        if hparams.model_type == "longformer":
+            from longformer.longformer import Longformer
 
-        if not embedding_model_config:
-            embedding_model_config = AutoConfig.from_pretrained(
+            self.word_embedding_model = Longformer.from_pretrained(
                 hparams.model_name_or_path
             )
-        self.word_embedding_model = AutoModel.from_pretrained(
-            hparams.model_name_or_path, config=embedding_model_config
-        )
-        # self.hparams.data_path = "/media/hhhgohn/Main/Downloads/bert-base-uncased/"
+        else:
+            if not embedding_model_config:
+                embedding_model_config = AutoConfig.from_pretrained(
+                    hparams.model_name_or_path
+                )
+            self.word_embedding_model = AutoModel.from_pretrained(
+                hparams.model_name_or_path, config=embedding_model_config
+            )
 
         self.emd_model_frozen = False
         if hparams.num_frozen_steps > 0:
@@ -133,6 +182,12 @@ class ExtractiveSummarizer(pl.LightningModule):
             else hparams.model_name_or_path,
             do_lower_case=hparams.tokenizer_lowercase,
         )
+        # if using longformer then change the tokenizer maximum length
+        if hparams.model_type == "longformer":
+            self.tokenizer.max_len = (
+                self.word_embedding_model.config.max_position_embeddings
+            )
+
         self.train_dataloader_object = None  # not created yet
 
     def forward(
@@ -215,12 +270,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         )
 
     def json_to_dataset(
-        self,
-        tokenizer,
-        hparams,
-        inputs=None,
-        num_files=0,
-        processor=None,
+        self, tokenizer, hparams, inputs=None, num_files=0, processor=None,
     ):
         idx, json_file = inputs
         logger.info(
@@ -285,7 +335,11 @@ class ExtractiveSummarizer(pl.LightningModule):
                 True if all_targets else False
             ),  # create the source if targets were present
             n_process=hparams.processing_num_threads,
-            max_length=hparams.max_seq_length,
+            max_length=(
+                hparams.max_seq_length
+                if hparams.max_seq_length
+                else self.tokenizer.max_len
+            ),
             pad_on_left=bool(
                 hparams.model_type in ["xlnet"]
             ),  # pad on the left for xlnet
@@ -380,6 +434,31 @@ class ExtractiveSummarizer(pl.LightningModule):
 
         self.datasets = datasets
 
+        # Create `pad_batch_collate` function
+        # If the model is a longformer then do special modifications to the `attention_mask`
+        if self.hparams.model_type == "longformer":
+
+            def longformer_modifier(final_dictionary):
+                """
+                Shifts normals attention ids down by 1. Sets the global attention to the
+                `sent_rep_token_ids`. The longformer uses "1" as global attention.
+                """
+                attention_mask = final_dictionary["attention_mask"]
+                attention_mask[attention_mask == 0] = -1
+                attention_mask[attention_mask == 1] = 0
+                for idx, items in enumerate(final_dictionary["sent_rep_token_ids"]):
+                    attention_mask[idx, items] = 1
+
+                final_dictionary["attention_mask"] = attention_mask
+                return final_dictionary
+
+            self.pad_batch_collate = partial(
+                pad_batch_collate, modifier=longformer_modifier
+            )
+        else:
+            # default is to just use the normal `pad_batch_collate` function
+            self.pad_batch_collate = pad_batch_collate
+
     def train_dataloader(self):
         if self.train_dataloader_object:
             return self.train_dataloader_object
@@ -391,7 +470,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             train_dataset,
             # sampler=train_sampler,
             batch_size=self.hparams.train_batch_size,
-            collate_fn=pad_batch_collate,
+            collate_fn=self.pad_batch_collate,
         )
 
         self.train_dataloader_object = train_dataloader
@@ -404,7 +483,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             valid_dataset,
             # sampler=valid_sampler,
             batch_size=self.hparams.val_batch_size,
-            collate_fn=pad_batch_collate,
+            collate_fn=self.pad_batch_collate,
         )
         return valid_dataloader
 
@@ -419,7 +498,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             test_dataset,
             # sampler=test_sampler,
             batch_size=self.hparams.test_batch_size,
-            collate_fn=pad_batch_collate,
+            collate_fn=self.pad_batch_collate,
         )
         return test_dataloader
 
@@ -437,7 +516,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         else:
             t_total = len(self.train_dataloader_object) * self.hparams.max_epochs
             if self.hparams.overfit_pct > 0.0:
-                t_total *= self.hparams.overfit_pct
+                t_total = int(t_total * self.hparams.overfit_pct)
 
         # Prepare optimizer and schedule (linear warmup and decay)
         no_decay = ["bias", "LayerNorm.weight"]
@@ -497,6 +576,11 @@ class ExtractiveSummarizer(pl.LightningModule):
 
         if self.hparams.use_scheduler:
             if self.hparams.use_scheduler == "linear":
+                if NO_LINEAR_SCHEDULE:
+                    logger.error(
+                        "The linear scheduler was not imported (because you are running an older version of hugginface/transformers) but you tried to use it."
+                    )
+                    sys.exit(1)
                 # multiply by `hparams.accumulate_grad_batches` because pytorch_lightning
                 # steps are for each batch, except for the `trainer.global_step`, which tracks
                 # the actual number of steps
@@ -756,7 +840,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             current_prediction = ""
             for i in source_ids:
                 candidate = source[i].strip()
-                current_prediction += (candidate + " ")
+                current_prediction += candidate + " "
             result = self.rouge_scorer.score(target, current_prediction)
             for key, item in result.items():
                 if key not in rouge_outputs:
@@ -816,8 +900,10 @@ class ExtractiveSummarizer(pl.LightningModule):
         )
         parser.add_argument("--tokenizer_name", type=str, default="")
         parser.add_argument("--tokenizer_lowercase", action="store_true")
-        parser.add_argument("--max_seq_length", type=int, default=512)
-        parser.add_argument("--data_path", type=str, help="Directory containing the dataset.")
+        parser.add_argument("--max_seq_length", type=int, default=0)
+        parser.add_argument(
+            "--data_path", type=str, help="Directory containing the dataset."
+        )
         parser.add_argument("--num_threads", type=int, default=4)
         parser.add_argument("--processing_num_threads", type=int, default=2)
         parser.add_argument("--weight_decay", default=1e-2, type=float)
