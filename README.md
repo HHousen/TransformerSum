@@ -5,18 +5,20 @@
 
 None yet. Please wait.
 
-| Name                            | Comments | Download   |
-|---------------------------------|----------|------------|
-| distilbert-base-uncased-ext-sum | None     | Not yet... |
-| distilroberta-base-ext-sum      | None     | Not yet... |
-| bert-base-uncased-ext-sum       | None     | Not yet... |
-| roberta-base-ext-sum            | None     | Not yet... |
-| albert-base-v2-ext-sum          | None     | Not yet... |
-| bert-large-uncased-ext-sum      | None     | Not yet... |
-| roberta-large-ext-sum           | None     | Not yet... |
-| albert-xlarge-v2                | None     | Not yet... |
+### CNN/DM
 
-### ROUGE Scores
+| Name                            | Comments | Model Download | Data Download    |
+|---------------------------------|----------|----------------|------------------|
+| distilbert-base-uncased-ext-sum | None     | Not yet...     | [Bert Uncased]() |
+| distilroberta-base-ext-sum      | None     | Not yet...     | [Roberta]()      |
+| bert-base-uncased-ext-sum       | None     | Not yet...     | [Bert Uncased]() |
+| roberta-base-ext-sum            | None     | Not yet...     | [Roberta]()      |
+| albert-base-v2-ext-sum          | None     | Not yet...     | [Albert]()       |
+| bert-large-uncased-ext-sum      | None     | Not yet...     | [Bert Uncased]() |
+| roberta-large-ext-sum           | None     | Not yet...     | [Roberta]()      |
+| albert-xlarge-v2-ext-sum        | None     | Not yet...     | [Albert]()       |
+
+#### ROUGE Scores
 
 Test set results on the CNN/DailyMail dataset using ROUGE F<sub>1</sub>.
 
@@ -44,9 +46,26 @@ Installation is made easy due to conda environments. Simply run this command fro
 
 ## Supported Datasets
 
-Currently only the CNN/DM summarization dataset is supported. The original processing code is available at [abisee/cnn-dailymail](https://github.com/abisee/cnn-dailymail), but for this project the [artmatsak/cnn-dailymail](https://github.com/artmatsak/cnn-dailymail) processing code is used since it does not tokenize and writes the data to text file `train.source`, `train.target`, `val.source`, `val.target`, `test.source` and `test.target`, which is the format expected by [convert_to_extractive.py](convert_to_extractive.py). 
+Currently only the CNN/DM summarization dataset is supported.
+
+There are several ways to obtain and process the datasets below:
+
+1. Download the converted extractive version for use with the training script (which will preprocess the data automatically (tokenization, etc.)). Note that all the provided extractive versions are split every 500 documents and are compressed. You will have to manually process if you desire different chunk sizes.
+2. Download the processed abstractive version. This is the original data after begin run through its respective processor located in `datasets`.
+3. Download the original data in its original form, which depends on how it was obtained in the original paper.
+
+The table under each heading contains quick links to download the data. Beneath that are instructions to process the data manually.
 
 ### CNN/DM
+
+The **CNN/DailyMail** (Hermann et al., 2015) dataset contains 93k articles from the CNN, and 220k articles the Daily Mail newspapers. Both publishers supplement their articles with bullet point summaries. Non-anonymized variant in See et al. (2017).
+
+| Type | Link |
+|-------------------------------|----------------------------------------------------------------------------------|
+| Processor Repository | [artmatsak/cnn-dailymail](https://github.com/artmatsak/cnn-dailymail) |
+| Data Download Link | [CNN/DM official website](https://cs.nyu.edu/~kcho/DMQA/) |
+| Processed Abstractive Dataset | [Google Drive](https://drive.google.com/uc?id=1OMJWMoO367yPZH5yp-TsAai_kUmWVQY2) |
+| Extractive Version | [Google Drive](https://drive.google.com/uc?id=1_nmp6nzbiW2HUEtJPXn8WzF2XhMVem2n) |
 
 Download and unzip the stories directories from [here](https://cs.nyu.edu/~kcho/DMQA/) for both CNN and Daily Mail. The files can be downloaded from the terminal with `gdown`, which can be installed with `pip install gdown`.
 
@@ -60,13 +79,50 @@ tar zxf dailymail_stories.tgz
 
 **Note:** The above Google Drive links may be outdated depending on the time you are reading this. Check the [CNN/DM official website](https://cs.nyu.edu/~kcho/DMQA/) for the most up-to-date download links.
 
-Next, run the processing code in the git submodule for [artmatsak/cnn-dailymail](https://github.com/artmatsak/cnn-dailymail) located in `cnn_dailymail_processor`. Run `python make_datafiles.py /path/to/cnn/stories /path/to/dailymail/stories`, replacing `/path/to/cnn/stories` with the path to where you saved the `cnn/stories` directory that you downloaded; similarly for `dailymail/stories`.
+Next, run the processing code in the git submodule for [artmatsak/cnn-dailymail](https://github.com/artmatsak/cnn-dailymail) located in `datasets/cnn_dailymail_processor`. Run `python make_datafiles.py /path/to/cnn/stories /path/to/dailymail/stories`, replacing `/path/to/cnn/stories` with the path to where you saved the `cnn/stories` directory that you downloaded; similarly for `dailymail/stories`.
 
 For each of the URL lists (`all_train.txt`, `all_val.txt` and `all_test.txt`) in `cnn_dailymail_processor/url_lists`, the corresponding stories are read from file and written to text files `train.source`, `train.target`, `val.source`, `val.target`, and `test.source` and `test.target`. These will be placed in the newly created `cnn_dm` directory.
 
+The original processing code is available at [abisee/cnn-dailymail](https://github.com/abisee/cnn-dailymail), but for this project the [artmatsak/cnn-dailymail](https://github.com/artmatsak/cnn-dailymail) processing code is used since it does not tokenize and writes the data to text file `train.source`, `train.target`, `val.source`, `val.target`, `test.source` and `test.target`, which is the format expected by [convert_to_extractive.py](convert_to_extractive.py).
+
+### WikiHow
+
+**WikiHow** (Koupaee and Wang, 2018) is a large-scale dataset of instructions from the online WikiHow.com website. Each of 200k examples consists of multiple instruction-step paragraphs along with a summarizing sentence. The task is to generate the concatenated summary-sentences from the paragraphs.
+
+| Type | Link |
+|-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| Processor Repository | [HHousen/WikiHow-Dataset](https://github.com/HHousen/WikiHow-Dataset) ([Original Repo](https://github.com/mahnazkoupaee/WikiHow-Dataset)) |
+| Data Download Link | [wikihowAll.csv](https://bit.ly/3cueodA) ([mirror](https://drive.google.com/uc?id=1_Xps_EI-S2Y6V785iKWtj3SLjjNHOaPc)) and [wikihowSep.csv](https://bit.ly/3btJ12G) |
+| Processed Abstractive Dataset | [Google Drive](https://drive.google.com/uc?id=1KZkRW3WNUCMIzYubiYQzTRs8G5wgqfvN) |
+| Extractive Version | [Google Drive](https://drive.google.com/uc?id=1-0FqGVWiXfwnQjCW7WLvRipl6-Z4gvXn) |
+
+Processing Steps:
+
+1. Download [wikihowAll.csv](https://bit.ly/3cueodA) ([main repo](https://github.com/mahnazkoupaee/WikiHow-Dataset) for most up-to-date links) to `datasets/wikihow_processor`
+2. Run `python process.py` (runtime: 2m), which will create a new directory called `wikihow` containing the `train.source`, `train.target`, `val.source`, `val.target`, `test.source` and `test.target` files necessary for [convert_to_extractive.py](convert_to_extractive.py).
+
+### PubMed/ArXiv
+
+**ArXiv and PubMed** (Cohan et al., 2018) are two long document datasets of scientific publications
+from [arXiv.org](http://arxiv.org/) (113k) and PubMed (215k). The task is to generate the abstract from the paper body.
+
+| Type | Link |
+|-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| Processor Repository | [HHousen/ArXiv-PubMed-Sum](https://github.com/HHousen/ArXiv-PubMed-Sum) ([Original Repo](https://github.com/armancohan/long-summarization)) |
+| Data Download Link | [PubMed](https://bit.ly/2VsKNvt) ([mirror](https://bit.ly/2VLPJuh)) and [ArXiv](https://bit.ly/2wWeVpp) ([mirror](https://bit.ly/2VPWnzs)) |
+| Processed Abstractive Dataset | Not available yet... |
+| Extractive Version | Not available yet... |
+
+Processing Steps:
+
+1. Download [PubMed](https://bit.ly/2VsKNvt) and [ArXiv](https://bit.ly/2wWeVpp) ([main repo](https://github.com/armancohan/long-summarization) for most up-to-date links) to `datasets/arxiv-pubmed_processor`
+2. Run the command `python process.py <arxiv_articles_dir> <pubmed_articles_dir>` (runtime: 5-10m), which will create a new directory called `arxiv-pubmed` containing the `train.source`, `train.target`, `val.source`, `val.target`, `test.source` and `test.target` files necessary for [convert_to_extractive.py](convert_to_extractive.py).
+
+See the [repository's README.md](datasets/arxiv-pubmed_processor/README.md) for more information.
+
 ## Convert Abstractive to Extractive Dataset
 
-Simply run [convert_to_extractive.py](convert_to_extractive.py) with the path to the data. For example, with the CNN/DM dataset downloaded above: `python convert_to_extractive.py ./cnn_dailymail_processor/cnn_dm`. However, the recommended command is: `python convert_to_extractive.py ./cnn_dailymail_processor/cnn_dm --shard_interval 5000 --compression --add_target_to test`, the `--shard_interval` processes the file in chunks of `5000` and writes results to disk in chunks of `5000` (saves RAM) and the `--compression` compresses each output chunk with gzip (depending on the dataset reduces space usage requirement by about 1/2 to 1/3). The default output directory is the input directory that was specified, but the output directory can be changed with `--base_output_path` if desired.
+Simply run [convert_to_extractive.py](convert_to_extractive.py) with the path to the data. For example, with the CNN/DM dataset downloaded above: `python convert_to_extractive.py ./datasets/cnn_dailymail_processor/cnn_dm`. However, the recommended command is: `python convert_to_extractive.py ./datasets/cnn_dailymail_processor/cnn_dm --shard_interval 5000 --compression --add_target_to test`, the `--shard_interval` processes the file in chunks of `5000` and writes results to disk in chunks of `5000` (saves RAM) and the `--compression` compresses each output chunk with gzip (depending on the dataset reduces space usage requirement by about 1/2 to 1/3). The default output directory is the input directory that was specified, but the output directory can be changed with `--base_output_path` if desired.
 
 The `--add_target_to` argument will save the abstractive target text to the splits (in `--split_names`) specified.
 
@@ -128,7 +184,7 @@ optional arguments:
 
 Once the dataset has been converted to the extractive task, it can be used as input to a SentencesProcessor, which has a `add_examples()` function too add sets of `(example, labels)` and a `get_features()` function that returns a TensorDataset of extracted features (`input_ids`, `attention_masks`, `labels`, `token_type_ids`, `sent_rep_token_ids`, `sent_rep_token_ids_masks`). Feature extraction runs in parallel and tokenizes text using the tokenizer appropriate for the model specified with `--model_name_or_path`. The tokenizer can be changed to another huggingface/transformers tokenizer with the `--tokenizer_name` option. 
 
-Continuing with the CNN/CM dataset, to train a model for 50,000 steps on the data run: `python main.py --data_path ./cnn_dailymail_processor/cnn_dm --default_save_path ./trained_models --do_train --max_steps 50000`.
+Continuing with the CNN/CM dataset, to train a model for 50,000 steps on the data run: `python main.py --data_path ./datasets/cnn_dailymail_processor/cnn_dm --default_save_path ./trained_models --do_train --max_steps 50000`.
 
 The `--do_train` argument runs the training process. Set `--do_test` to test after training.
 The `--data_path` argument specifies where the extractive dataset json file are located.
@@ -151,7 +207,7 @@ Memory Usage Note: If sharding was turned off during the `convert_to_extractive`
 
 There is a `--only_preprocess` argument available to only run this preprocess step and exit the script after all the examples have been written to disk. This option will force data to be preprocessed, even if it was already computed and is detected on disk, and any previous processed files will be overwritten.
 
-Thus, the command to only preprocess data for use when training a model run: `python main.py --data_path ./cnn_dailymail_processor/cnn_dm --use_logger tensorboard --model_name_or_path bert-base-uncased --model_type bert --do_train --only_preprocess`
+Thus, the command to only preprocess data for use when training a model run: `python main.py --data_path ./datasets/cnn_dailymail_processor/cnn_dm --use_logger tensorboard --model_name_or_path bert-base-uncased --model_type bert --do_train --only_preprocess`
 
 **Important Note:** If processed files are detected, they will automatically be loaded from disk. This includes any files that follow the pattern `[dataset_split_name].*.pt`, where `*` is any text of any length.
 
@@ -474,7 +530,8 @@ This project accomplishes a task similar to [BertSum](https://github.com/nlpyang
 
 **Model and Training**
 
-* **Compatible with every huggingface/transformers transformer encoder model.** `BertSum` can only use Bert, whereas this project supports all encoders by only changing two options when training.
+* **Compatible with every `huggingface/transformers` transformer encoder model.** `BertSum` can only use Bert, whereas this project supports all encoders by only changing two options when training.
+* Easily extendable with new custom models that are saved in the `huggingface/transformers` format. In this way, integration with the `longformer` was easily accomplished.
 * The classifier component of `TransformerExtSum` is larger (it contains two linear layers) than `BertSum` (which contains one linear layer). The additional layer was found the greatly improve performance.
 * The reduction method for the BCE loss function  is different in `TransformerExtSum` than `BertSum`. `BertSum` takes the sum of the losses for each sentence (ignoring padding) even though it [looks like it uses the mean](https://github.com/nlpyang/BertSum/blob/master/src/models/trainer.py#L325). Five different reduction methods were tested (see the [loss function experiments](experiments/README.md)). There did not appear to a significant difference, but the best was chosen.
 * The batch size parameter of `BertSum` is not the real batch size (which is likely caused by the custom `DataLoader`). In this project batch size is the number of documents processed on the GPU at once.

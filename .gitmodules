@@ -1,6 +1,12 @@
-[submodule "cnn_dailymail_processor"]
-	path = cnn_dailymail_processor
-	url = https://github.com/artmatsak/cnn-dailymail
 [submodule "optimizers/ranger"]
 	path = optimizers/ranger
 	url = https://github.com/lessw2020/Ranger-Deep-Learning-Optimizer
+[submodule "datasets/wikihow_processor"]
+	path = datasets/wikihow_processor
+	url = https://github.com/HHousen/WikiHow-Dataset
+[submodule "datasets/arxiv-pubmed_processor"]
+	path = datasets/arxiv-pubmed_processor
+	url = https://github.com/HHousen/ArXiv-PubMed-Sum
+[submodule "datasets/cnn_dailymail_processor"]
+	path = datasets/cnn_dailymail_processor
+	url = https://github.com/artmatsak/cnn-dailymail
