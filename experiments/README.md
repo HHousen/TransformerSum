@@ -159,6 +159,12 @@ More information about distil* models found in the [huggingface/transformers exa
 
 <img src="word_embedding_models/base_loss_total.png" width="450" /> <img src="word_embedding_models/base_loss_avg_seq_mean_val_only.png" width="450" />
 
+**Relative Time:**
+
+This is included because the batch size for albert-base-v2 had to be lowered to 12 (from 16).
+
+<img src="word_embedding_models/base_loss_avg_seq_mean_reltime.png" width="450" />
+
 
 #### Large Models
 

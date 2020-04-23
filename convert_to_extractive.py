@@ -140,6 +140,7 @@ def convert_to_extractive_process(
         args.n_process,
         args.batch_size,
         name=(" " + name + "-" + args.source_ext),
+        tokenizer_log_interval=args.tokenizer_log_interval,
     )
     target_docs_tokenized = tokenize(
         nlp,
@@ -147,6 +148,7 @@ def convert_to_extractive_process(
         args.n_process,
         args.batch_size,
         name=(" " + name + "-" + args.target_ext),
+        tokenizer_log_interval=args.tokenizer_log_interval,
     )
 
     # set a constant `oracle_mode`
@@ -232,7 +234,7 @@ def save(json_to_save, output_path, compression=False):
             save.write(json.dumps(json_to_save))
 
 
-def tokenize(nlp, docs, n_process=5, batch_size=100, name=""):
+def tokenize(nlp, docs, n_process=5, batch_size=100, name="", tokenizer_log_interval=0.1):
     """ Tokenize using spacy and split into sentences and tokens """
     tokenized = []
 
@@ -240,6 +242,7 @@ def tokenize(nlp, docs, n_process=5, batch_size=100, name=""):
         enumerate(nlp.pipe(docs, n_process=n_process, batch_size=batch_size,)),
         total=len(docs),
         desc="Tokenizing" + name,
+        mininterval=tokenizer_log_interval,
     ):
         tokenized.append(doc)
 
@@ -494,6 +497,12 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--resume", action="store_true", help="resume from last shard",
+    )
+    parser.add_argument(
+        "--tokenizer_log_interval",
+        type=float,
+        default=0.1,
+        help="minimum progress display update interval [default: 0.1] seconds",
     )
     parser.add_argument(
         "-l",

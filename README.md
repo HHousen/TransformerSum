@@ -110,7 +110,7 @@ from [arXiv.org](http://arxiv.org/) (113k) and PubMed (215k). The task is to gen
 |-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
 | Processor Repository | [HHousen/ArXiv-PubMed-Sum](https://github.com/HHousen/ArXiv-PubMed-Sum) ([Original Repo](https://github.com/armancohan/long-summarization)) |
 | Data Download Link | [PubMed](https://bit.ly/2VsKNvt) ([mirror](https://bit.ly/2VLPJuh)) and [ArXiv](https://bit.ly/2wWeVpp) ([mirror](https://bit.ly/2VPWnzs)) |
-| Processed Abstractive Dataset | Not available yet... |
+| Processed Abstractive Dataset | [Google Drive](https://drive.google.com/uc?id=1-RwjkZXLs5qgA0iqh86C3p_7mSfHEVmb) |
 | Extractive Version | Not available yet... |
 
 Processing Steps:
