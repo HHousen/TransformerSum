@@ -151,6 +151,20 @@ class ExtractiveSummarizer(pl.LightningModule):
             self.word_embedding_model = AutoModel.from_pretrained(
                 hparams.model_name_or_path, config=embedding_model_config
             )
+            if (
+                "roberta" in hparams.model_name_or_path
+                or "distil" in hparams.model_name_or_path
+            ) and not hparams.no_use_token_type_ids:
+                logger.warn(
+                    (
+                        "You are using a "
+                        + str(hparams.model_type)
+                        + " model but did not set "
+                        + "--no_use_token_type_ids. This model does not support `token_type_ids` so "
+                        + "this option has been automatically enabled."
+                    )
+                )
+                self.hparams.no_use_token_type_ids = True
 
         self.emd_model_frozen = False
         if hparams.num_frozen_steps > 0:

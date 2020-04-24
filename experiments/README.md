@@ -168,6 +168,8 @@ This is included because the batch size for albert-base-v2 had to be lowered to 
 
 #### Large Models
 
+**Important Note:** `roberta-large` does not accept token type ids. So set `--no_use_token_type_ids` while training using the above command.
+
 **Training Times:**
 
 | Model Key            | Time           |
