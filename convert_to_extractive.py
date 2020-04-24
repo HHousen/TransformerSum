@@ -5,6 +5,7 @@ import gzip
 import glob
 import logging
 import spacy
+from spacy.lang.en import English
 from argparse import ArgumentParser
 from functools import partial
 from multiprocessing import Pool
@@ -64,7 +65,12 @@ def convert_to_extractive_driver(args):
     # load spacy english small model with the "tagger" and "ner" disabled since
     # we only need the "tokenizer" and "parser"
     # more info: https://spacy.io/usage/processing-pipelines
-    nlp = spacy.load("en_core_web_sm", disable=["tagger", "ner"])
+    if args.sentencizer:
+        nlp = English()
+        sentencizer = nlp.create_pipe("sentencizer")
+        nlp.add_pipe(sentencizer)
+    else:
+        nlp = spacy.load("en_core_web_sm", disable=["tagger", "ner"])
 
     # for each split
     for name in tqdm(
@@ -159,7 +165,7 @@ def convert_to_extractive_process(
     logger.info("Processing " + name)
     t0 = time()
     for idx, preprocessed_data in enumerate(
-        pool.map(_example_processor, zip(source_docs_tokenized, target_docs_tokenized),)
+        map(_example_processor, zip(source_docs_tokenized, target_docs_tokenized),)
     ):
         if preprocessed_data is not None:
             # preprocessed_data is (source_doc, labels)
@@ -249,12 +255,13 @@ def tokenize(nlp, docs, n_process=5, batch_size=100, name="", tokenizer_log_inte
     logger.info("Splitting into sentences and tokens and converting to lists")
     t0 = time()
 
-    doc_sents = [list(doc.sents) for doc in tokenized]
+    doc_sents = (doc.sents for doc in tokenized)
+
     del tokenized
-    sents = [
-        list(list(token.text for token in sentence) for sentence in doc)
+    sents = (
+        [[token.text for token in sentence] for sentence in doc]
         for doc in doc_sents
-    ]
+    )
     del doc_sents
 
     logger.info("Done in " + str(time() - t0) + " seconds")
@@ -503,6 +510,11 @@ if __name__ == "__main__":
         type=float,
         default=0.1,
         help="minimum progress display update interval [default: 0.1] seconds",
+    )
+    parser.add_argument(
+        "--sentencizer",
+        action="store_true",
+        help="use a spacy sentencizer instead of a statistical model for sentence detection (much faster but less accurate); see https://spacy.io/api/sentencizer"
     )
     parser.add_argument(
         "-l",

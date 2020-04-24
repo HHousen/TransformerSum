@@ -3,24 +3,50 @@
 
 ## Pre-trained Models
 
-None yet. Please wait.
-
 ### CNN/DM
 
-| Name                            | Comments | Model Download | Data Download    |
-|---------------------------------|----------|----------------|------------------|
-| distilbert-base-uncased-ext-sum | None     | Not yet...     | [Bert Uncased]() |
-| distilroberta-base-ext-sum      | None     | Not yet...     | [Roberta]()      |
-| bert-base-uncased-ext-sum       | None     | Not yet...     | [Bert Uncased]() |
-| roberta-base-ext-sum            | None     | Not yet...     | [Roberta]()      |
-| albert-base-v2-ext-sum          | None     | Not yet...     | [Albert]()       |
-| bert-large-uncased-ext-sum      | None     | Not yet...     | [Bert Uncased]() |
-| roberta-large-ext-sum           | None     | Not yet...     | [Roberta]()      |
-| albert-xlarge-v2-ext-sum        | None     | Not yet...     | [Albert]()       |
+| Name | Comments | Model Download | Data Download |
+|---------------------------------|----------|----------------|-----------------------------------------------------------------------------------------|
+| distilbert-base-uncased-ext-sum | None | Not yet... | [CNN/DM Bert Uncased](https://drive.google.com/uc?id=1i1G7dEBsJ1ZIuty-wJrEGqbzdLvZCnV9) |
+| distilroberta-base-ext-sum | None | Not yet... | [CNN/DM Roberta](https://drive.google.com/uc?id=1g2bAAUuDvt3WZ3giSDaN7j4xew-RGfT3) |
+| bert-base-uncased-ext-sum | None | Not yet... | [CNN/DM Bert Uncased](https://drive.google.com/uc?id=1i1G7dEBsJ1ZIuty-wJrEGqbzdLvZCnV9) |
+| roberta-base-ext-sum | None | Not yet... | [CNN/DM Roberta](https://drive.google.com/uc?id=1g2bAAUuDvt3WZ3giSDaN7j4xew-RGfT3) |
+| albert-base-v2-ext-sum | None | Not yet... | [CNN/DM Albert](https://drive.google.com/uc?id=1MPWFtcauXtzEVPDXZTA7o0MWi47GuhFU) |
+| bert-large-uncased-ext-sum | None | Not yet... | [CNN/DM Bert Uncased](https://drive.google.com/uc?id=1i1G7dEBsJ1ZIuty-wJrEGqbzdLvZCnV9) |
+| roberta-large-ext-sum | None | Not yet... | [CNN/DM Roberta](https://drive.google.com/uc?id=1g2bAAUuDvt3WZ3giSDaN7j4xew-RGfT3) |
+| albert-xlarge-v2-ext-sum | None | Not yet... | [CNN/DM Albert](https://drive.google.com/uc?id=1MPWFtcauXtzEVPDXZTA7o0MWi47GuhFU) |
 
-#### ROUGE Scores
+#### CNN/DM ROUGE Scores
 
 Test set results on the CNN/DailyMail dataset using ROUGE F<sub>1</sub>.
+
+| Name                            | ROUGE-1    | ROUGE-2    | ROUGE-L    |
+|---------------------------------|------------|------------|------------|
+| distilbert-base-uncased-ext-sum | Not yet... | Not yet... | Not yet... |
+| distilroberta-base-ext-sum      | Not yet... | Not yet... | Not yet... |
+| bert-base-uncased-ext-sum       | Not yet... | Not yet... | Not yet... |
+| roberta-base-ext-sum            | Not yet... | Not yet... | Not yet... |
+| albert-base-v2-ext-sum          | Not yet... | Not yet... | Not yet... |
+| bert-large-uncased-ext-sum      | Not yet... | Not yet... | Not yet... |
+| roberta-large-ext-sum           | Not yet... | Not yet... | Not yet... |
+| albert-xlarge-v2-ext-sum        | Not yet... | Not yet... | Not yet... |
+
+### WikiHow
+
+| Name | Comments | Model Download | Data Download |
+|---------------------------------|----------|----------------|--------------------------|
+| distilbert-base-uncased-ext-sum | None | Not yet... | [WikiHow Bert Uncased]() |
+| distilroberta-base-ext-sum | None | Not yet... | [WikiHow Roberta]() |
+| bert-base-uncased-ext-sum | None | Not yet... | [WikiHow Bert Uncased]() |
+| roberta-base-ext-sum | None | Not yet... | [WikiHow Roberta]() |
+| albert-base-v2-ext-sum | None | Not yet... | [WikiHow Albert]() |
+| bert-large-uncased-ext-sum | None | Not yet... | [WikiHow Bert Uncased]() |
+| roberta-large-ext-sum | None | Not yet... | [WikiHow Roberta]() |
+| albert-xlarge-v2-ext-sum | None | Not yet... | [WikiHow Albert]() |
+
+#### WikiHow ROUGE Scores
+
+Test set results on the WikiHow dataset using ROUGE F<sub>1</sub>.
 
 | Name                            | ROUGE-1    | ROUGE-2    | ROUGE-L    |
 |---------------------------------|------------|------------|------------|
@@ -128,6 +154,8 @@ The `--add_target_to` argument will save the abstractive target text to the spli
 
 If your files are not `train`, `val`, and `test`, then the `--split_names` argument will let you specify the correct naming pattern. The `--source_ext` and `--target_ext` let you specify the file extension of the source and target files respectively. These must be different so the process can tell each section apart.
 
+**Speed: Running Slowly?** There is a `--sentencizer` option to detect sentence boundaries without parsing dependencies. Instead of loading a statistical model using `spacy`, this option will initialize the `English` [Language](https://spacy.io/api/language#init) object and add a `sentencizer` to the [pipeline](https://spacy.io/api/language#create_pipe). This is much faster than a [DependencyParser](https://spacy.io/api/dependencyparser) but is also less accurate since the `sentencizer` uses a simpler, rule-based strategy.
+
 ### Script Help
 
 Output of `python convert_to_extractive.py --help`:
@@ -143,6 +171,8 @@ usage: convert_to_extractive.py [-h] [--base_output_path BASE_OUTPUT_PATH]
                                 [--n_process N_PROCESS]
                                 [--batch_size BATCH_SIZE] [--compression]
                                 [--resume]
+                                [--tokenizer_log_interval TOKENIZER_LOG_INTERVAL]
+                                [--sentencizer]
                                 [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL}]
                                 DIR
 
@@ -176,6 +206,12 @@ optional arguments:
                         number of batches for tokenization
   --compression         use gzip compression when saving data
   --resume              resume from last shard
+  --tokenizer_log_interval TOKENIZER_LOG_INTERVAL
+                        minimum progress display update interval [default:
+                        0.1] seconds
+  --sentencizer         use a spacy sentencizer instead of a statistical model
+                        for sentence detection (much faster but less
+                        accurate); see https://spacy.io/api/sentencizer
   -l {DEBUG,INFO,WARNING,ERROR,CRITICAL}, --log {DEBUG,INFO,WARNING,ERROR,CRITICAL}
                         Set the logging level (default: 'Info').
 ```
