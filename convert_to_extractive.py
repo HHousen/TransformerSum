@@ -158,14 +158,18 @@ def convert_to_extractive_process(
     )
 
     # set a constant `oracle_mode`
-    _example_processor = partial(example_processor, oracle_mode=args.oracle_mode)
+    _example_processor = partial(
+        example_processor,
+        oracle_mode=args.oracle_mode,
+        no_preprocess=args.no_preprocess,
+    )
 
     dataset = []
     pool = Pool(args.n_process)
     logger.info("Processing " + name)
     t0 = time()
     for idx, preprocessed_data in enumerate(
-        map(_example_processor, zip(source_docs_tokenized, target_docs_tokenized),)
+        pool.map(_example_processor, zip(source_docs_tokenized, target_docs_tokenized),)
     ):
         if preprocessed_data is not None:
             # preprocessed_data is (source_doc, labels)
@@ -240,7 +244,9 @@ def save(json_to_save, output_path, compression=False):
             save.write(json.dumps(json_to_save))
 
 
-def tokenize(nlp, docs, n_process=5, batch_size=100, name="", tokenizer_log_interval=0.1):
+def tokenize(
+    nlp, docs, n_process=5, batch_size=100, name="", tokenizer_log_interval=0.1
+):
     """ Tokenize using spacy and split into sentences and tokens """
     tokenized = []
 
@@ -259,8 +265,7 @@ def tokenize(nlp, docs, n_process=5, batch_size=100, name="", tokenizer_log_inte
 
     del tokenized
     sents = (
-        [[token.text for token in sentence] for sentence in doc]
-        for doc in doc_sents
+        [[token.text for token in sentence] for sentence in doc] for doc in doc_sents
     )
     del doc_sents
 
@@ -269,7 +274,7 @@ def tokenize(nlp, docs, n_process=5, batch_size=100, name="", tokenizer_log_inte
     return sents
 
 
-def example_processor(args, oracle_mode="greedy"):
+def example_processor(args, oracle_mode="greedy", no_preprocess=False):
     """ Create `oracle_ids`, convert them to `labels` and run preprocess(). """
     source_doc, target_doc = args
     if oracle_mode == "greedy":
@@ -282,7 +287,10 @@ def example_processor(args, oracle_mode="greedy"):
     for l in oracle_ids:
         labels[l] = 1
 
-    preprocessed_data = preprocess(source_doc, labels)
+    if no_preprocess:
+        preprocessed_data = source_doc, labels
+    else:
+        preprocessed_data = preprocess(source_doc, labels)
     return preprocessed_data
 
 
@@ -514,7 +522,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--sentencizer",
         action="store_true",
-        help="use a spacy sentencizer instead of a statistical model for sentence detection (much faster but less accurate); see https://spacy.io/api/sentencizer"
+        help="use a spacy sentencizer instead of a statistical model for sentence detection (much faster but less accurate); see https://spacy.io/api/sentencizer",
+    )
+    parser.add_argument(
+        "--no_preprocess",
+        action="store_true",
+        help="do not run the preprocess function, which removes sentences that are too long/short and examples that have too few/many sentences ",
     )
     parser.add_argument(
         "-l",
