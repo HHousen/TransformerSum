@@ -115,6 +115,12 @@ The original processing code is available at [abisee/cnn-dailymail](https://gith
 
 **WikiHow** (Koupaee and Wang, 2018) is a large-scale dataset of instructions from the online WikiHow.com website. Each of 200k examples consists of multiple instruction-step paragraphs along with a summarizing sentence. The task is to generate the concatenated summary-sentences from the paragraphs.
 
+| Dataset Size           | 230,843 |
+|------------------------|---------|
+| Average Article Length | 579.8   |
+| Average Summary Length | 62.1    |
+| Vocabulary Size        | 556,461 |
+
 | Type | Link |
 |-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
 | Processor Repository | [HHousen/WikiHow-Dataset](https://github.com/HHousen/WikiHow-Dataset) ([Original Repo](https://github.com/mahnazkoupaee/WikiHow-Dataset)) |
@@ -132,6 +138,14 @@ Processing Steps:
 **ArXiv and PubMed** (Cohan et al., 2018) are two long document datasets of scientific publications
 from [arXiv.org](http://arxiv.org/) (113k) and PubMed (215k). The task is to generate the abstract from the paper body.
 
+| Datasets              | # docs | avg. doc. length (words) | avg. summary length (words) |
+|-----------------------|--------|--------------------------|-----------------------------|
+| CNN                   | 92K    | 656                      | 43                          |
+| Daily Mail            | 219K   | 693                      | 52                          |
+| NY Times              | 655K   | 530                      | 38                          |
+| PubMed (this dataset) | 133K   | 3016                     | 203                         |
+| arXiv (this dataset)  | 215K   | 4938                     | 220                         |
+
 | Type | Link |
 |-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
 | Processor Repository | [HHousen/ArXiv-PubMed-Sum](https://github.com/HHousen/ArXiv-PubMed-Sum) ([Original Repo](https://github.com/armancohan/long-summarization)) |
@@ -145,6 +159,17 @@ Processing Steps:
 2. Run the command `python process.py <arxiv_articles_dir> <pubmed_articles_dir>` (runtime: 5-10m), which will create a new directory called `arxiv-pubmed` containing the `train.source`, `train.target`, `val.source`, `val.target`, `test.source` and `test.target` files necessary for [convert_to_extractive.py](convert_to_extractive.py).
 
 See the [repository's README.md](datasets/arxiv-pubmed_processor/README.md) for more information.
+
+Note to convert this dataset to extractive it is recommended to use the `--sentencizer` and `--no_preprocess` options due to the size of the dataset. See the "Convert Abstractive to Extractive Dataset" section below. The full command should be similar to:
+
+```
+python convert_to_extractive.py ./datasets/arxiv-pubmed_processor/arxiv-pubmed \
+--n_process 6 \
+--shard_interval 5000 \
+--compression \
+--sentencizer \
+--no_preprocess
+```
 
 ## Convert Abstractive to Extractive Dataset
 
@@ -172,7 +197,7 @@ usage: convert_to_extractive.py [-h] [--base_output_path BASE_OUTPUT_PATH]
                                 [--batch_size BATCH_SIZE] [--compression]
                                 [--resume]
                                 [--tokenizer_log_interval TOKENIZER_LOG_INTERVAL]
-                                [--sentencizer]
+                                [--sentencizer] [--no_preprocess]
                                 [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL}]
                                 DIR
 
@@ -212,6 +237,9 @@ optional arguments:
   --sentencizer         use a spacy sentencizer instead of a statistical model
                         for sentence detection (much faster but less
                         accurate); see https://spacy.io/api/sentencizer
+  --no_preprocess       do not run the preprocess function, which removes
+                        sentences that are too long/short and examples that
+                        have too few/many sentences
   -l {DEBUG,INFO,WARNING,ERROR,CRITICAL}, --log {DEBUG,INFO,WARNING,ERROR,CRITICAL}
                         Set the logging level (default: 'Info').
 ```

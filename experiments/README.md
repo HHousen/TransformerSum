@@ -59,9 +59,18 @@ Tested Models:
 | Base       | `bert-base-uncased`, `roberta-base`, `albert-base-v2`     | 16         |
 | Large      | `bert-large-uncased`, `roberta-large`, `albert-xlarge-v2` | 4          |
 
-**Important Note:** The above batch sizes are true except for `albert` models, which have special batch sizes due to the increased memory needed to train them*. *`albert-base-v2` was trained with a batch size of `12` and `albert-xlarge-v2` with a batch size of `2`.*
+**Albert Info:** The above batch sizes are true except for `albert` models, which have special batch sizes due to the increased memory needed to train them*. *`albert-base-v2` was trained with a batch size of `12` and `albert-xlarge-v2` with a batch size of `2`.* 
 
-*The huggingface/transformers documentation says "ALBERT uses repeating layers which results in a small memory footprint." This may be true but I found that the normal batch sizes I used for the base and large models would crash the training script when `albert` models were used. Thus, the batch sizes were decreased.
+| Model          | Parameters | Layers | Hidden | Heads | Embedding | Parameter-sharing |
+|----------------|------------|--------|--------|-------|-----------|-------------------|
+| BERT-base      | 110M       | 12     | 768    | 12    | 768       | False             |
+| BERT-large     | 340M       | 24     | 1024   | 16    | 1024      | False             |
+| ALBERT-base    | 12M        | 12     | 768    | 12    | 128       | True              |
+| ALBERT-large   | 18M        | 24     | 1024   | 16    | 128       | True              |
+| ALBERT-xlarge  | 59M        | 24     | 2048   | 32    | 128       | True              |
+| ALBERT-xxlarge | 233M       | 12     | 4096   | 64    | 128       | True              |
+
+*The huggingface/transformers documentation says "ALBERT uses repeating layers which results in a small memory footprint." This may be true but I found that the normal batch sizes I used for the base and large models would crash the training script when `albert` models were used. Thus, the batch sizes were decreased. The advantage that of `albert` that I found was incredibly small model weight checkpoint files (see results below for sizes).
 
 All models were trained for 3 epochs (which will result in different numbers of steps but will ensure that each model saw the same amount of information), using the AdamW optimizer with a linear scheduler with 1800 steps of warmup. Gradients were accumulated every 2 batches and clipped at 1.0. **Only 60% of the data was used** (to decrease training time, but also will provide similar results if all the data was used). `--no_use_token_type_ids` was set if the model was not compatible with token type ids.
 
@@ -91,6 +100,8 @@ The CSV files the were used to generate the below graphs can be found in `experi
 
 All `ROUGE Scores` are test set results on the CNN/DailyMail dataset using ROUGE F<sub>1</sub>.
 
+All model sizes are not compressed. They are the raw `.ckpt` output file sizes of the best performing epoch by `val_loss`.
+
 #### Final (Combined) Results
 
 The `loss_total`, `loss_avg_seq_sum`, and `loss_total_norm_batch` loss reduction techniques depend on the batch size. That is, the larger the batch size, the larger these losses will be. The `loss_avg_seq_mean` and `loss_avg` do not depend on the batch size since they are averages instead of totals. Therefore, only the non-batch-size-dependent metrics were used for the final results because difference batch sizes were used.
@@ -101,12 +112,12 @@ More information about distil* models found in the [huggingface/transformers exa
 
 **Important Note:** Distil* models do not accept token type ids. So set `--no_use_token_type_ids` while training using the above command.
 
-**Training Times:**
+**Training Times and Model Sizes:**
 
-| Model Key                 | Time       |
-|---------------------------|------------|
-| `distilbert-base-uncased` | 4h 5m 30s  |
-| `distilroberta-base`      | 4h 12m 53s |
+| Model Key                 | Time       | Model Size |
+|---------------------------|------------|------------|
+| `distilbert-base-uncased` | 4h 5m 30s  | 810.6MB    |
+| `distilroberta-base`      | 4h 12m 53s | 995.0MB    |
 
 **ROUGE Scores:**
 
@@ -131,13 +142,13 @@ More information about distil* models found in the [huggingface/transformers exa
 
 **Important Note:** `roberta-base` does not accept token type ids. So set `--no_use_token_type_ids` while training using the above command.
 
-**Training Times:**
+**Training Times and Model Sizes:**
 
-| Model Key           | Time       |
-|---------------------|------------|
-| `bert-base-uncased` | 7h 56m 39s |
-| `roberta-base`      | 7h 52m 0s  |
-| `albert-base-v2`    | 7h 32m 19s |
+| Model Key           | Time       | Model Size |
+|---------------------|------------|------------|
+| `bert-base-uncased` | 7h 56m 39s | 1.3GB      |
+| `roberta-base`      | 7h 52m 0s  | 1.5GB      |
+| `albert-base-v2`    | 7h 32m 19s | 149.7MB    |
 
 **ROUGE Scores:**
 
@@ -170,20 +181,20 @@ This is included because the batch size for albert-base-v2 had to be lowered to 
 
 **Important Note:** `roberta-large` does not accept token type ids. So set `--no_use_token_type_ids` while training using the above command.
 
-**Training Times:**
+**Training Times and Model Sizes:**
 
-| Model Key            | Time           |
-|----------------------|----------------|
-| `bert-large-uncased` | Coming soon... |
-| `roberta-large`      | Coming soon... |
-| `albert-xlarge-v2`   | Coming soon... |
+| Model Key            | Time        | Model Size |
+|----------------------|-------------|------------|
+| `bert-large-uncased` | 17h 55m 18s | 4.0GB      |
+| `roberta-large`      | 18h 32m 28s | 4.3GB      |
+| `albert-xlarge-v2`   | 00h 00m 00s | 0.0GB      |
 
 **ROUGE Scores:**
 
 | Name               | ROUGE-1    | ROUGE-2    | ROUGE-L    |
 |--------------------|------------|------------|------------|
-| bert-large-uncased | Not yet... | Not yet... | Not yet... |
-| roberta-large      | Not yet... | Not yet... | Not yet... |
+| bert-large-uncased | 41.5       | 19.3       | 27.0       |
+| roberta-large      | 41.5       | 19.3       | 27.0       |
 | albert-xlarge-v2   | Not yet... | Not yet... | Not yet... |
 
 
