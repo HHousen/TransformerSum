@@ -72,7 +72,7 @@ Tested Models:
 
 *The huggingface/transformers documentation says "ALBERT uses repeating layers which results in a small memory footprint." This may be true but I found that the normal batch sizes I used for the base and large models would crash the training script when `albert` models were used. Thus, the batch sizes were decreased. The advantage that of `albert` that I found was incredibly small model weight checkpoint files (see results below for sizes).
 
-All models were trained for 3 epochs (which will result in different numbers of steps but will ensure that each model saw the same amount of information), using the AdamW optimizer with a linear scheduler with 1800 steps of warmup. Gradients were accumulated every 2 batches and clipped at 1.0. **Only 60% of the data was used** (to decrease training time, but also will provide similar results if all the data was used). `--no_use_token_type_ids` was set if the model was not compatible with token type ids.
+All models were trained for 3 epochs (except `albert-xlarge-v2`) (which will result in different numbers of steps but will ensure that each model saw the same amount of information), using the AdamW optimizer with a linear scheduler with 1800 steps of warmup. Gradients were accumulated every 2 batches and clipped at 1.0. **Only 60% of the data was used** (to decrease training time, but also will provide similar results if all the data was used). `--no_use_token_type_ids` was set if the model was not compatible with token type ids.
 
 Full command used to run the tests:
 
@@ -172,7 +172,7 @@ More information about distil* models found in the [huggingface/transformers exa
 
 **Relative Time:**
 
-This is included because the batch size for albert-base-v2 had to be lowered to 12 (from 16).
+This is included because the batch size for `albert-base-v2` had to be lowered to 12 (from 16).
 
 <img src="word_embedding_models/base_loss_avg_seq_mean_reltime.png" width="450" />
 
@@ -181,13 +181,15 @@ This is included because the batch size for albert-base-v2 had to be lowered to 
 
 **Important Note:** `roberta-large` does not accept token type ids. So set `--no_use_token_type_ids` while training using the above command.
 
+**More Important Note:** `albert-xlarge-v2` was set to be trained with for 2 epochs instead of 3, but was stopped early at `global_step` 56394.
+
 **Training Times and Model Sizes:**
 
 | Model Key            | Time        | Model Size |
 |----------------------|-------------|------------|
 | `bert-large-uncased` | 17h 55m 18s | 4.0GB      |
 | `roberta-large`      | 18h 32m 28s | 4.3GB      |
-| `albert-xlarge-v2`   | 00h 00m 00s | 0.0GB      |
+| `albert-xlarge-v2`   | 21h 15m 54s | 708.9MB    |
 
 **ROUGE Scores:**
 
@@ -197,6 +199,23 @@ This is included because the batch size for albert-base-v2 had to be lowered to 
 | roberta-large      | 41.5       | 19.3       | 27.0       |
 | albert-xlarge-v2   | Not yet... | Not yet... | Not yet... |
 
+**Outliers Included:**
+
+<img src="word_embedding_models/large_loss_avg_seq_mean_outliers.png" width="450" /> <img src="word_embedding_models/large_loss_total_outliers.png" width="450" />
+
+**No Outliers:**
+
+<img src="word_embedding_models/large_loss_avg_seq_sum.png" width="450" /> <img src="word_embedding_models/large_loss_avg_seq_sum.png" width="450" />
+
+<img src="word_embedding_models/large_loss_total_norm_batch.png" width="450" /> <img src="word_embedding_models/large_loss_total_norm_batch.png" width="450" />
+
+<img src="word_embedding_models/large_loss_total.png" width="450" /> <img src="word_embedding_models/large_loss_avg_seq_mean_val_only.png" width="450" />
+
+**Relative Time:**
+
+This is included because the batch size for `albert-large-v2` had to be lowered to 2 (from 4).
+
+<img src="word_embedding_models/large_loss_avg_seq_mean_reltime.png" width="450" />
 
 ## Pooling Mode
 

@@ -1,5 +1,6 @@
 import os
 import re
+import gc
 import json
 import gzip
 import glob
@@ -140,6 +141,7 @@ def convert_to_extractive_process(
     """
     # tokenize the source and target documents
     # each step runs in parallel on `args.n_process` threads with batch size `args.batch_size`
+
     source_docs_tokenized = tokenize(
         nlp,
         source_docs,
@@ -148,6 +150,7 @@ def convert_to_extractive_process(
         name=(" " + name + "-" + args.source_ext),
         tokenizer_log_interval=args.tokenizer_log_interval,
     )
+    del source_docs
     target_docs_tokenized = tokenize(
         nlp,
         target_docs,
@@ -156,7 +159,6 @@ def convert_to_extractive_process(
         name=(" " + name + "-" + args.target_ext),
         tokenizer_log_interval=args.tokenizer_log_interval,
     )
-
     # set a constant `oracle_mode`
     _example_processor = partial(
         example_processor,
@@ -180,6 +182,11 @@ def convert_to_extractive_process(
 
     pool.close()
     pool.join()
+    del source_docs_tokenized
+    del target_docs
+    del target_docs_tokenized
+    gc.collect()
+
     logger.info("Done in " + str(time() - t0) + " seconds")
 
     if args.shard_interval:
@@ -189,6 +196,9 @@ def convert_to_extractive_process(
     else:
         split_output_path = os.path.join(args.base_output_path, (name + ".json"))
     save(dataset, split_output_path, compression=args.compression)
+
+    del dataset
+    gc.collect()
 
 
 def resume(output_path, split, chunk_size):
@@ -264,6 +274,7 @@ def tokenize(
     doc_sents = (doc.sents for doc in tokenized)
 
     del tokenized
+    del docs
     sents = (
         [[token.text for token in sentence] for sentence in doc] for doc in doc_sents
     )
@@ -281,16 +292,16 @@ def example_processor(args, oracle_mode="greedy", no_preprocess=False):
         oracle_ids = greedy_selection(source_doc, target_doc, 3)
     elif oracle_mode == "combination":
         oracle_ids = combination_selection(source_doc, target_doc, 3)
-
+    del target_doc
     # `oracle_ids` to labels
     labels = [0] * len(source_doc)
     for l in oracle_ids:
         labels[l] = 1
-
     if no_preprocess:
         preprocessed_data = source_doc, labels
     else:
         preprocessed_data = preprocess(source_doc, labels)
+
     return preprocessed_data
 
 
