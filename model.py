@@ -20,7 +20,7 @@ from torch import nn
 from torch.utils.data import DataLoader, RandomSampler, TensorDataset
 from pooling import Pooling
 from data import SentencesProcessor, FSIterableDataset, pad_batch_collate
-from convert_to_extractive import greedy_selection, combination_selection
+from classifier import LinearClassifier, TransformerEncoderClassifier
 
 logger = logging.getLogger(__name__)
 
@@ -32,13 +32,6 @@ except ImportError:
     NO_LINEAR_SCHEDULE = True
     logger.warn(
         "Could not import `get_linear_schedule_with_warmup` from `transformers`. The linear scheduler is not available."
-    )
-
-try:
-    from transformers.activations import get_activation
-except ImportError:
-    logger.warn(
-        "Could not import `get_activation` from `transformers.activations`. Only GELU will be available for use in the classifier."
     )
 
 from transformers import (
@@ -74,55 +67,6 @@ except ImportError:
         )
         + CUSTOM_MODEL_CLASSES
     )
-
-
-class Classifier(nn.Module):
-    def __init__(
-        self,
-        web_hidden_size,
-        linear_hidden=1536,
-        first_dropout=0.1,
-        last_dropout=0.1,
-        activation_string="gelu",
-    ):
-        """nn.Module to classify sentences by reducing the hidden dimension to 1
-        
-        Arguments:
-            web_hidden_size {int} -- The output hidden size from the word embedding model. Used as
-                                     the input to the first linear layer in this nn.Module.
-        
-        Keyword Arguments:
-            linear_hidden {int} -- The number of hidden parameters for this Classifier. (default: {1536})
-            first_dropout {float} -- The value for dropout applied before any other layers. (default: {0.1})
-            last_dropout {float} -- The dropout after the last linear layer. (default: {0.1})
-            activation_string {str} -- A string representing an activation function in `get_activation()` (default: {"gelu"})
-        """
-        super(Classifier, self).__init__()
-        self.dropout1 = nn.Dropout(first_dropout) if first_dropout else nn.Identity()
-        self.dropout2 = nn.Dropout(last_dropout) if last_dropout else nn.Identity()
-        self.linear1 = nn.Linear(web_hidden_size, linear_hidden)
-        self.linear2 = nn.Linear(linear_hidden, 1)
-        self.sigmoid = nn.Sigmoid()
-
-        # support older versions of huggingface/transformers
-        if activation_string == "gelu":
-            self.activation = torch.nn.GELU()
-        else:
-            self.activation = (
-                get_activation(activation_string)
-                if activation_string
-                else nn.Identity()
-            )
-
-    def forward(self, x):
-        x = self.dropout1(x)
-        x = self.linear1(x)
-        x = self.activation(x)
-        x = self.linear2(x)
-        x = self.dropout2(x)
-        x = self.sigmoid(x)
-        sent_scores = x.squeeze(-1)
-        return sent_scores
 
 
 class ExtractiveSummarizer(pl.LightningModule):
@@ -176,11 +120,23 @@ class ExtractiveSummarizer(pl.LightningModule):
         else:
             self.pooling_model = Pooling(sent_rep_tokens=False, mean_tokens=True)
 
-        self.encoder = Classifier(
-            self.word_embedding_model.config.hidden_size,
-            first_dropout=hparams.classifier_dropout,
-            last_dropout=hparams.classifier_dropout,
-        )
+        if hparams.classifier == "linear":
+            self.encoder = LinearClassifier(
+                self.word_embedding_model.config.hidden_size,
+                first_dropout=hparams.classifier_dropout,
+                last_dropout=hparams.classifier_dropout,
+            )
+        elif hparams.classifier == "transformer":
+            self.encoder = TransformerEncoderClassifier(
+                self.word_embedding_model.config.hidden_size,
+                dropout=hparams.classifier_dropout,
+            )
+        else:
+            logger.error(
+                str(hparams.classifier)
+                + " is not a valid value for `--classifier`. Exiting..."
+            )
+            sys.exit(1)
 
         # BCELoss: https://pytorch.org/docs/stable/nn.html#bceloss
         # `reduction` is "none" so the mean can be computed with padding ignored.
@@ -232,8 +188,8 @@ class ExtractiveSummarizer(pl.LightningModule):
             sent_lengths_mask=sent_lengths_mask,
         )
 
-        sent_scores = self.encoder(sents_vec) * mask.float()
-        return sent_scores
+        sent_scores = self.encoder(sents_vec, mask)
+        return sent_scores, mask
 
     def unfreeze_web_model(self):
         """ Un-freezes the `word_embedding_model` """
@@ -660,7 +616,7 @@ class ExtractiveSummarizer(pl.LightningModule):
                 self.unfreeze_web_model()
 
         # Compute model forward
-        outputs = self.forward(**batch)
+        outputs, mask = self.forward(**batch)
 
         # Compute loss
         (
@@ -669,7 +625,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             loss_avg_seq_sum,
             loss_avg_seq_mean,
             loss_avg,
-        ) = self.compute_loss(outputs, labels, batch["sent_rep_mask"])
+        ) = self.compute_loss(outputs, labels, mask)
 
         # Generate logs
         tqdm_dict = {
@@ -696,7 +652,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         del batch["labels"]
 
         # Compute model forward
-        outputs = self.forward(**batch)
+        outputs, mask = self.forward(**batch)
 
         # Compute loss
         (
@@ -705,7 +661,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             loss_avg_seq_sum,
             loss_avg_seq_mean,
             loss_avg,
-        ) = self.compute_loss(outputs, labels, batch["sent_rep_mask"])
+        ) = self.compute_loss(outputs, labels, mask)
 
         # Compute accuracy metrics
         y_hat = outputs
@@ -781,7 +737,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         del batch["target"]
 
         # Compute model forward
-        outputs = self.forward(**batch)
+        outputs, _ = self.forward(**batch)
 
         # Compute accuracy metrics
         y_hat = outputs.clone().detach()
@@ -1018,6 +974,13 @@ class ExtractiveSummarizer(pl.LightningModule):
             "--no_use_token_type_ids",
             action="store_true",
             help="Set to not train with `token_type_ids` (don't pass them into the model).",
+        )
+        parser.add_argument(
+            "--classifier",
+            type=str,
+            choices=["linear", "transformer"],
+            default="linear",
+            help="Which classifier/encoder to use to reduce the hidden dimension of the sentence vectors.",
         )
         parser.add_argument(
             "--classifier_dropout",
