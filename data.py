@@ -106,12 +106,12 @@ def pad_batch_collate(batch, modifier=None):
             # Attention
             # The mask has 1 for real tokens and 0 for padding tokens. Only real
             # tokens are attended to.
-            attention_mask = [[0] * len(ids) for ids in input_ids]
+            attention_mask = [[1] * len(ids) for ids in input_ids]
 
             input_ids_width = max(len(ids) for ids in input_ids)
             input_ids = pad(input_ids, 0, width=input_ids_width)
             input_ids = torch.tensor(input_ids)
-            attention_mask = pad(attention_mask, -1)
+            attention_mask = pad(attention_mask, 0)
             attention_mask = torch.tensor(attention_mask)
 
             if "sent_lengths" in elem:
