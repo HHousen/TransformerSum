@@ -1,5 +1,14 @@
 # Experiments
 
+Interactive charts, graphs, raw data, run commands, hyperparameter choices, and more for all experiments are publicly available on the [TransformerExtSum Weights & Biases page](https://app.wandb.ai/hhousen/transformerextsum).
+
+**Reproducibility Notes:**
+
+If you are unable to reproduce the results for the experiments below by following the instructions for each experiment, then please open an [issue](https://github.com/HHousen/TransformerExtSum/issues/new). The following is a list of things to double check if you cannot reproduce the results:
+
+* If you are using `--overfit_pct`, then `overfit_pct` percent of the testing data is being used as well as `overfit_pct` percent of the training data. Due to the way `pytorch_lightning` was written, it is necessary to use the same `batch_size` when using `overfit_pct` in order to get the exact same results. I currently am not sure why this is the case but removing `overfit_pct` and using different `batch_size`s produces identical results. Open an [issue](https://github.com/HHousen/TransformerExtSum/issues/new) or submit a pull request if you know why.
+* Have another note that should be stated here? Open an [issue](https://github.com/HHousen/TransformerExtSum/issues/new). All contributions are very helpful.
+
 ## Loss Functions
 
 The loss function implementation can be found in [model.py](model.py) with signature `compute_loss(self, outputs, labels, mask)`. The function uses `nn.BCELoss` with `reduction="none"` and then applies 5 different reduction techniques. Special reduction methods were needed to ignore padding and operate on the multi-class-per-document approach (each input is assigned more than one of the same class) that this research uses to perform extractive summarization. See the comments throughout the function for more information. The five different reduction methods were tested with the `distilbert-base-uncased` word embedding model and the `pooling_mode` set to `sent_rep_tokens`. Training time is just under 4 hours on a Tesla P100 (3h52m average).
@@ -77,7 +86,7 @@ All models were trained for 3 epochs (except `albert-xlarge-v2`) (which will res
 Full command used to run the tests:
 
 ```
-!python main.py \
+python main.py \
 --model_name_or_path [Model Name] \
 --model_type [Model Type] \
 --pooling_mode sent_rep_tokens \
@@ -123,7 +132,7 @@ More information about distil* models found in the [huggingface/transformers exa
 
 | Name                    | ROUGE-1    | ROUGE-2    | ROUGE-L    |
 |-------------------------|------------|------------|------------|
-| distilbert-base-uncased | Not yet... | Not yet... | Not yet... |
+| distilbert-base-uncased | 40.1       | 18.1       | 26.0       |
 | distilroberta-base      | 40.9       | 18.7       | 26.4       |
 
 **Outliers Included:**
@@ -181,7 +190,7 @@ This is included because the batch size for `albert-base-v2` had to be lowered t
 
 **Important Note:** `roberta-large` does not accept token type ids. So set `--no_use_token_type_ids` while training using the above command.
 
-**More Important Note:** `albert-xlarge-v2` was set to be trained with for 2 epochs instead of 3, but was stopped early at `global_step` 56394.
+**More Important Note:** `albert-xlarge-v2` (batch size 2) was set to be trained with for 2 epochs instead of 3, but was stopped early at `global_step` 56394.
 
 **Training Times and Model Sizes:**
 
@@ -197,7 +206,7 @@ This is included because the batch size for `albert-base-v2` had to be lowered t
 |--------------------|------------|------------|------------|
 | bert-large-uncased | 41.5       | 19.3       | 27.0       |
 | roberta-large      | 41.5       | 19.3       | 27.0       |
-| albert-xlarge-v2   | Not yet... | Not yet... | Not yet... |
+| albert-xlarge-v2   | 40.8       | 18.3       | 26.1       |
 
 **Outliers Included:**
 
@@ -223,6 +232,50 @@ See [the main README.md](../README.md) for more information on what the pooling 
 
 The two options, `sent_rep_tokens` and `mean_tokens`, were both tested with the `bert-base-uncased` and `distilbert-base-uncased` word embedding models.
 
+Full command used to run the tests:
+
+```
+python main.py \
+--model_name_or_path [Model Name] \
+--model_type [Model Type] \
+--pooling_mode [`mean_tokens` or `sent_rep_tokens`] \
+--data_path ./cnn_dm_pt/[Model Type]-base \
+--max_epochs 3 \
+--accumulate_grad_batches 2 \
+--warmup_steps 1800 \
+--overfit_pct 0.6 \
+--gradient_clip_val 1.0 \
+--optimizer_type adamw \
+--use_scheduler linear \
+--profiler \
+--do_train --do_test \
+--val_batch_size 16 --train_batch_size 16 --test_batch_size 16
+```
+
 ### Pooling Mode Results
 
-Coming soon...
+**Training Times and Model Sizes:**
+
+| Model Key                                 | Time       | Model Size |
+|-------------------------------------------|------------|------------|
+| `distilbert-base-uncased` mean_tokens     | 5h 18m 1s  | 810.6MB    |
+| `distilbert-base-uncased` sent_rep_tokens | 4h 5m 30s  | 810.6MB    |
+| `bert-base-uncased` mean_tokens           |            |            |
+| `bert-base-uncased` sent_rep_tokens       | 7h 56m 39s | 1.3GB      |
+
+**ROUGE Scores:**
+
+| Name                                    | ROUGE-1 | ROUGE-2 | ROUGE-L |
+|-----------------------------------------|---------|---------|---------|
+| distilbert-base-uncased mean_tokens     | 41.1    | 18.8    | 26.5    |
+| distilbert-base-uncased sent_rep_tokens | 40.1    | 18.1    | 26.0    |
+| bert-base-uncased mean_tokens           |         |         |         |
+| bert-base-uncased sent_rep_tokens       | 40.2    | 18.2    | 26.1    |
+
+## Classifier/Encoder
+
+The classifier/encoder is responsible for removing the hidden features from each sentence embedding and converting them to a single number. The `linear` and `transformer` options were tested with a the `distilbert-base-uncased` model and an `--overfit_pct` of 0.6.
+
+### Classifier/Encoder Results
+
+Not yet...

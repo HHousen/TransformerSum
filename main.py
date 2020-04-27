@@ -44,7 +44,7 @@ def main(args):
         model = ExtractiveSummarizer(hparams=args)
 
     if args.use_logger == "wandb":
-        wandb_logger = WandbLogger(project="transformerextsum", log_model=True)
+        wandb_logger = WandbLogger(project="transformerextsum-private", log_model=True)
         args.logger = wandb_logger
         models_path = os.path.join(wandb_logger.experiment.dir, "models/")
     else:
