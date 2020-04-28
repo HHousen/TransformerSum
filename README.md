@@ -179,6 +179,8 @@ The `--add_target_to` argument will save the abstractive target text to the spli
 
 If your files are not `train`, `val`, and `test`, then the `--split_names` argument will let you specify the correct naming pattern. The `--source_ext` and `--target_ext` let you specify the file extension of the source and target files respectively. These must be different so the process can tell each section apart.
 
+**Large Dataset? Need to Resume?:** The `--resume` option will read the output directory and determine on which document the script left off based on the shard_file names. If `--shard_interval` was `None` then resuming is not possible. Resuming is guaranteed to produce the same output as if `--resume` was not used because of `check_resume_success()`, which checks to make sure the last line in the shard file is the same as the line directly before the line to resume with.
+
 **Speed: Running Slowly?** There is a `--sentencizer` option to detect sentence boundaries without parsing dependencies. Instead of loading a statistical model using `spacy`, this option will initialize the `English` [Language](https://spacy.io/api/language#init) object and add a `sentencizer` to the [pipeline](https://spacy.io/api/language#create_pipe). This is much faster than a [DependencyParser](https://spacy.io/api/dependencyparser) but is also less accurate since the `sentencizer` uses a simpler, rule-based strategy.
 
 ### Script Help

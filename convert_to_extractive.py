@@ -12,6 +12,7 @@ from functools import partial
 from multiprocessing import Pool
 from tqdm import tqdm
 from time import time
+from helpers import load_json
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ def read_in_chunks(file_object, chunk_size=5000):
             # This means each yielded chunk will be the same size instead of the first
             # one being 5000 then every one after being 5001, for example.
             current_line_num += 1
-        lines.append(line)
+        lines.append(line.strip())
         current_line_num += 1
 
 
@@ -103,9 +104,26 @@ def convert_to_extractive_driver(args):
 
                     # if lines have been read and shards have been written to disk
                     if num_lines_read:
-                        logger.info("Resuming to line " + str(num_lines_read))
+                        logger.info("Resuming to line " + str(num_lines_read - 1))
                         # seek both the source and target to the next line
-                        seek_files([source_file, target_file], num_lines_read)
+                        seek_files([source_file, target_file], num_lines_read - 1)
+
+                        # checks to make sure the last documents match
+                        # this moves the file pointer in source_file forward 1...
+                        resume_success = check_resume_success(
+                            nlp,
+                            source_file,
+                            last_shard,
+                            args.base_output_path,
+                            name,
+                            args.compression,
+                        )
+                        # ...so move the target_file pointed forward 1 as well
+                        target_file.readline()
+
+                        if not resume_success:
+                            logger.error("Exiting...")
+                            sys.exit(-1)
 
                         # subtract the number of shards already created
                         tot_num_interations -= int(last_shard)
@@ -203,7 +221,7 @@ def convert_to_extractive_process(
 
 def resume(output_path, split, chunk_size):
     """ Find the last shard created and return the total number of lines read and last shard number. """
-    glob_str = os.path.join(output_path, (split + ".*.json"))
+    glob_str = os.path.join(output_path, (split + ".*.json*"))
     all_json_in_split = glob.glob(glob_str)
 
     if not all_json_in_split:  # if no files found
@@ -221,6 +239,52 @@ def resume(output_path, split, chunk_size):
     # `num_lines_read` is the number of lines read if line indexing started at 1
     # therefore, this number is the number of the next line wanted
     return num_lines_read, last_shard
+
+
+def check_resume_success(nlp, source_file, last_shard, output_path, split, compression):
+    logger.info("Checking if resume was successful...")
+    chunk_file_path_str = split + "." + str(last_shard - 1) + ".json"
+    if compression:
+        chunk_file_path_str += ".gz"
+    chunk_file_path = os.path.join(output_path, chunk_file_path_str)
+
+    line_source = source_file.readline().strip()
+
+    line_source_tokenized = next(tokenize(nlp, [line_source]))
+
+    try:
+        chunk_json = load_json(chunk_file_path)
+    except FileNotFoundError:
+        logger.error(
+            "The file at path "
+            + str(chunk_file_path)
+            + " was not found. Make sure `--compression` is set correctly."
+        )
+    last_item_chunk = chunk_json[-1]
+    line_chunk = last_item_chunk["src"]
+
+    # remove the last item if it is a newline
+    if line_chunk[-1] == ["\n"]:
+        line_chunk.pop()
+
+    if line_chunk == line_source_tokenized:
+        logger.info("Resume Successful!")
+        logger.debug("`source_file` moved forward one line")
+    else:
+        logger.info("Resume NOT Successful")
+        logger.info("Last Chunk Line: " + str(line_chunk))
+        logger.info(
+            "Previous (to resume line) Source Line: " + str(line_source_tokenized)
+        )
+        logger.info(
+            ("Common causes of this issue:\n" +
+            "1. You changed the `--shard_interval`. You used a different interval previously than you used in the command to resume.\n" +
+            "2. The abstractive (`.source` and `.target`) or extractive (`.json`) dataset files were modified or removed. The last `.json` file needs to be in the same folder it was originally outputted to so the last shard index and be determined and the last line can be read.\n" +
+            "3. It is entirely possible that there is a bug in this script. If you have checked that the above were not the cause and that there were no issues pertaining to your dataset then open an issue at https://github.com/HHousen/TransformerExtSum/issues/new.")
+        )
+        return False
+
+    return True
 
 
 def seek_files(files, line_num):
