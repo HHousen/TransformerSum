@@ -150,7 +150,7 @@ from [arXiv.org](http://arxiv.org/) (113k) and PubMed (215k). The task is to gen
 |-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
 | Processor Repository | [HHousen/ArXiv-PubMed-Sum](https://github.com/HHousen/ArXiv-PubMed-Sum) ([Original Repo](https://github.com/armancohan/long-summarization)) |
 | Data Download Link | [PubMed](https://bit.ly/2VsKNvt) ([mirror](https://bit.ly/2VLPJuh)) and [ArXiv](https://bit.ly/2wWeVpp) ([mirror](https://bit.ly/2VPWnzs)) |
-| Processed Abstractive Dataset | [Google Drive](https://drive.google.com/uc?id=1-RwjkZXLs5qgA0iqh86C3p_7mSfHEVmb) |
+| Processed Abstractive Dataset | [Google Drive](https://drive.google.com/uc?id=1-Nzgu95FMN7DPyinnLjay_BKM1PSPCfs) |
 | Extractive Version | Not available yet... |
 
 Processing Steps:
@@ -164,9 +164,7 @@ Note to convert this dataset to extractive it is recommended to use the `--sente
 
 ```
 python convert_to_extractive.py ./datasets/arxiv-pubmed_processor/arxiv-pubmed \
---n_process 6 \
 --shard_interval 5000 \
---compression \
 --sentencizer \
 --no_preprocess
 ```
@@ -320,8 +318,12 @@ usage: main.py [-h] [--default_save_path DEFAULT_SAVE_PATH]
                [--accumulate_grad_batches ACCUMULATE_GRAD_BATCHES]
                [--check_val_every_n_epoch CHECK_VAL_EVERY_N_EPOCH]
                [--gpus GPUS] [--gradient_clip_val GRADIENT_CLIP_VAL]
-               [--overfit_pct OVERFIT_PCT] [--amp_level AMP_LEVEL]
-               [--precision PRECISION] [--seed SEED] [--profiler]
+               [--overfit_pct OVERFIT_PCT]
+               [--train_percent_check TRAIN_PERCENT_CHECK]
+               [--val_percent_check VAL_PERCENT_CHECK]
+               [--test_percent_check TEST_PERCENT_CHECK]
+               [--amp_level AMP_LEVEL] [--precision PRECISION] [--seed SEED]
+               [--profiler]
                [--progress_bar_refresh_rate PROGRESS_BAR_REFRESH_RATE]
                [--num_sanity_val_steps NUM_SANITY_VAL_STEPS]
                [--use_logger {tensorboard,wandb}] [--do_train] [--do_test]
@@ -346,6 +348,7 @@ usage: main.py [-h] [--default_save_path DEFAULT_SAVE_PATH]
                [--processor_no_bert_compatible_cls] [--only_preprocess]
                [--create_token_type_ids {binary,sequential}]
                [--no_use_token_type_ids]
+               [--classifier {linear,transformer,transformer_linear}]
                [--classifier_dropout CLASSIFIER_DROPOUT]
                [--train_name TRAIN_NAME] [--val_name VAL_NAME]
                [--test_name TEST_NAME] [--test_id_method {greater_k,top_k}]
@@ -381,6 +384,16 @@ optional arguments:
                         Uses this much data of all datasets (training,
                         validation, test). Useful for quickly debugging or
                         trying to overfit on purpose.
+  --train_percent_check TRAIN_PERCENT_CHECK
+                        How much of training dataset to check. Useful when
+                        debugging or testing something that happens at the end
+                        of an epoch.
+  --val_percent_check VAL_PERCENT_CHECK
+                        How much of validation dataset to check. Useful when
+                        debugging or testing something that happens at the end
+                        of an epoch.
+  --test_percent_check TEST_PERCENT_CHECK
+                        How much of test dataset to check.
   --amp_level AMP_LEVEL
                         The optimization level to use (O1, O2, etc…) for
                         16-bit GPU precision (using NVIDIA apex under the
@@ -476,12 +489,13 @@ optional arguments:
                         google/electra-base-generator, google/electra-large-
                         generator, google/electra-small-discriminator,
                         google/electra-base-discriminator, google/electra-
-                        large-discriminator
+                        large-discriminator, longformer-base-4096, longformer-
+                        large-4096
   --model_type MODEL_TYPE
                         Model type selected in the list: t5, distilbert,
                         albert, camembert, xlm-roberta, bart, roberta, bert,
                         openai-gpt, gpt2, transfo-xl, xlnet, flaubert, xlm,
-                        ctrl, electra
+                        ctrl, electra, longformer
   --tokenizer_name TOKENIZER_NAME
   --tokenizer_lowercase
   --max_seq_length MAX_SEQ_LENGTH
@@ -537,6 +551,19 @@ optional arguments:
   --no_use_token_type_ids
                         Set to not train with `token_type_ids` (don't pass
                         them into the model).
+  --classifier {linear,transformer,transformer_linear}
+                        Which classifier/encoder to use to reduce the hidden
+                        dimension of the sentence vectors. `linear` - a
+                        `LinearClassifier` with two linear layers, dropout,
+                        and an activation function. `transformer` - a
+                        `TransformerEncoderClassifier` which runs the sentence
+                        vectors through some `nn.TransformerEncoderLayer`s and
+                        then a simple `nn.Linear` layer. `transformer_linear`
+                        - a `TransformerEncoderClassifier` with a
+                        `LinearClassifier` as the `reduction` parameter, which
+                        results in the same thing as the `transformer` option
+                        but with a `LinearClassifier` instead of a `nn.Linear`
+                        layer.
   --classifier_dropout CLASSIFIER_DROPOUT
                         The value for the dropout layers in the classifier.
   --train_name TRAIN_NAME
