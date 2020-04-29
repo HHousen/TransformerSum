@@ -141,9 +141,9 @@ More information about distil* models found in the [huggingface/transformers exa
 
 **No Outliers:**
 
-<img src="word_embedding_models/distil_loss_avg_seq_sum.png" width="450" /> <img src="word_embedding_models/distil_loss_avg_seq_sum.png" width="450" />
+<img src="word_embedding_models/distil_loss_avg_seq_mean.png" width="450" /> <img src="word_embedding_models/distil_loss_avg_seq_sum.png" width="450" />
 
-<img src="word_embedding_models/distil_loss_total_norm_batch.png" width="450" /> <img src="word_embedding_models/distil_loss_total_norm_batch.png" width="450" />
+<img src="word_embedding_models/distil_loss_total_norm_batch.png" width="450" /> <img src="word_embedding_models/distil_loss_avg.png" width="450" />
 
 <img src="word_embedding_models/distil_loss_total.png" width="450" /> <img src="word_embedding_models/distil_loss_avg_seq_mean_val_only.png" width="450" />
 
@@ -173,9 +173,9 @@ More information about distil* models found in the [huggingface/transformers exa
 
 **No Outliers:**
 
-<img src="word_embedding_models/base_loss_avg_seq_sum.png" width="450" /> <img src="word_embedding_models/base_loss_avg_seq_sum.png" width="450" />
+<img src="word_embedding_models/base_loss_avg_seq_mean.png" width="450" /> <img src="word_embedding_models/base_loss_avg_seq_sum.png" width="450" />
 
-<img src="word_embedding_models/base_loss_total_norm_batch.png" width="450" /> <img src="word_embedding_models/base_loss_total_norm_batch.png" width="450" />
+<img src="word_embedding_models/base_loss_total_norm_batch.png" width="450" /> <img src="word_embedding_models/base_loss_avg.png" width="450" />
 
 <img src="word_embedding_models/base_loss_total.png" width="450" /> <img src="word_embedding_models/base_loss_avg_seq_mean_val_only.png" width="450" />
 
@@ -206,7 +206,7 @@ This is included because the batch size for `albert-base-v2` had to be lowered t
 |--------------------|------------|------------|------------|
 | bert-large-uncased | 41.5       | 19.3       | 27.0       |
 | roberta-large      | 41.5       | 19.3       | 27.0       |
-| albert-xlarge-v2   | 40.8       | 18.3       | 26.1       |
+| albert-xlarge-v2   | 40.7       | 18.4       | 26.1       |
 
 **Outliers Included:**
 
@@ -214,9 +214,9 @@ This is included because the batch size for `albert-base-v2` had to be lowered t
 
 **No Outliers:**
 
-<img src="word_embedding_models/large_loss_avg_seq_sum.png" width="450" /> <img src="word_embedding_models/large_loss_avg_seq_sum.png" width="450" />
+<img src="word_embedding_models/large_loss_avg_seq_mean.png" width="450" /> <img src="word_embedding_models/large_loss_avg_seq_sum.png" width="450" />
 
-<img src="word_embedding_models/large_loss_total_norm_batch.png" width="450" /> <img src="word_embedding_models/large_loss_total_norm_batch.png" width="450" />
+<img src="word_embedding_models/large_loss_total_norm_batch.png" width="450" /> <img src="word_embedding_models/large_loss_avg.png" width="450" />
 
 <img src="word_embedding_models/large_loss_total.png" width="450" /> <img src="word_embedding_models/large_loss_avg_seq_mean_val_only.png" width="450" />
 
@@ -260,7 +260,7 @@ python main.py \
 |-------------------------------------------|------------|------------|
 | `distilbert-base-uncased` mean_tokens     | 5h 18m 1s  | 810.6MB    |
 | `distilbert-base-uncased` sent_rep_tokens | 4h 5m 30s  | 810.6MB    |
-| `bert-base-uncased` mean_tokens           |            |            |
+| `bert-base-uncased` mean_tokens           | 8h 22m 46s | 1.3GB      |
 | `bert-base-uncased` sent_rep_tokens       | 7h 56m 39s | 1.3GB      |
 
 **ROUGE Scores:**
@@ -269,12 +269,53 @@ python main.py \
 |-----------------------------------------|---------|---------|---------|
 | distilbert-base-uncased mean_tokens     | 41.1    | 18.8    | 26.5    |
 | distilbert-base-uncased sent_rep_tokens | 40.1    | 18.1    | 26.0    |
-| bert-base-uncased mean_tokens           |         |         |         |
+| bert-base-uncased mean_tokens           | 40.7    | 18.7    | 26.6    |
 | bert-base-uncased sent_rep_tokens       | 40.2    | 18.2    | 26.1    |
+
+**Main Takeaway:** Using the `mean_tokens` `pooling_mode` is associated with a *0.617 average ROUGE F<sub>1</sub> score improvement* over the `sent_rep_tokens` `pooling_mode`. This improvement is at the cost of a *49.3 average minute (2959 seconds) increase in training time*.
+
+**Outliers Included:**
+
+<img src="pooling_mode/loss_avg_seq_mean_outliers.png" width="450" /> <img src="pooling_mode/loss_total_outliers.png" width="450" />
+
+**No Outliers:**
+
+<img src="pooling_mode/loss_avg_seq_sum.png" width="450" /> <img src="pooling_mode/loss_avg_seq_mean.png" width="450" />
+
+<img src="pooling_mode/loss_total_norm_batch.png" width="450" /> <img src="pooling_mode/loss_avg.png" width="450" />
+
+<img src="pooling_mode/loss_total.png" width="450" /> <img src="pooling_mode/loss_avg_seq_mean_val_only.png" width="450" />
+
+**Relative Time:**
+
+<img src="pooling_mode/loss_avg_seq_mean_reltime.png" width="450" />
 
 ## Classifier/Encoder
 
-The classifier/encoder is responsible for removing the hidden features from each sentence embedding and converting them to a single number. The `linear` and `transformer` options were tested with a the `distilbert-base-uncased` model and an `--overfit_pct` of 0.6.
+The classifier/encoder is responsible for removing the hidden features from each sentence embedding and converting them to a single number. The `linear`, `transformer`, and `transformer_linear` options were tested with the `distilbert-base-uncased` model.
+
+Unlike the experiments prior to this one (above), the "Classifier/Encoder" experiment used a `--train_percent_check` of 0.6, `--val_percent_check` of 0.6 and **`--test_percent_check` of 1.0**. All of the data was used for testing whereas 60% of it was used for training and validation.
+
+Full command used to run the tests:
+
+```
+python main.py \
+--model_name_or_path [Model Name] \
+--model_type distilbert \
+--no_use_token_type_ids \
+--classifier [`linear` or `transformer` or `transformer_linear`] \
+--data_path ./cnn_dm_pt/bert-base-uncased \
+--max_epochs 3 \
+--accumulate_grad_batches 2 \
+--warmup_steps 1800 \
+--train_percent_check 0.6 --val_percent_check 0.6 --test_percent_check 1.0 \
+--gradient_clip_val 1.0 \
+--optimizer_type adamw \
+--use_scheduler linear \
+--profiler \
+--do_train --do_test \
+--val_batch_size 16 --train_batch_size 16 --test_batch_size 16
+```
 
 ### Classifier/Encoder Results
 

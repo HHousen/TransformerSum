@@ -3,6 +3,7 @@ channels:
     - conda-forge
     - pytorch
 dependencies:
+    - cudatoolkit=10.1
     - pytorch
     - scikit-learn
     - tensorboard
