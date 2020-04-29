@@ -209,6 +209,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         )
 
         sent_scores = self.encoder(sents_vec, mask)
+        sent_scores = sent_scores * mask.float()
         return sent_scores, mask
 
     def unfreeze_web_model(self):
