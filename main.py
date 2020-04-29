@@ -128,6 +128,24 @@ if __name__ == "__main__":
         help="Uses this much data of all datasets (training, validation, test). Useful for quickly debugging or trying to overfit on purpose.",
     )
     parser.add_argument(
+        "--train_percent_check",
+        default=1.0,
+        type=float,
+        help="How much of training dataset to check. Useful when debugging or testing something that happens at the end of an epoch.",
+    )
+    parser.add_argument(
+        "--val_percent_check",
+        default=1.0,
+        type=float,
+        help="How much of validation dataset to check. Useful when debugging or testing something that happens at the end of an epoch.",
+    )
+    parser.add_argument(
+        "--test_percent_check",
+        default=1.0,
+        type=float,
+        help="How much of test dataset to check.",
+    )
+    parser.add_argument(
         "--amp_level",
         type=str,
         default="O1",
