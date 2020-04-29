@@ -21,6 +21,7 @@ from torch.utils.data import DataLoader, RandomSampler, TensorDataset
 from pooling import Pooling
 from data import SentencesProcessor, FSIterableDataset, pad_batch_collate
 from classifier import LinearClassifier, TransformerEncoderClassifier
+from helpers import load_json
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,7 @@ from transformers import (
 from transformers.data.metrics import acc_and_f1
 
 CUSTOM_MODELS = ("longformer-base-4096", "longformer-large-4096")
-CUSTOM_MODEL_CLASSES = tuple("longformer")
+CUSTOM_MODEL_CLASSES = ("longformer",)
 
 try:
     from transformers import ALL_PRETRAINED_MODEL_ARCHIVE_MAP
@@ -76,7 +77,7 @@ class ExtractiveSummarizer(pl.LightningModule):
     and contains the actual model.
     """
 
-    def __init__(self, hparams, embedding_model_config=None):
+    def __init__(self, hparams, embedding_model_config=None, classifier_obj=None):
         super(ExtractiveSummarizer, self).__init__()
 
         self.hparams = hparams
@@ -120,23 +121,42 @@ class ExtractiveSummarizer(pl.LightningModule):
         else:
             self.pooling_model = Pooling(sent_rep_tokens=False, mean_tokens=True)
 
-        if hparams.classifier == "linear":
-            self.encoder = LinearClassifier(
-                self.word_embedding_model.config.hidden_size,
-                first_dropout=hparams.classifier_dropout,
-                last_dropout=hparams.classifier_dropout,
-            )
-        elif hparams.classifier == "transformer":
-            self.encoder = TransformerEncoderClassifier(
-                self.word_embedding_model.config.hidden_size,
-                dropout=hparams.classifier_dropout,
-            )
+        # if a classifier object was passed when creating this model then store that as the `encoder`
+        if classifier_obj:
+            self.encoder = classifier_obj
+        # otherwise create the classifier using the `hparams.classifier` parameter if available
+        # if the `hparams.classifier` parameter is missing then create a `LinearClassifier`
         else:
-            logger.error(
-                str(hparams.classifier)
-                + " is not a valid value for `--classifier`. Exiting..."
-            )
-            sys.exit(1)
+            # returns `classifier` value if it exists, otherwise returns False
+            classifier_exists = getattr(hparams, "classifier", False)
+            if (not classifier_exists) or (hparams.classifier == "linear"):
+                self.encoder = LinearClassifier(
+                    self.word_embedding_model.config.hidden_size,
+                    first_dropout=hparams.classifier_dropout,
+                    last_dropout=hparams.classifier_dropout,
+                )
+            elif hparams.classifier == "transformer":
+                self.encoder = TransformerEncoderClassifier(
+                    self.word_embedding_model.config.hidden_size,
+                    dropout=hparams.classifier_dropout,
+                )
+            elif hparams.classifier == "transformer_linear":
+                linear = LinearClassifier(
+                    self.word_embedding_model.config.hidden_size,
+                    first_dropout=hparams.classifier_dropout,
+                    last_dropout=hparams.classifier_dropout,
+                )
+                self.encoder = TransformerEncoderClassifier(
+                    self.word_embedding_model.config.hidden_size,
+                    dropout=hparams.classifier_dropout,
+                    reduction=linear,
+                )
+            else:
+                logger.error(
+                    str(hparams.classifier)
+                    + " is not a valid value for `--classifier`. Exiting..."
+                )
+                sys.exit(1)
 
         # BCELoss: https://pytorch.org/docs/stable/nn.html#bceloss
         # `reduction` is "none" so the mean can be computed with padding ignored.
@@ -254,25 +274,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         )
 
         # open current json file (which is a set of documents)
-        # `file_extension` is second and path (without extension) is first
-        # `file_extension` only contains last extension so ".json.gz" will output ".gz"
-        file_path, file_extension = os.path.splitext(json_file)
-        if file_extension == ".json":
-            with open(json_file, "r") as json_file_object:
-                documents = json.load(json_file_object)
-        elif file_extension == ".gz":
-            file_path = os.path.splitext(file_path)[0]  # remove ".gz"
-            # https://stackoverflow.com/a/39451012
-            with gzip.open(json_file, "r") as json_gzip:
-                json_bytes = json_gzip.read()
-            json_str = json_bytes.decode("utf-8")
-            documents = json.loads(json_str)  # "loads": the "s" means string
-        else:
-            logger.error(
-                "File extension "
-                + str(file_extension)
-                + " not recognized. Please use either '.json' or '.gz'."
-            )
+        load_json(json_file)
 
         all_sources = []
         all_ids = []
@@ -808,7 +810,19 @@ class ExtractiveSummarizer(pl.LightningModule):
             zip(sources, selected_ids, targets)
         ):
             current_prediction = ""
-            for i in source_ids:
+            for sent_idx, i in enumerate(source_ids):
+                if i > len(source):
+                    logger.debug(
+                        "Only "
+                        + str(sent_idx + 1)
+                        + " examples selected from document "
+                        + str(idx)
+                        + " in batch "
+                        + str(batch_idx)
+                        + ". This is likely because some sentences received ranks so small they rounded to zero and a padding \"sentence\" was randomly chosen."
+                    )
+                    continue
+
                 candidate = source[i].strip()
                 current_prediction += candidate + " "
             result = self.rouge_scorer.score(target, current_prediction)
@@ -978,9 +992,15 @@ class ExtractiveSummarizer(pl.LightningModule):
         parser.add_argument(
             "--classifier",
             type=str,
-            choices=["linear", "transformer"],
+            choices=["linear", "transformer", "transformer_linear"],
             default="linear",
-            help="Which classifier/encoder to use to reduce the hidden dimension of the sentence vectors.",
+            help="""Which classifier/encoder to use to reduce the hidden dimension of the sentence vectors.
+                    `linear` - a `LinearClassifier` with two linear layers, dropout, and an activation function.
+                    `transformer` - a `TransformerEncoderClassifier` which runs the sentence vectors through some 
+                                    `nn.TransformerEncoderLayer`s and then a simple `nn.Linear` layer.
+                    `transformer_linear` - a `TransformerEncoderClassifier` with a `LinearClassifier` as the 
+                                           `reduction` parameter, which results in the same thing as the `transformer` option but with a 
+                                           `LinearClassifier` instead of a `nn.Linear` layer.""",
         )
         parser.add_argument(
             "--classifier_dropout",
