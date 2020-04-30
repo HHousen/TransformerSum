@@ -52,14 +52,14 @@ class LinearClassifier(nn.Module):
                 else nn.Identity()
             )
 
-    def forward(self, x):
+    def forward(self, x, mask):
         x = self.dropout1(x)
         x = self.linear1(x)
         x = self.activation(x)
         x = self.linear2(x)
         x = self.dropout2(x)
         x = self.sigmoid(x)
-        sent_scores = x.squeeze(-1)
+        sent_scores = x.squeeze(-1) * mask.float()
         return sent_scores
 
 
@@ -141,10 +141,10 @@ class TransformerEncoderClassifier(nn.Module):
 
         x = self.encoder(x, mask=attn_mask)
         # x is still shape (source sequence length, batch size, feature number)
-        x = self.reduction(x)
-        # x is shape (source sequence length, batch size, 1)
         x = x.transpose(0, 1).squeeze()
-        # x is shape (batch size, source sequence length)
+        # x is shape (batch size, source sequence length, feature number)
+        x = self.reduction(x, mask)
+        # x is shape (batch size, source sequence length, 1)
         # mask is shape (batch size, source sequence length)
-        sent_scores = x.squeeze(-1)
+        sent_scores = x.squeeze(-1) * mask.float()
         return sent_scores

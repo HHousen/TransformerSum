@@ -211,7 +211,6 @@ class ExtractiveSummarizer(pl.LightningModule):
         )
 
         sent_scores = self.encoder(sents_vec, mask)
-        sent_scores = sent_scores * mask.float()
         return sent_scores, mask
 
     def unfreeze_web_model(self):
@@ -372,6 +371,7 @@ class ExtractiveSummarizer(pl.LightningModule):
                     completed_files = [
                         os.path.splitext(os.path.basename(i))[0] for i in dataset_files
                     ]
+                    logger.info("Not Processing Shards: " + str(completed_files))
 
                     def remove_complete(doc):
                         # if compression was enabled (files end in ".gz") then remove the ".gz"
