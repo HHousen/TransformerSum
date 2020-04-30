@@ -1,5 +1,10 @@
+import sys
+import logging
+from packaging import version
 import torch
 from torch import nn
+
+logger = logging.getLogger(__name__)
 
 try:
     from transformers.activations import get_activation
@@ -7,6 +12,7 @@ except ImportError:
     logger.warn(
         "Could not import `get_activation` from `transformers.activations`. Only GELU will be available for use in the classifier."
     )
+
 
 class LinearClassifier(nn.Module):
     def __init__(
@@ -56,8 +62,17 @@ class LinearClassifier(nn.Module):
         sent_scores = x.squeeze(-1)
         return sent_scores
 
+
 class TransformerEncoderClassifier(nn.Module):
-    def __init__(self, d_model, nhead=8, dim_feedforward=2048, dropout=0.1, num_layers=2, reduction=None):
+    def __init__(
+        self,
+        d_model,
+        nhead=8,
+        dim_feedforward=2048,
+        dropout=0.1,
+        num_layers=2,
+        reduction=None,
+    ):
         """nn.Module to classify sentences by running the sentence vectors through some
         nn.TransformerEncoder layers and then reducing the hidden dimension to 1 with a
         linear layer.
@@ -69,15 +84,26 @@ class TransformerEncoderClassifier(nn.Module):
             nhead {int} -- the number of heads in the multiheadattention models (default: {8})
             dim_feedforward {int} -- the dimension of the feedforward network model (default: {2048})
             dropout {float} -- the dropout value (default: {0.1})
-            num_layers {int} -- the dropout value (default: {2})
+            num_layers {int} -- the number of `TransformerEncoderLayer`s (default: {2})
             reduction {nn.Module} -- a nn.Module that maps `d_model` inputs to 1 value; if not specified
                                      then a `nn.Sequential()` module consisting of a linear layer and a
                                      sigmoid will automatically be created. (default: nn.Sequential(linear, sigmoid))
-        """        
+        """
         super(TransformerEncoderClassifier, self).__init__()
+
+        if version.parse(torch.__version__) < version.parse("1.5.0"):
+            logger.error(
+                "You have PyTorch version "
+                + str(torch.__version__)
+                + " installed, but `TransformerEncoderClassifier` requires at least version 1.5.0."
+            )
+            sys.exit(1)
+
         self.nhead = nhead
 
-        encoder_layer = nn.TransformerEncoderLayer(d_model, nhead, dim_feedforward=dim_feedforward, dropout=dropout)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model, nhead, dim_feedforward=dim_feedforward, dropout=dropout
+        )
         layer_norm = nn.LayerNorm(d_model)
         self.encoder = nn.TransformerEncoder(encoder_layer, num_layers, norm=layer_norm)
 
@@ -87,7 +113,7 @@ class TransformerEncoderClassifier(nn.Module):
             linear = nn.Linear(d_model, 1)
             sigmoid = nn.Sigmoid()
             self.reduction = nn.Sequential(linear, sigmoid)
-    
+
     def forward(self, x, mask):
         # add dimension in the middle
         attn_mask = mask.unsqueeze(1)
@@ -104,7 +130,11 @@ class TransformerEncoderClassifier(nn.Module):
         attn_mask = attn_mask.repeat(self.nhead, 1, 1)
         # attn_mask is shape (batch size*num_heads, target sequence length, source sequence length)
         # set all the 0's (False) to negative infinity and the 1's (True) to 0.0 because the attn_mask is additive
-        attn_mask = attn_mask.float().masked_fill(attn_mask == 0, float('-inf')).masked_fill(attn_mask == 1, float(0.0))
+        attn_mask = (
+            attn_mask.float()
+            .masked_fill(attn_mask == 0, float("-inf"))
+            .masked_fill(attn_mask == 1, float(0.0))
+        )
 
         x = x.transpose(0, 1)
         # x is shape (source sequence length, batch size, feature number)

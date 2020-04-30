@@ -139,6 +139,7 @@ class ExtractiveSummarizer(pl.LightningModule):
                 self.encoder = TransformerEncoderClassifier(
                     self.word_embedding_model.config.hidden_size,
                     dropout=hparams.classifier_dropout,
+                    num_layers=hparams.classifier_transformer_num_layers,
                 )
             elif hparams.classifier == "transformer_linear":
                 linear = LinearClassifier(
@@ -149,6 +150,7 @@ class ExtractiveSummarizer(pl.LightningModule):
                 self.encoder = TransformerEncoderClassifier(
                     self.word_embedding_model.config.hidden_size,
                     dropout=hparams.classifier_dropout,
+                    num_layers=hparams.classifier_transformer_num_layers,
                     reduction=linear,
                 )
             else:
@@ -820,7 +822,7 @@ class ExtractiveSummarizer(pl.LightningModule):
                         + str(idx)
                         + " in batch "
                         + str(batch_idx)
-                        + ". This is likely because some sentences received ranks so small they rounded to zero and a padding \"sentence\" was randomly chosen."
+                        + '. This is likely because some sentences received ranks so small they rounded to zero and a padding "sentence" was randomly chosen.'
                     )
                     continue
 
@@ -1008,6 +1010,12 @@ class ExtractiveSummarizer(pl.LightningModule):
             type=float,
             default=0.1,
             help="The value for the dropout layers in the classifier.",
+        )
+        parser.add_argument(
+            "--classifier_transformer_num_layers",
+            type=int,
+            default=2,
+            help='The number of layers for the `transformer` classifier. Only has an effect if `--classifier` contains "transformer".',
         )
         parser.add_argument(
             "--train_name",

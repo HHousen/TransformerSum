@@ -15,4 +15,5 @@ dependencies:
       - qhoptim
       - wandb
       - rouge-score
+      - packaging
       - git+https://github.com/HHousen/longformer.git

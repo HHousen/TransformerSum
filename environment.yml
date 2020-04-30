@@ -15,3 +15,4 @@ dependencies:
       - qhoptim
       - wandb
       - rouge-score
+      - packaging
