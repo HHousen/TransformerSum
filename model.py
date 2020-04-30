@@ -277,7 +277,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         )
 
         # open current json file (which is a set of documents)
-        load_json(json_file)
+        documents, file_path = load_json(json_file)
 
         all_sources = []
         all_ids = []
@@ -367,6 +367,25 @@ class ExtractiveSummarizer(pl.LightningModule):
                 json_files = glob.glob(
                     os.path.join(self.hparams.data_path, "*" + corpus_type + ".*.json*")
                 )
+
+                if self.hparams.preprocess_resume:
+                    completed_files = [
+                        os.path.splitext(os.path.basename(i))[0] for i in dataset_files
+                    ]
+
+                    def remove_complete(doc):
+                        # if compression was enabled (files end in ".gz") then remove the ".gz"
+                        if doc.endswith(".gz"):
+                            doc = os.path.splitext(doc)[0]
+                        # remove the ".json" extension
+                        doc = os.path.splitext(os.path.basename(doc))[0]
+
+                        # remove the document if it was already processed
+                        if doc in completed_files:
+                            return False  # remove
+                        return True  # keep
+
+                    json_files = list(filter(remove_complete, json_files))
 
                 num_files = len(json_files)
 
@@ -979,6 +998,11 @@ class ExtractiveSummarizer(pl.LightningModule):
             help="""Only preprocess and write the data to disk. Don't train model. 
             This will force data to be preprocessed, even if it was already computed and 
             is detected on disk, and any previous processed files will be overwritten.""",
+        )
+        parser.add_argument(
+            "--preprocess_resume",
+            action="store_true",
+            help='Resume preprocessing. `--only_preprocess` must be set in order to resume. Determines which files to process by finding the shards that do not have a coresponding ".pt" file in the data directory.',
         )
         parser.add_argument(
             "--create_token_type_ids",

@@ -26,4 +26,4 @@ def load_json(json_file):
             + str(file_extension)
             + " not recognized. Please use either '.json' or '.gz'."
         )
-    return documents
+    return documents, file_path

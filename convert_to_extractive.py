@@ -253,7 +253,7 @@ def check_resume_success(nlp, source_file, last_shard, output_path, split, compr
     line_source_tokenized = next(tokenize(nlp, [line_source]))
 
     try:
-        chunk_json = load_json(chunk_file_path)
+        chunk_json, _ = load_json(chunk_file_path)
     except FileNotFoundError:
         logger.error(
             "The file at path "

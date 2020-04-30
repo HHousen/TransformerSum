@@ -151,7 +151,7 @@ from [arXiv.org](http://arxiv.org/) (113k) and PubMed (215k). The task is to gen
 | Processor Repository | [HHousen/ArXiv-PubMed-Sum](https://github.com/HHousen/ArXiv-PubMed-Sum) ([Original Repo](https://github.com/armancohan/long-summarization)) |
 | Data Download Link | [PubMed](https://bit.ly/2VsKNvt) ([mirror](https://bit.ly/2VLPJuh)) and [ArXiv](https://bit.ly/2wWeVpp) ([mirror](https://bit.ly/2VPWnzs)) |
 | Processed Abstractive Dataset | [Google Drive](https://drive.google.com/uc?id=1-Nzgu95FMN7DPyinnLjay_BKM1PSPCfs) |
-| Extractive Version | Not available yet... |
+| Extractive Version | [Google Drive](https://drive.google.com/uc?id=12n5MjZMcQDE5Vp_jqlM2KKn_JOnTq9DJ). |
 
 Processing Steps:
 
@@ -346,10 +346,12 @@ usage: main.py [-h] [--default_save_path DEFAULT_SAVE_PATH]
                [--val_batch_size VAL_BATCH_SIZE]
                [--test_batch_size TEST_BATCH_SIZE]
                [--processor_no_bert_compatible_cls] [--only_preprocess]
+               [--preprocess_resume]
                [--create_token_type_ids {binary,sequential}]
                [--no_use_token_type_ids]
                [--classifier {linear,transformer,transformer_linear}]
                [--classifier_dropout CLASSIFIER_DROPOUT]
+               [--classifier_transformer_num_layers CLASSIFIER_TRANSFORMER_NUM_LAYERS]
                [--train_name TRAIN_NAME] [--val_name VAL_NAME]
                [--test_name TEST_NAME] [--test_id_method {greater_k,top_k}]
                [--test_k TEST_K]
@@ -546,6 +548,10 @@ optional arguments:
                         even if it was already computed and is detected on
                         disk, and any previous processed files will be
                         overwritten.
+  --preprocess_resume   Resume preprocessing. `--only_preprocess` must be set
+                        in order to resume. Determines which files to process
+                        by finding the shards that do not have a coresponding
+                        ".pt" file in the data directory.
   --create_token_type_ids {binary,sequential}
                         Create token type ids during preprocessing.
   --no_use_token_type_ids
@@ -566,6 +572,10 @@ optional arguments:
                         layer.
   --classifier_dropout CLASSIFIER_DROPOUT
                         The value for the dropout layers in the classifier.
+  --classifier_transformer_num_layers CLASSIFIER_TRANSFORMER_NUM_LAYERS
+                        The number of layers for the `transformer` classifier.
+                        Only has an effect if `--classifier` contains
+                        "transformer".
   --train_name TRAIN_NAME
                         name for set of training files on disk (for loading
                         and saving)
