@@ -59,6 +59,34 @@ Test set results on the WikiHow dataset using ROUGE F<sub>1</sub>.
 | roberta-large-ext-sum           | Not yet... | Not yet... | Not yet... |
 | albert-xlarge-v2-ext-sum        | Not yet... | Not yet... | Not yet... |
 
+### arXiv-PubMed
+
+| Name | Comments | Model Download | Data Download |
+|---------------------------------|----------|----------------|--------------------------|
+| distilbert-base-uncased-ext-sum | None | Not yet... | [arXiv-PubMed Bert Uncased]() |
+| distilroberta-base-ext-sum | None | Not yet... | [arXiv-PubMed Roberta]() |
+| bert-base-uncased-ext-sum | None | Not yet... | [arXiv-PubMed Bert Uncased]() |
+| roberta-base-ext-sum | None | Not yet... | [arXiv-PubMed Roberta]() |
+| albert-base-v2-ext-sum | None | Not yet... | [arXiv-PubMed Albert]() |
+| bert-large-uncased-ext-sum | None | Not yet... | [arXiv-PubMed Bert Uncased]() |
+| roberta-large-ext-sum | None | Not yet... | [arXiv-PubMed Roberta]() |
+| albert-xlarge-v2-ext-sum | None | Not yet... | [arXiv-PubMed Albert]() |
+
+#### arXiv-PubMed ROUGE Scores
+
+Test set results on the arXiv-PubMed dataset using ROUGE F<sub>1</sub>.
+
+| Name                            | ROUGE-1    | ROUGE-2    | ROUGE-L    |
+|---------------------------------|------------|------------|------------|
+| distilbert-base-uncased-ext-sum | Not yet... | Not yet... | Not yet... |
+| distilroberta-base-ext-sum      | Not yet... | Not yet... | Not yet... |
+| bert-base-uncased-ext-sum       | Not yet... | Not yet... | Not yet... |
+| roberta-base-ext-sum            | Not yet... | Not yet... | Not yet... |
+| albert-base-v2-ext-sum          | Not yet... | Not yet... | Not yet... |
+| bert-large-uncased-ext-sum      | Not yet... | Not yet... | Not yet... |
+| roberta-large-ext-sum           | Not yet... | Not yet... | Not yet... |
+| albert-xlarge-v2-ext-sum        | Not yet... | Not yet... | Not yet... |
+
 ## Install
 
 Installation is made easy due to conda environments. Simply run this command from the root project directory: `conda env create --file environment.yml` and conda will create and environment called `transformerextsum` with all the required packages from [environment.yml](environment.yml). The spacy `en_core_web_sm` model is required for the [convert_to_extractive.py](convert_to_extractive.py) script to detect sentence boundaries.
@@ -160,13 +188,14 @@ Processing Steps:
 
 See the [repository's README.md](datasets/arxiv-pubmed_processor/README.md) for more information.
 
-Note to convert this dataset to extractive it is recommended to use the `--sentencizer` and `--no_preprocess` options due to the size of the dataset. See the "Convert Abstractive to Extractive Dataset" section below. The full command should be similar to:
+Note to convert this dataset to extractive it is recommended to use the `--sentencizer` option due to the size of the dataset. Additionally, the `--max_sentence_ntokens` should be set to `300` and the `--max_example_nsents` should be set to `600`. See the "Convert Abstractive to Extractive Dataset" section below. The full command should be similar to:
 
 ```
 python convert_to_extractive.py ./datasets/arxiv-pubmed_processor/arxiv-pubmed \
 --shard_interval 5000 \
 --sentencizer \
---no_preprocess
+--max_sentence_ntokens 300 \
+--max_example_nsents 600
 ```
 
 ## Convert Abstractive to Extractive Dataset
@@ -198,6 +227,10 @@ usage: convert_to_extractive.py [-h] [--base_output_path BASE_OUTPUT_PATH]
                                 [--resume]
                                 [--tokenizer_log_interval TOKENIZER_LOG_INTERVAL]
                                 [--sentencizer] [--no_preprocess]
+                                [--min_sentence_ntokens MIN_SENTENCE_NTOKENS]
+                                [--max_sentence_ntokens MAX_SENTENCE_NTOKENS]
+                                [--min_example_nsents MIN_EXAMPLE_NSENTS]
+                                [--max_example_nsents MAX_EXAMPLE_NSENTS]
                                 [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL}]
                                 DIR
 
@@ -240,6 +273,14 @@ optional arguments:
   --no_preprocess       do not run the preprocess function, which removes
                         sentences that are too long/short and examples that
                         have too few/many sentences
+  --min_sentence_ntokens MIN_SENTENCE_NTOKENS
+                        minimum number of tokens per sentence
+  --max_sentence_ntokens MAX_SENTENCE_NTOKENS
+                        maximum number of tokens per sentence
+  --min_example_nsents MIN_EXAMPLE_NSENTS
+                        minimum number of sentences per example
+  --max_example_nsents MAX_EXAMPLE_NSENTS
+                        maximum number of sentences per example
   -l {DEBUG,INFO,WARNING,ERROR,CRITICAL}, --log {DEBUG,INFO,WARNING,ERROR,CRITICAL}
                         Set the logging level (default: 'Info').
 ```

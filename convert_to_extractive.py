@@ -180,6 +180,7 @@ def convert_to_extractive_process(
     # set a constant `oracle_mode`
     _example_processor = partial(
         example_processor,
+        args=args,
         oracle_mode=args.oracle_mode,
         no_preprocess=args.no_preprocess,
     )
@@ -277,10 +278,12 @@ def check_resume_success(nlp, source_file, last_shard, output_path, split, compr
             "Previous (to resume line) Source Line: " + str(line_source_tokenized)
         )
         logger.info(
-            ("Common causes of this issue:\n" +
-            "1. You changed the `--shard_interval`. You used a different interval previously than you used in the command to resume.\n" +
-            "2. The abstractive (`.source` and `.target`) or extractive (`.json`) dataset files were modified or removed. The last `.json` file needs to be in the same folder it was originally outputted to so the last shard index and be determined and the last line can be read.\n" +
-            "3. It is entirely possible that there is a bug in this script. If you have checked that the above were not the cause and that there were no issues pertaining to your dataset then open an issue at https://github.com/HHousen/TransformerExtSum/issues/new.")
+            (
+                "Common causes of this issue:\n"
+                + "1. You changed the `--shard_interval`. You used a different interval previously than you used in the command to resume.\n"
+                + "2. The abstractive (`.source` and `.target`) or extractive (`.json`) dataset files were modified or removed. The last `.json` file needs to be in the same folder it was originally outputted to so the last shard index and be determined and the last line can be read.\n"
+                + "3. It is entirely possible that there is a bug in this script. If you have checked that the above were not the cause and that there were no issues pertaining to your dataset then open an issue at https://github.com/HHousen/TransformerExtSum/issues/new."
+            )
         )
         return False
 
@@ -349,9 +352,9 @@ def tokenize(
     return sents
 
 
-def example_processor(args, oracle_mode="greedy", no_preprocess=False):
+def example_processor(inputs, args=None, oracle_mode="greedy", no_preprocess=False):
     """ Create `oracle_ids`, convert them to `labels` and run preprocess(). """
-    source_doc, target_doc = args
+    source_doc, target_doc = inputs
     if oracle_mode == "greedy":
         oracle_ids = greedy_selection(source_doc, target_doc, 3)
     elif oracle_mode == "combination":
@@ -364,7 +367,14 @@ def example_processor(args, oracle_mode="greedy", no_preprocess=False):
     if no_preprocess:
         preprocessed_data = source_doc, labels
     else:
-        preprocessed_data = preprocess(source_doc, labels)
+        preprocessed_data = preprocess(
+            source_doc,
+            labels,
+            args.min_sentence_ntokens,
+            args.max_sentence_ntokens,
+            args.min_example_nsents,
+            args.max_example_nsents,
+        )
 
     return preprocessed_data
 
@@ -602,7 +612,31 @@ if __name__ == "__main__":
     parser.add_argument(
         "--no_preprocess",
         action="store_true",
-        help="do not run the preprocess function, which removes sentences that are too long/short and examples that have too few/many sentences ",
+        help="do not run the preprocess function, which removes sentences that are too long/short and examples that have too few/many sentences",
+    )
+    parser.add_argument(
+        "--min_sentence_ntokens",
+        type=int,
+        default=5,
+        help="minimum number of tokens per sentence",
+    )
+    parser.add_argument(
+        "--max_sentence_ntokens",
+        type=int,
+        default=200,
+        help="maximum number of tokens per sentence",
+    )
+    parser.add_argument(
+        "--min_example_nsents",
+        type=int,
+        default=3,
+        help="minimum number of sentences per example",
+    )
+    parser.add_argument(
+        "--max_example_nsents",
+        type=int,
+        default=100,
+        help="maximum number of sentences per example",
     )
     parser.add_argument(
         "-l",
