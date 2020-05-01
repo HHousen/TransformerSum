@@ -292,7 +292,7 @@ python main.py \
 
 ## Classifier/Encoder
 
-The classifier/encoder is responsible for removing the hidden features from each sentence embedding and converting them to a single number. The `linear`, `transformer`, and `transformer_linear` options were tested with the `distilbert-base-uncased` model.
+The classifier/encoder is responsible for removing the hidden features from each sentence embedding and converting them to a single number. The `linear`, `transformer` (with 2 layers), `transformer` (with 6 layers "`--classifier_transformer_num_layers 6`"), and `transformer_linear` options were tested with the `distilbert-base-uncased` model. The `transformer_linear` test has a transformer with *2 layers* (like the `transformer` test).
 
 Unlike the experiments prior to this one (above), the "Classifier/Encoder" experiment used a `--train_percent_check` of 0.6, `--val_percent_check` of 0.6 and **`--test_percent_check` of 1.0**. All of the data was used for testing whereas 60% of it was used for training and validation.
 
@@ -304,6 +304,7 @@ python main.py \
 --model_type distilbert \
 --no_use_token_type_ids \
 --classifier [`linear` or `transformer` or `transformer_linear`] \
+[--classifier_transformer_num_layers 6 \]
 --data_path ./cnn_dm_pt/bert-base-uncased \
 --max_epochs 3 \
 --accumulate_grad_batches 2 \
@@ -319,4 +320,38 @@ python main.py \
 
 ### Classifier/Encoder Results
 
-Not yet...
+**Training Times and Model Sizes:**
+
+| Model Key                | Time       | Model Size |
+|--------------------------|------------|------------|
+| `linear`                 | 3h 59m 1s  | 810.6MB    |
+| `transformer` (2 layers) | 4h 9m 29s  | 928.8MB    |
+| `transformer` (6 layers) | 4h 21m 29s | 1.2GB      |
+| `transformer_linear`     | 4h 9m 59s  | 943.0MB    |
+
+**ROUGE Scores:**
+
+| Name                     | ROUGE-1 | ROUGE-2 | ROUGE-L |
+|--------------------------|---------|---------|---------|
+| `linear`                 | 41.2    | 18.9    | 26.5    |
+| `transformer` (2 layers) | 41.2    | 18.8    | 26.5    |
+| `transformer` (6 layers) | 41.0    | 18.9    | 26.5    |
+| `transformer_linear`     | 40.9    | 18.7    | 26.6    |
+
+**Main Takeaway:** The `transformer` encoder had a much better loss curve, indicating that it is able to learn more about choosing the more representative sentences. However, its ROUGE scores are nearly identical to the `linear` encoder, which suggests both encoders capture enough information to summarize. The `transformer` encoder may potentially work better on more complex datasets.
+
+**Outliers Included:**
+
+<img src="encoder/loss_avg_seq_mean_outliers.png" width="450" /> <img src="encoder/loss_total_outliers.png" width="450" />
+
+**No Outliers:**
+
+<img src="encoder/loss_avg_seq_sum.png" width="450" /> <img src="encoder/loss_avg_seq_mean.png" width="450" />
+
+<img src="encoder/loss_total_norm_batch.png" width="450" /> <img src="encoder/loss_avg.png" width="450" />
+
+<img src="encoder/loss_total.png" width="450" /> <img src="encoder/loss_avg_seq_mean_val_only.png" width="450" />
+
+**Relative Time:**
+
+<img src="encoder/loss_avg_seq_mean_reltime.png" width="450" />
