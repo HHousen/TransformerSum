@@ -128,7 +128,11 @@ def pad_batch_collate(batch, modifier=None):
                         # total_value_to_add -= 1
                         current_sent_lens.append(0)
                         current_sent_lengths_mask.append(False)
-                    if total_value_to_add > 0:
+                    # if a value needs to be added to make `sum(current_sent_lens)` the total input
+                    # sequence length OR there is one more number to add (this can happen if the input
+                    # sequence exactly ends with a sentence, making the total of the lengths the length
+                    # of the sequence, or if there is one sentence that takes up the entire sequence)
+                    if total_value_to_add > 0 or num_to_add == 1:
                         current_sent_lens.append(total_value_to_add)
                         current_sent_lengths_mask.append(False)
 
@@ -498,9 +502,12 @@ class SentencesProcessor:
         ):  # adds a '[CLS]' token between each sentence and outputs `input_ids`
             # convert `example.text` to array of sentences
             src_txt = [" ".join(sent) for sent in example.text]
-            # separate each sentence with ' [SEP] [CLS] ' (or model equivalent tokens) and convert to string
-            separation_string = " " + sep_token + " " + cls_token + " "
-            text = separation_string.join(src_txt)
+
+            if not len(src_txt) < 2: # if there is NOT 1 sentence
+                # separate each sentence with ' [SEP] [CLS] ' (or model equivalent tokens) and convert to string
+                separation_string = " " + sep_token + " " + cls_token + " "
+                text = separation_string.join(src_txt)
+
             # tokenize
             src_subtokens = tokenizer.tokenize(text)
             # select first `(max_length-2)` tokens (so the following line of tokens can be added)
@@ -546,10 +553,15 @@ class SentencesProcessor:
             label = label[: len(sent_rep_ids)]
 
             if create_sent_lengths:
-                sent_lengths = [
-                    sent_rep_ids[i] - sent_rep_ids[i - 1]
-                    for i in range(1, len(sent_rep_ids))
-                ]
+                # if there are 1 or 0 sentences then the length of the entire sequence will be
+                # the only value in `sent_lengths`
+                if len(sent_rep_ids) < 2:
+                    sent_lengths = [len(input_ids)]
+                else:
+                    sent_lengths = [
+                        sent_rep_ids[i] - sent_rep_ids[i - 1]
+                        for i in range(1, len(sent_rep_ids))
+                    ]
 
         # Attention
         # The mask has 1 for real tokens and 0 for padding tokens. Only real

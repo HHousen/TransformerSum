@@ -63,7 +63,7 @@ Test set results on the WikiHow dataset using ROUGE F<sub>1</sub>.
 
 | Name | Comments | Model Download | Data Download |
 |---------------------------------|----------|----------------|--------------------------|
-| distilbert-base-uncased-ext-sum | None | Not yet... | [arXiv-PubMed Bert Uncased]() |
+| distilbert-base-uncased-ext-sum | None | Not yet... | [arXiv-PubMed Bert Uncased](https://drive.google.com/uc?id=1-htznO-Io6r-9rVSTMQ1-4HYhyu21w7s) |
 | distilroberta-base-ext-sum | None | Not yet... | [arXiv-PubMed Roberta]() |
 | bert-base-uncased-ext-sum | None | Not yet... | [arXiv-PubMed Bert Uncased]() |
 | roberta-base-ext-sum | None | Not yet... | [arXiv-PubMed Roberta]() |
@@ -178,8 +178,8 @@ from [arXiv.org](http://arxiv.org/) (113k) and PubMed (215k). The task is to gen
 |-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
 | Processor Repository | [HHousen/ArXiv-PubMed-Sum](https://github.com/HHousen/ArXiv-PubMed-Sum) ([Original Repo](https://github.com/armancohan/long-summarization)) |
 | Data Download Link | [PubMed](https://bit.ly/2VsKNvt) ([mirror](https://bit.ly/2VLPJuh)) and [ArXiv](https://bit.ly/2wWeVpp) ([mirror](https://bit.ly/2VPWnzs)) |
-| Processed Abstractive Dataset | [Google Drive](https://drive.google.com/uc?id=1-Nzgu95FMN7DPyinnLjay_BKM1PSPCfs) |
-| Extractive Version | [Google Drive](https://drive.google.com/uc?id=12n5MjZMcQDE5Vp_jqlM2KKn_JOnTq9DJ). |
+| Processed Abstractive Dataset | [Google Drive](https://drive.google.com/uc?id=1-fTvAvgimuBFVgwOEkQUkURkBoIS5XlL) |
+| Extractive Version | [Google Drive](https://drive.google.com/uc?id=12tdPhuwNsofQJSkpcwbFRYYr4euMrd7j). |
 
 Processing Steps:
 
