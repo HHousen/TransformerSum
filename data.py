@@ -161,6 +161,7 @@ def pad_batch_collate(batch, modifier=None):
 
     return final_dictionary
 
+
 class FSIterableDataset(IterableDataset):
     """
     A dataset to yield examples from a list of files that are saved python objects that
@@ -497,16 +498,22 @@ class SentencesProcessor:
                 + "/"
                 + str(num_examples)
             )
-        if (
-            bert_compatible_cls
-        ):  # adds a '[CLS]' token between each sentence and outputs `input_ids`
+        # adds a '[CLS]' token between each sentence and outputs `input_ids`
+        if bert_compatible_cls:
             # convert `example.text` to array of sentences
             src_txt = [" ".join(sent) for sent in example.text]
 
-            if not len(src_txt) < 2: # if there is NOT 1 sentence
+            # If the CLS or SEP tokens exist in the document as part of the dataset, then
+            # set them to UNK
+            src_text.replace(sep_token, tokenizer.unk_token)
+            src_text.replace(cls_token, tokenizer.unk_token)
+
+            if not len(src_txt) < 2:  # if there is NOT 1 sentence
                 # separate each sentence with ' [SEP] [CLS] ' (or model equivalent tokens) and convert to string
                 separation_string = " " + sep_token + " " + cls_token + " "
                 text = separation_string.join(src_txt)
+            else:
+                text = src_text[0]
 
             # tokenize
             src_subtokens = tokenizer.tokenize(text)

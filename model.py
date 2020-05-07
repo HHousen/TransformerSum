@@ -81,12 +81,18 @@ class ExtractiveSummarizer(pl.LightningModule):
         super(ExtractiveSummarizer, self).__init__()
 
         self.hparams = hparams
+        self.forward_modify_inputs_callback = None
+
         # if a custom model type was selected
         if hparams.model_type == "longformer":
-            from longformer.longformer import Longformer
+            from longformer.longformer import Longformer, LongformerConfig
+            from longformer.sliding_chunks import pad_to_window_size
+
+            config = LongformerConfig.from_pretrained(hparams.model_name_or_path)
+            config.attention_mode = "sliding_chunks"
 
             self.word_embedding_model = Longformer.from_pretrained(
-                hparams.model_name_or_path
+                hparams.model_name_or_path, config=config
             )
         else:
             if not embedding_model_config:
@@ -175,10 +181,25 @@ class ExtractiveSummarizer(pl.LightningModule):
             do_lower_case=hparams.tokenizer_lowercase,
         )
         # if using longformer then change the tokenizer maximum length
+        # and set the modify_inputs_callback to use the required `pad_to_window_size`
+        # function
         if hparams.model_type == "longformer":
             self.tokenizer.max_len = (
                 self.word_embedding_model.config.max_position_embeddings
             )
+
+            def longformer_forward_callback(inputs):
+                input_ids, attention_mask = pad_to_window_size(
+                    inputs["input_ids"],
+                    inputs["attention_mask"],
+                    self.word_embedding_model.config.attention_window[0],
+                    self.tokenizer.pad_token_id,
+                )
+                inputs["input_ids"] = input_ids
+                inputs["attention_mask"] = attention_mask
+                return inputs
+
+            self.forward_modify_inputs_callback = longformer_forward_callback
 
         self.train_dataloader_object = None  # not created yet
 
@@ -198,6 +219,9 @@ class ExtractiveSummarizer(pl.LightningModule):
         }
         if not self.hparams.no_use_token_type_ids:
             inputs["token_type_ids"] = token_type_ids
+
+        if self.forward_modify_inputs_callback:
+            inputs = self.forward_modify_inputs_callback(inputs)
 
         outputs = self.word_embedding_model(**inputs)
         word_vectors = outputs[0]
@@ -229,7 +253,16 @@ class ExtractiveSummarizer(pl.LightningModule):
         # and takes advantage of the log-sum-exp trick for numerical stability) was not used because
         # the output of the Sigmoid needs to have the padded values removed. For example, with padding
         # values of zero a sigmoid will output 0.5 for each of them, thus offsetting the loss calculation.
-        loss = self.loss_func(outputs, labels.float())
+        try:
+            loss = self.loss_func(outputs, labels.float())
+        except ValueError as e:
+            logger.error(e)
+            logger.error(
+                "Details about above error:\n1. outputs="
+                + str(outputs)
+                + "\nlabels.float()="
+                + str(labels.float())
+            )
         # set all padding values to zero
         loss = loss * mask.float()
         # add up all the loss values for each sequence (including padding because
