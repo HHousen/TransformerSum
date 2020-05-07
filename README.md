@@ -384,6 +384,8 @@ usage: main.py [-h] [--default_save_path DEFAULT_SAVE_PATH]
                [--load_weights LOAD_WEIGHTS]
                [--load_from_checkpoint LOAD_FROM_CHECKPOINT]
                [--use_custom_checkpoint_callback]
+               [--custom_checkpoint_every_n CUSTOM_CHECKPOINT_EVERY_N]
+               [--custom_checkpoint_every_n_save_path CUSTOM_CHECKPOINT_EVERY_N_SAVE_PATH]
                [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL}]
                [--model_name_or_path MODEL_NAME_OR_PATH]
                [--model_type MODEL_TYPE] [--tokenizer_name TOKENIZER_NAME]
@@ -498,6 +500,16 @@ optional arguments:
                         ghtning.readthedocs.io/en/latest/trainer.html#default-
                         root-dir ("Default path for logs and weights when **no
                         logger or ModelCheckpoint callback** passed.")
+  --custom_checkpoint_every_n CUSTOM_CHECKPOINT_EVERY_N
+                        The number of steps between additional checkpoints. By
+                        default checkpoints are saved every epoch. Setting
+                        this value will save them every epoch and every N
+                        steps. This does not use the same callback as
+                        `--use_custom_checkpoint_callback` but instead uses a
+                        different class called `StepCheckpointCallback`.
+  --custom_checkpoint_every_n_save_path CUSTOM_CHECKPOINT_EVERY_N_SAVE_PATH
+                        Path to save models when using
+                        `--custom_checkpoint_every_n`.
   -l {DEBUG,INFO,WARNING,ERROR,CRITICAL}, --log {DEBUG,INFO,WARNING,ERROR,CRITICAL}
                         Set the logging level (default: 'Info').
   --model_name_or_path MODEL_NAME_OR_PATH

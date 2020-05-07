@@ -364,6 +364,17 @@ def example_processor(inputs, args=None, oracle_mode="greedy", no_preprocess=Fal
     labels = [0] * len(source_doc)
     for l in oracle_ids:
         labels[l] = 1
+
+    # The number of sentences in the source document should equal the number of labels.
+    # There should be one label per sentence.
+    assert len(source_doc) == len(labels), (
+        "Document: "
+        + str(source_doc)
+        + "\nLabels: "
+        + str(labels)
+        + "\n^^ The above document and label combination are not equal in length. The cause of this problem in not known. This check exists to prevent further problems down the data processing pipeline."
+    )
+
     if no_preprocess:
         preprocessed_data = source_doc, labels
     else:

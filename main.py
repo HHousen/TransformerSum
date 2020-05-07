@@ -5,6 +5,7 @@ import numpy as np
 import random
 from pytorch_lightning import Trainer
 from model import ExtractiveSummarizer
+from helpers import StepCheckpointCallback
 from argparse import ArgumentParser
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
@@ -54,8 +55,19 @@ def main(args):
         args.checkpoint_callback = ModelCheckpoint(
             filepath=models_path, save_top_k=-1, period=1, verbose=True,
         )
+    if args.custom_checkpoint_every_n:
+        custom_checkpoint_callback = StepCheckpointCallback(
+            step_interval=args.custom_checkpoint_every_n,
+            save_path=args.custom_checkpoint_every_n_save_path,
+        )
+        args.callbacks = [custom_checkpoint_callback]
 
     trainer = Trainer.from_argparse_args(args)
+
+    # remove `args.callbacks` if it exists so it does not get saved with the model (would result in crash)
+    if args.custom_checkpoint_every_n:
+        del args.callbacks
+
     if args.do_train:
         trainer.fit(model)
     if args.do_test:
@@ -218,6 +230,16 @@ if __name__ == "__main__":
         See: https://pytorch-lightning.readthedocs.io/en/latest/trainer.html#default-root-dir
         ("Default path for logs and weights when **no logger or ModelCheckpoint callback** passed.")""",
     )
+    parser.add_argument(
+        "--custom_checkpoint_every_n",
+        type=int,
+        default=None,
+        help="""The number of steps between additional checkpoints. By default checkpoints are saved 
+        every epoch. Setting this value will save them every epoch and every N steps. This does not 
+        use the same callback as `--use_custom_checkpoint_callback` but instead uses a different class 
+        called `StepCheckpointCallback`.""",
+    )
+    parser.add_argument("--custom_checkpoint_every_n_save_path", type=str, default=".", help="Path to save models when using `--custom_checkpoint_every_n`.")
     parser.add_argument(
         "-l",
         "--log",
