@@ -347,6 +347,19 @@ Video Going Over The Paper: [Longformer: The Long-Document Transformer](https://
 
 The global attention is automatically applied to all the `[CLS]` (or equivalent) tokens.
 
+Example preprocessing code:
+
+```
+!python main.py \
+--data_path ./datasets/arxiv-pubmed_processor/arxiv-pubmed_extractive_compressed_5000/ \
+--use_logger tensorboard \
+--model_name_or_path ./custom_models/longformer-base-4096/ \
+--model_type longformer \
+--tokenizer_name roberta-base \
+--do_train \
+--only_preprocess
+```
+
 ### Script Help
 
 Output of `python main.py --help`:
