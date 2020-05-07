@@ -501,12 +501,16 @@ class SentencesProcessor:
         # adds a '[CLS]' token between each sentence and outputs `input_ids`
         if bert_compatible_cls:
             # convert `example.text` to array of sentences
-            src_txt = [" ".join(sent) for sent in example.text]
+            src_txt = (" ".join(sent) for sent in example.text)
 
             # If the CLS or SEP tokens exist in the document as part of the dataset, then
             # set them to UNK
-            src_text.replace(sep_token, tokenizer.unk_token)
-            src_text.replace(cls_token, tokenizer.unk_token)
+            src_txt = [
+                sent.replace(sep_token, tokenizer.unk_token).replace(
+                    cls_token, tokenizer.unk_token
+                )
+                for sent in src_txt
+            ]
 
             if not len(src_txt) < 2:  # if there is NOT 1 sentence
                 # separate each sentence with ' [SEP] [CLS] ' (or model equivalent tokens) and convert to string
