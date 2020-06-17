@@ -546,7 +546,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             # See: https://github.com/PyTorchLightning/pytorch-lightning/blob/f293c9b5f4b4f9fabb2eec0c369f08a66c57ef14/pytorch_lightning/trainer/training_loop.py#L624
             t_total = self.hparams.max_steps * self.hparams.accumulate_grad_batches
         else:
-            t_total = len(self.train_dataloader_object) * self.hparams.max_epochs
+            t_total = len(self.train_dataloader_object) * self.hparams.max_epochs / self.hparams.accumulate_grad_batches
             if self.hparams.overfit_pct > 0.0:
                 t_total = int(t_total * self.hparams.overfit_pct)
 
@@ -647,29 +647,9 @@ class ExtractiveSummarizer(pl.LightningModule):
         del batch["labels"]
 
         # If global_step has increased by 1:
-        # 1. Log the learning_rate
-        # 2. Begin training the `word_embedding_model` after `num_frozen_steps` steps
+        # Begin training the `word_embedding_model` after `num_frozen_steps` steps
         if (self.global_step_tracker + 1) == self.trainer.global_step:
             self.global_step_tracker = self.trainer.global_step
-            if self.hparams.use_scheduler:
-                last_lrs = self.trainer.lr_schedulers[0]["scheduler"].get_last_lr()
-                # if the logger is tensorboard then use the `add_scalar` method
-                if isinstance(self.logger, pl.loggers.tensorboard.TensorBoardLogger):
-                    self.logger.experiment.add_scalar(
-                        "learning_rate",
-                        (last_lrs[0] if isinstance(last_lrs, list) else last_lrs),
-                        self.trainer.global_step,
-                    )
-                # if the logger is for wandb.ai
-                elif isinstance(self.logger, pl.loggers.wandb.WandbLogger):
-                    self.logger.experiment.log(
-                        {
-                            "learning_rate": (
-                                last_lrs[0] if isinstance(last_lrs, list) else last_lrs
-                            ),
-                        },
-                        step=self.trainer.global_step,
-                    )
 
             if self.emd_model_frozen and (
                 self.trainer.global_step > self.hparams.num_frozen_steps

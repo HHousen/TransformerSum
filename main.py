@@ -9,6 +9,7 @@ from helpers import StepCheckpointCallback
 from argparse import ArgumentParser
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
+from pytorch_lightning.callbacks import LearningRateLogger
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,10 @@ def main(args):
             model.hparams.data_path = args.data_path
     else:
         model = ExtractiveSummarizer(hparams=args)
+    
+    # Create learning rate logger
+    lr_logger = LearningRateLogger()
+    args.callbacks = [lr_logger]
 
     if args.use_logger == "wandb":
         wandb_logger = WandbLogger(
@@ -63,7 +68,7 @@ def main(args):
             step_interval=args.custom_checkpoint_every_n,
             save_path=args.custom_checkpoint_every_n_save_path,
         )
-        args.callbacks = [custom_checkpoint_callback]
+        args.callbacks.append(custom_checkpoint_callback)
 
     trainer = Trainer.from_argparse_args(args)
 
