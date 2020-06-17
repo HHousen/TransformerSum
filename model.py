@@ -18,6 +18,7 @@ from rouge_score import rouge_scorer
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, RandomSampler, TensorDataset
+from spacy.lang.en import English
 from pooling import Pooling
 from data import SentencesProcessor, FSIterableDataset, pad_batch_collate
 from classifier import LinearClassifier, TransformerEncoderClassifier
@@ -42,31 +43,22 @@ from transformers import (
 )
 from transformers.data.metrics import acc_and_f1
 
-CUSTOM_MODELS = ("longformer-base-4096", "longformer-large-4096")
-CUSTOM_MODEL_CLASSES = ("longformer",)
+# CUSTOM_MODEL_CLASSES = ("longformer",)
 
 try:
-    from transformers import ALL_PRETRAINED_MODEL_ARCHIVE_MAP
     from transformers.modeling_auto import MODEL_MAPPING
 
-    ALL_MODELS = tuple(ALL_PRETRAINED_MODEL_ARCHIVE_MAP) + CUSTOM_MODELS
-    MODEL_CLASSES = tuple(m.model_type for m in MODEL_MAPPING) + CUSTOM_MODEL_CLASSES
+    MODEL_CLASSES = tuple(m.model_type for m in MODEL_MAPPING) # + CUSTOM_MODEL_CLASSES
 except ImportError:
     logger.warn(
-        "Could not import `ALL_PRETRAINED_MODEL_ARCHIVE_MAP` or `MODEL_MAPPING` from transformers because it is an old version."
+        "Could not import `MODEL_MAPPING` from transformers because it is an old version."
     )
 
-    ALL_MODELS = (
-        tuple(
-            "Note: Only showing custom models because old version of `transformers` detected."
-        )
-        + CUSTOM_MODELS
-    )
     MODEL_CLASSES = (
         tuple(
             "Note: Only showing custom models because old version of `transformers` detected."
         )
-        + CUSTOM_MODEL_CLASSES
+        # + CUSTOM_MODEL_CLASSES
     )
 
 
@@ -84,38 +76,38 @@ class ExtractiveSummarizer(pl.LightningModule):
         self.forward_modify_inputs_callback = None
 
         # if a custom model type was selected
-        if hparams.model_type == "longformer":
-            from longformer.longformer import Longformer, LongformerConfig
-            from longformer.sliding_chunks import pad_to_window_size
+        # if hparams.model_type == "longformer":
+        #     from longformer.longformer import Longformer, LongformerConfig
+        #     from longformer.sliding_chunks import pad_to_window_size
 
-            config = LongformerConfig.from_pretrained(hparams.model_name_or_path)
-            config.attention_mode = "sliding_chunks"
+        #     config = LongformerConfig.from_pretrained(hparams.model_name_or_path)
+        #     config.attention_mode = "sliding_chunks"
 
-            self.word_embedding_model = Longformer.from_pretrained(
-                hparams.model_name_or_path, config=config
+        #     self.word_embedding_model = Longformer.from_pretrained(
+        #         hparams.model_name_or_path, config=config
+        #     )
+        # else:
+        if not embedding_model_config:
+            embedding_model_config = AutoConfig.from_pretrained(
+                hparams.model_name_or_path
             )
-        else:
-            if not embedding_model_config:
-                embedding_model_config = AutoConfig.from_pretrained(
-                    hparams.model_name_or_path
+        self.word_embedding_model = AutoModel.from_pretrained(
+            hparams.model_name_or_path, config=embedding_model_config
+        )
+        if (
+            "roberta" in hparams.model_name_or_path
+            or "distil" in hparams.model_name_or_path
+        ) and not hparams.no_use_token_type_ids:
+            logger.warn(
+                (
+                    "You are using a "
+                    + str(hparams.model_type)
+                    + " model but did not set "
+                    + "--no_use_token_type_ids. This model does not support `token_type_ids` so "
+                    + "this option has been automatically enabled."
                 )
-            self.word_embedding_model = AutoModel.from_pretrained(
-                hparams.model_name_or_path, config=embedding_model_config
             )
-            if (
-                "roberta" in hparams.model_name_or_path
-                or "distil" in hparams.model_name_or_path
-            ) and not hparams.no_use_token_type_ids:
-                logger.warn(
-                    (
-                        "You are using a "
-                        + str(hparams.model_type)
-                        + " model but did not set "
-                        + "--no_use_token_type_ids. This model does not support `token_type_ids` so "
-                        + "this option has been automatically enabled."
-                    )
-                )
-                self.hparams.no_use_token_type_ids = True
+            self.hparams.no_use_token_type_ids = True
 
         self.emd_model_frozen = False
         if hparams.num_frozen_steps > 0:
@@ -183,23 +175,23 @@ class ExtractiveSummarizer(pl.LightningModule):
         # if using longformer then change the tokenizer maximum length
         # and set the modify_inputs_callback to use the required `pad_to_window_size`
         # function
-        if hparams.model_type == "longformer":
-            self.tokenizer.max_len = (
-                self.word_embedding_model.config.max_position_embeddings
-            )
+        # if hparams.model_type == "longformer":
+        #     self.tokenizer.max_len = (
+        #         self.word_embedding_model.config.max_position_embeddings
+        #     )
 
-            def longformer_forward_callback(inputs):
-                input_ids, attention_mask = pad_to_window_size(
-                    inputs["input_ids"],
-                    inputs["attention_mask"],
-                    self.word_embedding_model.config.attention_window[0],
-                    self.tokenizer.pad_token_id,
-                )
-                inputs["input_ids"] = input_ids
-                inputs["attention_mask"] = attention_mask
-                return inputs
+        #     def longformer_forward_callback(inputs):
+        #         input_ids, attention_mask = pad_to_window_size(
+        #             inputs["input_ids"],
+        #             inputs["attention_mask"],
+        #             self.word_embedding_model.config.attention_window[0],
+        #             self.tokenizer.pad_token_id,
+        #         )
+        #         inputs["input_ids"] = input_ids
+        #         inputs["attention_mask"] = attention_mask
+        #         return inputs
 
-            self.forward_modify_inputs_callback = longformer_forward_callback
+        #     self.forward_modify_inputs_callback = longformer_forward_callback
 
         self.train_dataloader_object = None  # not created yet
 
@@ -212,6 +204,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         sent_rep_token_ids=None,
         sent_lengths=None,
         sent_lengths_mask=None,
+        **kwargs,
     ):
         inputs = {
             "input_ids": input_ids,
@@ -223,7 +216,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         if self.forward_modify_inputs_callback:
             inputs = self.forward_modify_inputs_callback(inputs)
 
-        outputs = self.word_embedding_model(**inputs)
+        outputs = self.word_embedding_model(**inputs, **kwargs)
         word_vectors = outputs[0]
 
         sents_vec, mask = self.pooling_model(
@@ -462,21 +455,33 @@ class ExtractiveSummarizer(pl.LightningModule):
         self.datasets = datasets
 
         # Create `pad_batch_collate` function
-        # If the model is a longformer then do special modifications to the `attention_mask`
+        # If the model is a longformer then create the `global_attention_mask`
         if self.hparams.model_type == "longformer":
 
             def longformer_modifier(final_dictionary):
                 """
-                Shifts normals attention ids down by 1. Sets the global attention to the
-                `sent_rep_token_ids`. The longformer uses "1" as global attention.
+                Creates the `global_attention_mask` for the longformer. Tokens with global attention 
+                attend to all other tokens, and all other tokens attend to them. This is important for 
+                task-specific finetuning because it makes the model more flexible at representing the 
+                task. For example, for classification, the `<s>` token should be given global attention. 
+                For QA, all question tokens should also have global attention. For summarization, 
+                global attention is given to all of the `<s>` (RoBERTa 'CLS' equivalent) tokens. Please 
+                refer to the Longformer paper (https://arxiv.org/abs/2004.05150) for more details. Mask 
+                values selected in `[0, 1]`: `0` for local attention, `1` for global attention.
                 """
-                attention_mask = final_dictionary["attention_mask"]
-                attention_mask[attention_mask == 0] = -1
-                attention_mask[attention_mask == 1] = 0
+                # `batch_size` is the number of attention masks (one mask per input sequence)
+                batch_size = len(final_dictionary["attention_mask"])
+                # `sequence_length` is the number of tokens for the first sequence in the batch
+                sequence_length = len(final_dictionary["attention_mask"][0])
+                # create `global_attention_mask` using the above details
+                global_attention_mask = torch.tensor(
+                    [[0] * sequence_length] * batch_size
+                )
+                # set the `sent_rep_token_ids` to 1, which is global attention
                 for idx, items in enumerate(final_dictionary["sent_rep_token_ids"]):
-                    attention_mask[idx, items] = 1
+                    global_attention_mask[idx, items] = 1
 
-                final_dictionary["attention_mask"] = attention_mask
+                final_dictionary["global_attention_mask"] = global_attention_mask
                 return final_dictionary
 
             self.pad_batch_collate = partial(
@@ -921,6 +926,66 @@ class ExtractiveSummarizer(pl.LightningModule):
         result = {"progress_bar": tqdm_dict, "log": log}
         return result
 
+    def predict(self, input_text, raw_scores=False):
+        nlp = English()
+        sentencizer = nlp.create_pipe("sentencizer")
+        nlp.add_pipe(sentencizer)
+        doc = nlp(input_text)
+
+        # Create source text.
+        # Don't add periods when joining because that creates a space before the period.
+        src_txt = [
+            " ".join([token.text for token in sentence if str(token) != "."]) + "."
+            for sentence in doc.sents
+        ]
+
+        input_ids = SentencesProcessor.get_input_ids(
+            self.tokenizer,
+            src_txt,
+            sep_token=self.tokenizer.sep_token,
+            cls_token=self.tokenizer.cls_token,
+            bert_compatible_cls=True,
+        )
+
+        input_ids = torch.tensor(input_ids)
+        attention_mask = [1] * len(input_ids)
+        attention_mask = torch.tensor(attention_mask)
+
+        sent_rep_token_ids = [
+            i for i, t in enumerate(input_ids) if t == self.tokenizer.cls_token_id
+        ]
+        sent_rep_mask = torch.tensor([1] * len(sent_rep_token_ids))
+
+        input_ids.unsqueeze_(0)
+        attention_mask.unsqueeze_(0)
+        sent_rep_mask.unsqueeze_(0)
+
+        outputs, _ = self.forward(
+            input_ids,
+            attention_mask,
+            sent_rep_mask=sent_rep_mask,
+            sent_rep_token_ids=sent_rep_token_ids,
+        )
+
+        if raw_scores:
+            # key=sentence
+            # value=score
+            sent_scores = dict(zip(src_txt, output))
+            return sent_scores
+        else:
+            sorted_ids = (
+                torch.argsort(outputs, dim=1, descending=True).detach().cpu().numpy()
+            )
+            logger.debug(f"Sorted sentence ids: {sorted_ids}")
+            selected_ids = sorted_ids[0, :2]
+            logger.debug(f"Selected sentence ids: {selected_ids}")
+
+            selected_sents = []
+            for i in selected_ids:
+                selected_sents.append(src_txt[i])
+
+            return " ".join(selected_sents).strip()
+
     @staticmethod
     def add_model_specific_args(parent_parser):
         parser = ArgumentParser(parents=[parent_parser])
@@ -928,8 +993,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             "--model_name_or_path",
             type=str,
             default="bert-base-uncased",
-            help="Path to pre-trained model or shortcut name selected in the list: "
-            + ", ".join(ALL_MODELS),
+            help="Path to pre-trained model or shortcut name. A list of shortcut names can be found at https://huggingface.co/models.",
         )
         parser.add_argument(
             "--model_type",

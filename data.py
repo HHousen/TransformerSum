@@ -384,6 +384,49 @@ class SentencesProcessor:
             overwrite_examples=overwrite_examples,
         )
 
+    @classmethod
+    def get_input_ids(cls, tokenizer, src_txt, bert_compatible_cls=True, sep_token=None, cls_token=None, max_length=None):
+        sep_token = str(sep_token)
+        cls_token = str(cls_token)
+        if max_length is None:
+            max_length = tokenizer.max_len
+
+        # adds a '[CLS]' token between each sentence and outputs `input_ids`
+        if bert_compatible_cls:
+            # If the CLS or SEP tokens exist in the document as part of the dataset, then
+            # set them to UNK
+            unk_token = str(tokenizer.unk_token)
+            src_txt = [
+                sent.replace(sep_token, unk_token).replace(
+                    cls_token, unk_token
+                )
+                for sent in src_txt
+            ]
+
+            if not len(src_txt) < 2:  # if there is NOT 1 sentence
+                # separate each sentence with ' [SEP] [CLS] ' (or model equivalent tokens) and convert to string
+                separation_string = " " + sep_token + " " + cls_token + " "
+                text = separation_string.join(src_txt)
+            else:
+                text = src_text[0]
+
+            # tokenize
+            src_subtokens = tokenizer.tokenize(text)
+            # select first `(max_length-2)` tokens (so the following line of tokens can be added)
+            src_subtokens = src_subtokens[: (max_length - 2)]
+            # add '[CLS]' to beginning and '[SEP]' to end (or model equivalent tokens)
+            src_subtokens = [cls_token] + src_subtokens + [sep_token]
+            # create `input_ids`
+            input_ids = tokenizer.convert_tokens_to_ids(src_subtokens)
+        else:
+            input_ids = tokenizer.encode(
+                src_txt,
+                add_special_tokens=True,
+                max_length=min(max_length, tokenizer.max_len),
+            )
+        
+        return input_ids
+
     def add_examples(
         self,
         texts,
@@ -498,41 +541,13 @@ class SentencesProcessor:
                 + "/"
                 + str(num_examples)
             )
-        # adds a '[CLS]' token between each sentence and outputs `input_ids`
         if bert_compatible_cls:
             # convert `example.text` to array of sentences
             src_txt = (" ".join(sent) for sent in example.text)
-
-            # If the CLS or SEP tokens exist in the document as part of the dataset, then
-            # set them to UNK
-            src_txt = [
-                sent.replace(sep_token, tokenizer.unk_token).replace(
-                    cls_token, tokenizer.unk_token
-                )
-                for sent in src_txt
-            ]
-
-            if not len(src_txt) < 2:  # if there is NOT 1 sentence
-                # separate each sentence with ' [SEP] [CLS] ' (or model equivalent tokens) and convert to string
-                separation_string = " " + sep_token + " " + cls_token + " "
-                text = separation_string.join(src_txt)
-            else:
-                text = src_text[0]
-
-            # tokenize
-            src_subtokens = tokenizer.tokenize(text)
-            # select first `(max_length-2)` tokens (so the following line of tokens can be added)
-            src_subtokens = src_subtokens[: (max_length - 2)]
-            # add '[CLS]' to beginning and '[SEP]' to end (or model equivalent tokens)
-            src_subtokens = [cls_token] + src_subtokens + [sep_token]
-            # create `input_ids`
-            input_ids = tokenizer.convert_tokens_to_ids(src_subtokens)
         else:
-            input_ids = tokenizer.encode(
-                example.text,
-                add_special_tokens=True,
-                max_length=min(max_length, tokenizer.max_len),
-            )
+            src_txt = example.text
+        
+        input_ids = cls.get_input_ids(tokenizer, src_txt, bert_compatible_cls, sep_token, cls_token, max_length)
 
         # Segment (Token Type) IDs
         segment_ids = None

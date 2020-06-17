@@ -36,7 +36,7 @@ def main(args):
         model.load_state_dict(checkpoint["state_dict"])
     elif args.load_from_checkpoint:
         model = ExtractiveSummarizer.load_from_checkpoint(args.load_from_checkpoint)
-        # The model is loaded with sel.hparams.data_path set to the directory where the data
+        # The model is loaded with self.hparams.data_path set to the directory where the data
         # was located during training. When loading the model, it may be desired to change
         # the data path, which the below line accomplishes.
         if args.data_path:
@@ -45,7 +45,10 @@ def main(args):
         model = ExtractiveSummarizer(hparams=args)
 
     if args.use_logger == "wandb":
-        wandb_logger = WandbLogger(project="transformerextsum-private", log_model=True)
+        wandb_logger = WandbLogger(
+            project="transformerextsum-private",
+            log_model=(not args.no_wandb_logger_log_model),
+        )
         args.logger = wandb_logger
         models_path = os.path.join(wandb_logger.experiment.dir, "models/")
     else:
@@ -79,7 +82,7 @@ if __name__ == "__main__":
 
     # parametrize the network: general options
     parser.add_argument(
-        "--default_save_path", type=str, help="Default path for logs and weights",
+        "--default_save_path", type=str, help="Default path for logs and weights. To use this option with the `wandb` logger specify the `--no_wandb_logger_log_model` option.",
     )
     parser.add_argument(
         "--learning_rate",
@@ -239,7 +242,17 @@ if __name__ == "__main__":
         use the same callback as `--use_custom_checkpoint_callback` but instead uses a different class 
         called `StepCheckpointCallback`.""",
     )
-    parser.add_argument("--custom_checkpoint_every_n_save_path", type=str, default=".", help="Path to save models when using `--custom_checkpoint_every_n`.")
+    parser.add_argument(
+        "--custom_checkpoint_every_n_save_path",
+        type=str,
+        default=".",
+        help="Path to save models when using `--custom_checkpoint_every_n`.",
+    )
+    parser.add_argument(
+        "--no_wandb_logger_log_model",
+        action="store_true",
+        help="Only applies when using the `wandb` logger. Set this argument to NOT save checkpoints in wandb directory to upload to W&B servers.",
+    )
     parser.add_argument(
         "-l",
         "--log",

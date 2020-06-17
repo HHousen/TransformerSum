@@ -365,300 +365,170 @@ Example preprocessing code:
 Output of `python main.py --help`:
 
 ```
-usage: main.py [-h] [--default_save_path DEFAULT_SAVE_PATH]
-               [--learning_rate LEARNING_RATE] [--min_epochs MIN_EPOCHS]
-               [--max_epochs MAX_EPOCHS] [--min_steps MIN_STEPS]
-               [--max_steps MAX_STEPS]
-               [--accumulate_grad_batches ACCUMULATE_GRAD_BATCHES]
-               [--check_val_every_n_epoch CHECK_VAL_EVERY_N_EPOCH]
-               [--gpus GPUS] [--gradient_clip_val GRADIENT_CLIP_VAL]
-               [--overfit_pct OVERFIT_PCT]
-               [--train_percent_check TRAIN_PERCENT_CHECK]
-               [--val_percent_check VAL_PERCENT_CHECK]
-               [--test_percent_check TEST_PERCENT_CHECK]
-               [--amp_level AMP_LEVEL] [--precision PRECISION] [--seed SEED]
-               [--profiler]
-               [--progress_bar_refresh_rate PROGRESS_BAR_REFRESH_RATE]
-               [--num_sanity_val_steps NUM_SANITY_VAL_STEPS]
-               [--use_logger {tensorboard,wandb}] [--do_train] [--do_test]
-               [--load_weights LOAD_WEIGHTS]
-               [--load_from_checkpoint LOAD_FROM_CHECKPOINT]
-               [--use_custom_checkpoint_callback]
-               [--custom_checkpoint_every_n CUSTOM_CHECKPOINT_EVERY_N]
-               [--custom_checkpoint_every_n_save_path CUSTOM_CHECKPOINT_EVERY_N_SAVE_PATH]
-               [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL}]
-               [--model_name_or_path MODEL_NAME_OR_PATH]
-               [--model_type MODEL_TYPE] [--tokenizer_name TOKENIZER_NAME]
-               [--tokenizer_lowercase] [--max_seq_length MAX_SEQ_LENGTH]
-               [--data_path DATA_PATH] [--num_threads NUM_THREADS]
-               [--processing_num_threads PROCESSING_NUM_THREADS]
-               [--weight_decay WEIGHT_DECAY]
-               [--pooling_mode {sent_rep_tokens,mean_tokens}]
-               [--adam_epsilon ADAM_EPSILON] [--optimizer_type OPTIMIZER_TYPE]
-               [--ranger-k RANGER_K] [--warmup_steps WARMUP_STEPS]
-               [--use_scheduler USE_SCHEDULER]
-               [--num_frozen_steps NUM_FROZEN_STEPS]
-               [--train_batch_size TRAIN_BATCH_SIZE]
-               [--val_batch_size VAL_BATCH_SIZE]
-               [--test_batch_size TEST_BATCH_SIZE]
-               [--processor_no_bert_compatible_cls] [--only_preprocess]
-               [--preprocess_resume]
-               [--create_token_type_ids {binary,sequential}]
-               [--no_use_token_type_ids]
-               [--classifier {linear,transformer,transformer_linear}]
-               [--classifier_dropout CLASSIFIER_DROPOUT]
-               [--classifier_transformer_num_layers CLASSIFIER_TRANSFORMER_NUM_LAYERS]
-               [--train_name TRAIN_NAME] [--val_name VAL_NAME]
-               [--test_name TEST_NAME] [--test_id_method {greater_k,top_k}]
-               [--test_k TEST_K]
-               [--loss_key {loss_total,loss_total_norm_batch,loss_avg_seq_sum,loss_avg_seq_mean,loss_avg}]
+usage: main.py [-h] [--default_save_path DEFAULT_SAVE_PATH] [--learning_rate LEARNING_RATE] [--min_epochs MIN_EPOCHS]
+                [--max_epochs MAX_EPOCHS] [--min_steps MIN_STEPS] [--max_steps MAX_STEPS] [--accumulate_grad_batches ACCUMULATE_GRAD_BATCHES]
+                [--check_val_every_n_epoch CHECK_VAL_EVERY_N_EPOCH] [--gpus GPUS] [--gradient_clip_val GRADIENT_CLIP_VAL]
+                [--overfit_pct OVERFIT_PCT] [--train_percent_check TRAIN_PERCENT_CHECK] [--val_percent_check VAL_PERCENT_CHECK]
+                [--test_percent_check TEST_PERCENT_CHECK] [--amp_level AMP_LEVEL] [--precision PRECISION] [--seed SEED] [--profiler]
+                [--progress_bar_refresh_rate PROGRESS_BAR_REFRESH_RATE] [--num_sanity_val_steps NUM_SANITY_VAL_STEPS]
+                [--use_logger {tensorboard,wandb}] [--do_train] [--do_test] [--load_weights LOAD_WEIGHTS]
+                [--load_from_checkpoint LOAD_FROM_CHECKPOINT] [--use_custom_checkpoint_callback]
+                [--custom_checkpoint_every_n CUSTOM_CHECKPOINT_EVERY_N]
+                [--custom_checkpoint_every_n_save_path CUSTOM_CHECKPOINT_EVERY_N_SAVE_PATH] [--no_wandb_logger_log_model]
+                [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL}] [--model_name_or_path MODEL_NAME_OR_PATH] [--model_type MODEL_TYPE]
+                [--tokenizer_name TOKENIZER_NAME] [--tokenizer_lowercase] [--max_seq_length MAX_SEQ_LENGTH] [--data_path DATA_PATH]
+                [--num_threads NUM_THREADS] [--processing_num_threads PROCESSING_NUM_THREADS] [--weight_decay WEIGHT_DECAY]
+                [--pooling_mode {sent_rep_tokens,mean_tokens}] [--adam_epsilon ADAM_EPSILON] [--optimizer_type OPTIMIZER_TYPE]
+                [--ranger-k RANGER_K] [--warmup_steps WARMUP_STEPS] [--use_scheduler USE_SCHEDULER] [--num_frozen_steps NUM_FROZEN_STEPS]
+                [--train_batch_size TRAIN_BATCH_SIZE] [--val_batch_size VAL_BATCH_SIZE] [--test_batch_size TEST_BATCH_SIZE]
+                [--processor_no_bert_compatible_cls] [--only_preprocess] [--preprocess_resume] [--create_token_type_ids {binary,sequential}]
+                [--no_use_token_type_ids] [--classifier {linear,transformer,transformer_linear}] [--classifier_dropout CLASSIFIER_DROPOUT]
+                [--classifier_transformer_num_layers CLASSIFIER_TRANSFORMER_NUM_LAYERS] [--train_name TRAIN_NAME] [--val_name VAL_NAME]
+                [--test_name TEST_NAME] [--test_id_method {greater_k,top_k}] [--test_k TEST_K]
+                [--loss_key {loss_total,loss_total_norm_batch,loss_avg_seq_sum,loss_avg_seq_mean,loss_avg}]
 
-optional arguments:
-  -h, --help            show this help message and exit
-  --default_save_path DEFAULT_SAVE_PATH
-                        Default path for logs and weights
-  --learning_rate LEARNING_RATE
-                        The initial learning rate for the optimizer.
-  --min_epochs MIN_EPOCHS
-                        Limits training to a minimum number of epochs
-  --max_epochs MAX_EPOCHS
-                        Limits training to a max number number of epochs
-  --min_steps MIN_STEPS
-                        Limits training to a minimum number number of steps
-  --max_steps MAX_STEPS
-                        Limits training to a max number number of steps
-  --accumulate_grad_batches ACCUMULATE_GRAD_BATCHES
-                        Accumulates grads every k batches. A single step is
-                        one gradient accumulation cycle, so setting this value
-                        to 2 will cause 2 batches to be processed for each
-                        step.
-  --check_val_every_n_epoch CHECK_VAL_EVERY_N_EPOCH
-                        Check val every n train epochs.
-  --gpus GPUS           Number of GPUs to train on or Which GPUs to train on.
-                        (default: -1 (all gpus))
-  --gradient_clip_val GRADIENT_CLIP_VAL
-                        Gradient clipping value
-  --overfit_pct OVERFIT_PCT
-                        Uses this much data of all datasets (training,
-                        validation, test). Useful for quickly debugging or
-                        trying to overfit on purpose.
-  --train_percent_check TRAIN_PERCENT_CHECK
-                        How much of training dataset to check. Useful when
-                        debugging or testing something that happens at the end
-                        of an epoch.
-  --val_percent_check VAL_PERCENT_CHECK
-                        How much of validation dataset to check. Useful when
-                        debugging or testing something that happens at the end
-                        of an epoch.
-  --test_percent_check TEST_PERCENT_CHECK
-                        How much of test dataset to check.
-  --amp_level AMP_LEVEL
-                        The optimization level to use (O1, O2, etc…) for
-                        16-bit GPU precision (using NVIDIA apex under the
-                        hood).
-  --precision PRECISION
-                        Full precision (32), half precision (16). Can be used
-                        on CPU, GPU or TPUs.
-  --seed SEED           Seed for reproducible results. Can negatively impact
-                        performace in some cases.
-  --profiler            To profile individual steps during training and assist
-                        in identifying bottlenecks.
-  --progress_bar_refresh_rate PROGRESS_BAR_REFRESH_RATE
-                        How often to refresh progress bar (in steps). In
-                        notebooks, faster refresh rates (lower number) is
-                        known to crash them because of their screen refresh
-                        rates, so raise it to 50 or more.
-  --num_sanity_val_steps NUM_SANITY_VAL_STEPS
-                        Sanity check runs n batches of val before starting the
-                        training routine. This catches any bugs in your
-                        validation without having to wait for the first
-                        validation check.
-  --use_logger {tensorboard,wandb}
-                        Which program to use for logging. If
-                        `--use_custom_checkpoint_callback` is specified and
-                        `wandb` is chosen then model weights will
-                        automatically be uploaded to wandb.ai.
-  --do_train            Run the training procedure.
-  --do_test             Run the testing procedure.
-  --load_weights LOAD_WEIGHTS
-                        Loads the model weights from a given checkpoint
-  --load_from_checkpoint LOAD_FROM_CHECKPOINT
-                        Loads the model weights and hyperparameters from a
-                        given checkpoint.
-  --use_custom_checkpoint_callback
-                        Use the custom checkpointing callback specified in
-                        main() by `args.checkpoint_callback`. By default this
-                        custom callback saves the model every epoch and never
-                        deletes and saved weights files. Set this option and
-                        `--use_logger` to `wandb` to automatically upload
-                        model weights to wandb.ai. DO NOT set this and
-                        `--user_logger` to "tensorboard" because a custom
-                        TensorBoardLogger is not created. Thus, when the
-                        trainer attempts to save the model, the program will
-                        crash since `--default_save_path` is set and a custom
-                        checkpoint callback is passed. See: https://pytorch-li
-                        ghtning.readthedocs.io/en/latest/trainer.html#default-
-                        root-dir ("Default path for logs and weights when **no
-                        logger or ModelCheckpoint callback** passed.")
-  --custom_checkpoint_every_n CUSTOM_CHECKPOINT_EVERY_N
-                        The number of steps between additional checkpoints. By
-                        default checkpoints are saved every epoch. Setting
-                        this value will save them every epoch and every N
-                        steps. This does not use the same callback as
-                        `--use_custom_checkpoint_callback` but instead uses a
-                        different class called `StepCheckpointCallback`.
-  --custom_checkpoint_every_n_save_path CUSTOM_CHECKPOINT_EVERY_N_SAVE_PATH
-                        Path to save models when using
-                        `--custom_checkpoint_every_n`.
-  -l {DEBUG,INFO,WARNING,ERROR,CRITICAL}, --log {DEBUG,INFO,WARNING,ERROR,CRITICAL}
-                        Set the logging level (default: 'Info').
-  --model_name_or_path MODEL_NAME_OR_PATH
-                        Path to pre-trained model or shortcut name selected in
-                        the list: bert-base-uncased, bert-large-uncased, bert-
-                        base-cased, bert-large-cased, bert-base-multilingual-
-                        uncased, bert-base-multilingual-cased, bert-base-
-                        chinese, bert-base-german-cased, bert-large-uncased-
-                        whole-word-masking, bert-large-cased-whole-word-
-                        masking, bert-large-uncased-whole-word-masking-
-                        finetuned-squad, bert-large-cased-whole-word-masking-
-                        finetuned-squad, bert-base-cased-finetuned-mrpc, bert-
-                        base-german-dbmdz-cased, bert-base-german-dbmdz-
-                        uncased, bert-base-japanese, bert-base-japanese-whole-
-                        word-masking, bert-base-japanese-char, bert-base-
-                        japanese-char-whole-word-masking, bert-base-finnish-
-                        cased-v1, bert-base-finnish-uncased-v1, bert-base-
-                        dutch-cased, bart-large, bart-large-mnli, bart-large-
-                        cnn, bart-large-xsum, openai-gpt, transfo-xl-wt103,
-                        gpt2, gpt2-medium, gpt2-large, gpt2-xl, distilgpt2,
-                        ctrl, xlnet-base-cased, xlnet-large-cased, xlm-mlm-
-                        en-2048, xlm-mlm-ende-1024, xlm-mlm-enfr-1024, xlm-
-                        mlm-enro-1024, xlm-mlm-tlm-xnli15-1024, xlm-mlm-
-                        xnli15-1024, xlm-clm-enfr-1024, xlm-clm-ende-1024,
-                        xlm-mlm-17-1280, xlm-mlm-100-1280, roberta-base,
-                        roberta-large, roberta-large-mnli, distilroberta-base,
-                        roberta-base-openai-detector, roberta-large-openai-
-                        detector, distilbert-base-uncased, distilbert-base-
-                        uncased-distilled-squad, distilbert-base-cased,
-                        distilbert-base-cased-distilled-squad, distilbert-
-                        base-german-cased, distilbert-base-multilingual-cased,
-                        distilbert-base-uncased-finetuned-sst-2-english,
-                        albert-base-v1, albert-large-v1, albert-xlarge-v1,
-                        albert-xxlarge-v1, albert-base-v2, albert-large-v2,
-                        albert-xlarge-v2, albert-xxlarge-v2, camembert-base,
-                        umberto-commoncrawl-cased-v1, umberto-wikipedia-
-                        uncased-v1, t5-small, t5-base, t5-large, t5-3b,
-                        t5-11b, flaubert-small-cased, flaubert-base-uncased,
-                        flaubert-base-cased, flaubert-large-cased, xlm-
-                        roberta-base, xlm-roberta-large, xlm-roberta-large-
-                        finetuned-conll02-dutch, xlm-roberta-large-finetuned-
-                        conll02-spanish, xlm-roberta-large-finetuned-
-                        conll03-english, xlm-roberta-large-finetuned-
-                        conll03-german, google/electra-small-generator,
-                        google/electra-base-generator, google/electra-large-
-                        generator, google/electra-small-discriminator,
-                        google/electra-base-discriminator, google/electra-
-                        large-discriminator, longformer-base-4096, longformer-
-                        large-4096
-  --model_type MODEL_TYPE
-                        Model type selected in the list: t5, distilbert,
-                        albert, camembert, xlm-roberta, bart, roberta, bert,
-                        openai-gpt, gpt2, transfo-xl, xlnet, flaubert, xlm,
-                        ctrl, electra, longformer
-  --tokenizer_name TOKENIZER_NAME
-  --tokenizer_lowercase
-  --max_seq_length MAX_SEQ_LENGTH
-  --data_path DATA_PATH
-                        Directory containing the dataset.
-  --num_threads NUM_THREADS
-  --processing_num_threads PROCESSING_NUM_THREADS
-  --weight_decay WEIGHT_DECAY
-  --pooling_mode {sent_rep_tokens,mean_tokens}
-                        How word vectors should be converted to sentence
-                        embeddings.
-  --adam_epsilon ADAM_EPSILON
-                        Epsilon for Adam optimizer.
-  --optimizer_type OPTIMIZER_TYPE
-                        Which optimizer to use: 1. `ranger` optimizer
-                        (combination of RAdam and LookAhead) 2. `adamw` 3.
-                        `yellowfin`
-  --ranger-k RANGER_K   Ranger (LookAhead) optimizer k value (default: 6).
-                        LookAhead keeps a single extra copy of the weights,
-                        then lets the internalized ‘faster’ optimizer (for
-                        Ranger, that’s RAdam) explore for 5 or 6 batches. The
-                        batch interval is specified via the k parameter.
-  --warmup_steps WARMUP_STEPS
-                        Linear warmup over warmup_steps. Only active if
-                        `--use_scheduler` is set.
-  --use_scheduler USE_SCHEDULER
-                        Two options: 1. `linear`: Use a linear schedule that
-                        inceases linearly over `--warmup_steps` to
-                        `--learning_rate` then decreases linearly for the rest
-                        of the training process. 2. `onecycle`: Use the one
-                        cycle policy with a maximum learning rate of
-                        `--learning_rate`. (default: False, don't use any
-                        scheduler)
-  --num_frozen_steps NUM_FROZEN_STEPS
-                        Freeze (don't train) the word embedding model for this
-                        many steps.
-  --train_batch_size TRAIN_BATCH_SIZE
-                        Batch size per GPU/CPU for training.
-  --val_batch_size VAL_BATCH_SIZE
-                        Batch size per GPU/CPU for evaluation.
-  --test_batch_size TEST_BATCH_SIZE
-                        Batch size per GPU/CPU for testing.
-  --processor_no_bert_compatible_cls
-                        If model uses bert compatible [CLS] tokens for
-                        sentence representations.
-  --only_preprocess     Only preprocess and write the data to disk. Don't
-                        train model. This will force data to be preprocessed,
-                        even if it was already computed and is detected on
-                        disk, and any previous processed files will be
-                        overwritten.
-  --preprocess_resume   Resume preprocessing. `--only_preprocess` must be set
-                        in order to resume. Determines which files to process
-                        by finding the shards that do not have a coresponding
-                        ".pt" file in the data directory.
-  --create_token_type_ids {binary,sequential}
-                        Create token type ids during preprocessing.
-  --no_use_token_type_ids
-                        Set to not train with `token_type_ids` (don't pass
-                        them into the model).
-  --classifier {linear,transformer,transformer_linear}
-                        Which classifier/encoder to use to reduce the hidden
-                        dimension of the sentence vectors. `linear` - a
-                        `LinearClassifier` with two linear layers, dropout,
-                        and an activation function. `transformer` - a
-                        `TransformerEncoderClassifier` which runs the sentence
-                        vectors through some `nn.TransformerEncoderLayer`s and
-                        then a simple `nn.Linear` layer. `transformer_linear`
-                        - a `TransformerEncoderClassifier` with a
-                        `LinearClassifier` as the `reduction` parameter, which
-                        results in the same thing as the `transformer` option
-                        but with a `LinearClassifier` instead of a `nn.Linear`
-                        layer.
-  --classifier_dropout CLASSIFIER_DROPOUT
-                        The value for the dropout layers in the classifier.
-  --classifier_transformer_num_layers CLASSIFIER_TRANSFORMER_NUM_LAYERS
-                        The number of layers for the `transformer` classifier.
-                        Only has an effect if `--classifier` contains
-                        "transformer".
-  --train_name TRAIN_NAME
-                        name for set of training files on disk (for loading
-                        and saving)
-  --val_name VAL_NAME   name for set of validation files on disk (for loading
-                        and saving)
-  --test_name TEST_NAME
-                        name for set of testing files on disk (for loading and
-                        saving)
-  --test_id_method {greater_k,top_k}
-                        How to chose the top predictions from the model for
-                        ROUGE scores.
-  --test_k TEST_K       The `k` parameter for the `--test_id_method`. Must be
-                        set if using the `greater_k` option. (default: 3)
-  --loss_key {loss_total,loss_total_norm_batch,loss_avg_seq_sum,loss_avg_seq_mean,loss_avg}
-                        Which reduction method to use with BCELoss. See the
-                        `experiments/loss_functions/` folder for info on how
-                        the default (`loss_avg_seq_mean`) was chosen.
+  optional arguments:
+    -h, --help            show this help message and exit
+    --default_save_path DEFAULT_SAVE_PATH
+                          Default path for logs and weights. To use this option with the `wandb` logger specify the
+                          `--no_wandb_logger_log_model` option.
+    --learning_rate LEARNING_RATE
+                          The initial learning rate for the optimizer.
+    --min_epochs MIN_EPOCHS
+                          Limits training to a minimum number of epochs
+    --max_epochs MAX_EPOCHS
+                          Limits training to a max number number of epochs
+    --min_steps MIN_STEPS
+                          Limits training to a minimum number number of steps
+    --max_steps MAX_STEPS
+                          Limits training to a max number number of steps
+    --accumulate_grad_batches ACCUMULATE_GRAD_BATCHES
+                          Accumulates grads every k batches. A single step is one gradient accumulation cycle, so setting this value to 2 will
+                          cause 2 batches to be processed for each step.
+    --check_val_every_n_epoch CHECK_VAL_EVERY_N_EPOCH
+                          Check val every n train epochs.
+    --gpus GPUS           Number of GPUs to train on or Which GPUs to train on. (default: -1 (all gpus))
+    --gradient_clip_val GRADIENT_CLIP_VAL
+                          Gradient clipping value
+    --overfit_pct OVERFIT_PCT
+                          Uses this much data of all datasets (training, validation, test). Useful for quickly debugging or trying to overfit
+                          on purpose.
+    --train_percent_check TRAIN_PERCENT_CHECK
+                          How much of training dataset to check. Useful when debugging or testing something that happens at the end of an
+                          epoch.
+    --val_percent_check VAL_PERCENT_CHECK
+                          How much of validation dataset to check. Useful when debugging or testing something that happens at the end of an
+                          epoch.
+    --test_percent_check TEST_PERCENT_CHECK
+                          How much of test dataset to check.
+    --amp_level AMP_LEVEL
+                          The optimization level to use (O1, O2, etc…) for 16-bit GPU precision (using NVIDIA apex under the hood).
+    --precision PRECISION
+                          Full precision (32), half precision (16). Can be used on CPU, GPU or TPUs.
+    --seed SEED           Seed for reproducible results. Can negatively impact performace in some cases.
+    --profiler            To profile individual steps during training and assist in identifying bottlenecks.
+    --progress_bar_refresh_rate PROGRESS_BAR_REFRESH_RATE
+                          How often to refresh progress bar (in steps). In notebooks, faster refresh rates (lower number) is known to crash
+                          them because of their screen refresh rates, so raise it to 50 or more.
+    --num_sanity_val_steps NUM_SANITY_VAL_STEPS
+                          Sanity check runs n batches of val before starting the training routine. This catches any bugs in your validation
+                          without having to wait for the first validation check.
+    --use_logger {tensorboard,wandb}
+                          Which program to use for logging. If `--use_custom_checkpoint_callback` is specified and `wandb` is chosen then model
+                          weights will automatically be uploaded to wandb.ai.
+    --do_train            Run the training procedure.
+    --do_test             Run the testing procedure.
+    --load_weights LOAD_WEIGHTS
+                          Loads the model weights from a given checkpoint
+    --load_from_checkpoint LOAD_FROM_CHECKPOINT
+                          Loads the model weights and hyperparameters from a given checkpoint.
+    --use_custom_checkpoint_callback
+                          Use the custom checkpointing callback specified in main() by `args.checkpoint_callback`. By default this custom
+                          callback saves the model every epoch and never deletes and saved weights files. Set this option and `--use_logger` to
+                          `wandb` to automatically upload model weights to wandb.ai. DO NOT set this and `--user_logger` to "tensorboard"
+                          because a custom TensorBoardLogger is not created. Thus, when the trainer attempts to save the model, the program
+                          will crash since `--default_save_path` is set and a custom checkpoint callback is passed. See: https://pytorch-
+                          lightning.readthedocs.io/en/latest/trainer.html#default-root-dir ("Default path for logs and weights when **no logger
+                          or ModelCheckpoint callback** passed.")
+    --custom_checkpoint_every_n CUSTOM_CHECKPOINT_EVERY_N
+                          The number of steps between additional checkpoints. By default checkpoints are saved every epoch. Setting this value
+                          will save them every epoch and every N steps. This does not use the same callback as
+                          `--use_custom_checkpoint_callback` but instead uses a different class called `StepCheckpointCallback`.
+    --custom_checkpoint_every_n_save_path CUSTOM_CHECKPOINT_EVERY_N_SAVE_PATH
+                          Path to save models when using `--custom_checkpoint_every_n`.
+    --no_wandb_logger_log_model
+                          Only applies when using the `wandb` logger. Set this argument to NOT save checkpoints in wandb directory to upload to
+                          W&B servers.
+    -l {DEBUG,INFO,WARNING,ERROR,CRITICAL}, --log {DEBUG,INFO,WARNING,ERROR,CRITICAL}
+                          Set the logging level (default: 'Info').
+    --model_name_or_path MODEL_NAME_OR_PATH
+                          Path to pre-trained model or shortcut name. A list of shortcut names can be found at https://huggingface.co/models.
+    --model_type MODEL_TYPE
+                          Model type selected in the list: t5, distilbert, albert, camembert, xlm-roberta, bart, longformer, roberta, bert,
+                          openai-gpt, gpt2, transfo-xl, xlnet, flaubert, xlm, ctrl, electra, reformer
+    --tokenizer_name TOKENIZER_NAME
+    --tokenizer_lowercase
+    --max_seq_length MAX_SEQ_LENGTH
+    --data_path DATA_PATH
+                          Directory containing the dataset.
+    --num_threads NUM_THREADS
+    --processing_num_threads PROCESSING_NUM_THREADS
+    --weight_decay WEIGHT_DECAY
+    --pooling_mode {sent_rep_tokens,mean_tokens}
+                          How word vectors should be converted to sentence embeddings.
+    --adam_epsilon ADAM_EPSILON
+                          Epsilon for Adam optimizer.
+    --optimizer_type OPTIMIZER_TYPE
+                          Which optimizer to use: 1. `ranger` optimizer (combination of RAdam and LookAhead) 2. `adamw` 3. `yellowfin`
+    --ranger-k RANGER_K   Ranger (LookAhead) optimizer k value (default: 6). LookAhead keeps a single extra copy of the weights, then lets the
+                          internalized ‘faster’ optimizer (for Ranger, that’s RAdam) explore for 5 or 6 batches. The batch interval is
+                          specified via the k parameter.
+    --warmup_steps WARMUP_STEPS
+                          Linear warmup over warmup_steps. Only active if `--use_scheduler` is set.
+    --use_scheduler USE_SCHEDULER
+                          Two options: 1. `linear`: Use a linear schedule that inceases linearly over `--warmup_steps` to `--learning_rate`
+                          then decreases linearly for the rest of the training process. 2. `onecycle`: Use the one cycle policy with a maximum
+                          learning rate of `--learning_rate`. (default: False, don't use any scheduler)
+    --num_frozen_steps NUM_FROZEN_STEPS
+                          Freeze (don't train) the word embedding model for this many steps.
+    --train_batch_size TRAIN_BATCH_SIZE
+                          Batch size per GPU/CPU for training.
+    --val_batch_size VAL_BATCH_SIZE
+                          Batch size per GPU/CPU for evaluation.
+    --test_batch_size TEST_BATCH_SIZE
+                          Batch size per GPU/CPU for testing.
+    --processor_no_bert_compatible_cls
+                          If model uses bert compatible [CLS] tokens for sentence representations.
+    --only_preprocess     Only preprocess and write the data to disk. Don't train model. This will force data to be preprocessed, even if it
+                          was already computed and is detected on disk, and any previous processed files will be overwritten.
+    --preprocess_resume   Resume preprocessing. `--only_preprocess` must be set in order to resume. Determines which files to process by
+                          finding the shards that do not have a coresponding ".pt" file in the data directory.
+    --create_token_type_ids {binary,sequential}
+                          Create token type ids during preprocessing.
+    --no_use_token_type_ids
+                          Set to not train with `token_type_ids` (don't pass them into the model).
+    --classifier {linear,transformer,transformer_linear}
+                          Which classifier/encoder to use to reduce the hidden dimension of the sentence vectors. `linear` - a
+                          `LinearClassifier` with two linear layers, dropout, and an activation function. `transformer` - a
+                          `TransformerEncoderClassifier` which runs the sentence vectors through some `nn.TransformerEncoderLayer`s and then a
+                          simple `nn.Linear` layer. `transformer_linear` - a `TransformerEncoderClassifier` with a `LinearClassifier` as the
+                          `reduction` parameter, which results in the same thing as the `transformer` option but with a `LinearClassifier`
+                          instead of a `nn.Linear` layer.
+    --classifier_dropout CLASSIFIER_DROPOUT
+                          The value for the dropout layers in the classifier.
+    --classifier_transformer_num_layers CLASSIFIER_TRANSFORMER_NUM_LAYERS
+                          The number of layers for the `transformer` classifier. Only has an effect if `--classifier` contains "transformer".
+    --train_name TRAIN_NAME
+                          name for set of training files on disk (for loading and saving)
+    --val_name VAL_NAME   name for set of validation files on disk (for loading and saving)
+    --test_name TEST_NAME
+                          name for set of testing files on disk (for loading and saving)
+    --test_id_method {greater_k,top_k}
+                          How to chose the top predictions from the model for ROUGE scores.
+    --test_k TEST_K       The `k` parameter for the `--test_id_method`. Must be set if using the `greater_k` option. (default: 3)
+    --loss_key {loss_total,loss_total_norm_batch,loss_avg_seq_sum,loss_avg_seq_mean,loss_avg}
+                          Which reduction method to use with BCELoss. See the `experiments/loss_functions/` folder for info on how the default
+                          (`loss_avg_seq_mean`) was chosen.
 ```
 
 All training arguments can be found in the [pytorch_lightning trainer documentation](https://pytorch-lightning.readthedocs.io/en/latest/trainer.html).
