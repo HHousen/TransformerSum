@@ -14,7 +14,7 @@ from multiprocessing import Pool
 from collections import OrderedDict
 from argparse import ArgumentParser
 import pytorch_lightning as pl
-from rouge_score import rouge_scorer
+from rouge_score import rouge_scorer, scoring
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, RandomSampler, TensorDataset
@@ -541,10 +541,10 @@ class ExtractiveSummarizer(pl.LightningModule):
             # See: https://github.com/PyTorchLightning/pytorch-lightning/blob/f293c9b5f4b4f9fabb2eec0c369f08a66c57ef14/pytorch_lightning/trainer/training_loop.py#L624
             t_total = self.hparams.max_steps * self.hparams.accumulate_grad_batches
         else:
-            t_total = (
+            t_total = int(
                 len(self.train_dataloader_object)
                 * self.hparams.max_epochs
-                / self.hparams.accumulate_grad_batches
+                // self.hparams.accumulate_grad_batches
             )
             if self.hparams.overfit_pct > 0.0:
                 t_total = int(t_total * self.hparams.overfit_pct)
@@ -873,16 +873,11 @@ class ExtractiveSummarizer(pl.LightningModule):
 
                 candidate = source[i].strip()
                 current_prediction += candidate + " "
-            result = self.rouge_scorer.score(target, current_prediction)
-            for key, item in result.items():
-                if key not in rouge_outputs:
-                    rouge_outputs[key] = []
-                rouge_outputs[key].append(item)
+            rouge_scores = self.rouge_scorer.score(target, current_prediction)
 
         output = OrderedDict(
-            {"test_acc": acc, "test_f1": f1, "test_acc_and_f1": acc_f1}
+            {"test_acc": acc, "test_f1": f1, "test_acc_and_f1": acc_f1, "rouge_scores": rouge_scores}
         )
-        output = {**output, **rouge_outputs}
         return output
 
     def test_epoch_end(self, outputs):
@@ -892,17 +887,23 @@ class ExtractiveSummarizer(pl.LightningModule):
         avg_test_acc_and_f1 = torch.stack(
             [x["test_acc_and_f1"] for x in outputs]
         ).mean()
+
         rouge_scores_log = {}
-        for metric in self.rouge_metrics:
-            rouge_scores_log[metric + "-precision"] = np.mean(
-                [y.precision for batch_list in outputs for y in batch_list[metric]]
-            )
-            rouge_scores_log[metric + "-recall"] = np.mean(
-                [y.recall for batch_list in outputs for y in batch_list[metric]]
-            )
-            rouge_scores_log[metric + "-fmeasure"] = np.mean(
-                [y.fmeasure for batch_list in outputs for y in batch_list[metric]]
-            )
+        aggregator = scoring.BootstrapAggregator()
+        rouge_scores_list = [x["rouge_scores"] for x in outputs]
+        for score in rouge_scores_list:
+            aggregator.add_scores(score)
+        # The aggregator returns a dictionary with keys coresponding to the rouge metric
+        # and values that are `AggregateScore` objects. Each `AggregateScore` object is a
+        # named tuple with a low, mid, and high value. Each value is a `Score` object, which
+        # is also a named tuple, that contains the precision, recall, and fmeasure values.
+        # For more info see the source code: https://github.com/google-research/google-research/blob/master/rouge/scoring.py
+        rouge_result = aggregator.aggregate()
+        
+        for metric, value in rouge_result.items():
+            rouge_scores_log[metric + "-precision"] = value.mid.precision
+            rouge_scores_log[metric + "-recall"] = value.mid.recall
+            rouge_scores_log[metric + "-fmeasure"] = value.mid.fmeasure
 
         # Generate logs
         tqdm_dict = {
