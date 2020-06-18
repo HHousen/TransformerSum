@@ -18,11 +18,12 @@ from rouge_score import rouge_scorer
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, RandomSampler, TensorDataset
+from torch.optim.lr_scheduler import LambdaLR
 from spacy.lang.en import English
 from pooling import Pooling
 from data import SentencesProcessor, FSIterableDataset, pad_batch_collate
 from classifier import LinearClassifier, TransformerEncoderClassifier
-from helpers import load_json
+from helpers import load_json, lr_lambda_func
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ from transformers.data.metrics import acc_and_f1
 try:
     from transformers.modeling_auto import MODEL_MAPPING
 
-    MODEL_CLASSES = tuple(m.model_type for m in MODEL_MAPPING) # + CUSTOM_MODEL_CLASSES
+    MODEL_CLASSES = tuple(m.model_type for m in MODEL_MAPPING)  # + CUSTOM_MODEL_CLASSES
 except ImportError:
     logger.warn(
         "Could not import `MODEL_MAPPING` from transformers because it is an old version."
@@ -373,13 +374,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             self.hparams.val_name,
             self.hparams.test_name,
         ]
-        # save batch sizes in same order
-        batch_sizes = [
-            self.hparams.train_batch_size,
-            self.hparams.val_batch_size,
-            self.hparams.test_batch_size,
-        ]
-        for corpus_type, batch_size in zip(data_splits, batch_sizes):
+        for corpus_type in data_splits:
             # get the current list of dataset files. if preprocessing has already happened
             # then this will be the list of files that should be passed to a FSIterableDataset.
             # if preprocessing has not happened then `dataset_files` should be an empty list
@@ -442,7 +437,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             # `DataLoader` will ask the `Dataset` for the length instead of calculating it because
             # the length of `IterableDatasets` might not be known, but it is in this case.
             datasets[corpus_type] = FSIterableDataset(
-                dataset_files, batch_size=batch_size, verbose=True
+                dataset_files, batch_size=self.hparams.batch_size, verbose=True
             )
 
         # if set to only preprocess the data then exit after all loops have been completed
@@ -501,7 +496,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         train_dataloader = DataLoader(
             train_dataset,
             # sampler=train_sampler,
-            batch_size=self.hparams.train_batch_size,
+            batch_size=self.hparams.batch_size,
             collate_fn=self.pad_batch_collate,
         )
 
@@ -514,7 +509,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         valid_dataloader = DataLoader(
             valid_dataset,
             # sampler=valid_sampler,
-            batch_size=self.hparams.val_batch_size,
+            batch_size=self.hparams.batch_size,
             collate_fn=self.pad_batch_collate,
         )
         return valid_dataloader
@@ -529,7 +524,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         test_dataloader = DataLoader(
             test_dataset,
             # sampler=test_sampler,
-            batch_size=self.hparams.test_batch_size,
+            batch_size=self.hparams.batch_size,
             collate_fn=self.pad_batch_collate,
         )
         return test_dataloader
@@ -546,7 +541,11 @@ class ExtractiveSummarizer(pl.LightningModule):
             # See: https://github.com/PyTorchLightning/pytorch-lightning/blob/f293c9b5f4b4f9fabb2eec0c369f08a66c57ef14/pytorch_lightning/trainer/training_loop.py#L624
             t_total = self.hparams.max_steps * self.hparams.accumulate_grad_batches
         else:
-            t_total = len(self.train_dataloader_object) * self.hparams.max_epochs / self.hparams.accumulate_grad_batches
+            t_total = (
+                len(self.train_dataloader_object)
+                * self.hparams.max_epochs
+                / self.hparams.accumulate_grad_batches
+            )
             if self.hparams.overfit_pct > 0.0:
                 t_total = int(t_total * self.hparams.overfit_pct)
 
@@ -613,15 +612,24 @@ class ExtractiveSummarizer(pl.LightningModule):
                         "The linear scheduler was not imported (because you are running an older version of hugginface/transformers) but you tried to use it."
                     )
                     sys.exit(1)
-                # multiply by `hparams.accumulate_grad_batches` because pytorch_lightning
-                # steps are for each batch, except for the `trainer.global_step`, which tracks
-                # the actual number of steps
-                scheduler = get_linear_schedule_with_warmup(
-                    optimizer,
+
+                # We have to import the function and create a partial because functions cannot be
+                # serialized by python pickle. Therefore, if the normal `get_linear_schedule_with_warmup`
+                # function provided by `transformers` was used, the program would fail to save
+                # `self.hparams` because the optimizer would contain a locale function that cannot be
+                # pickled.
+                lr_lambda = partial(
+                    lr_lambda_func,
                     num_warmup_steps=self.hparams.warmup_steps
                     * self.hparams.accumulate_grad_batches,
                     num_training_steps=t_total,
                 )
+                # multiply by `hparams.accumulate_grad_batches` above because pytorch_lightning
+                # steps are for each batch, except for the `trainer.global_step`, which tracks
+                # the actual number of steps
+
+                scheduler = LambdaLR(optimizer, lr_lambda, -1)
+
             elif self.hparams.use_scheduler == "onecycle":
                 scheduler = torch.optim.lr_scheduler.OneCycleLR(
                     optimizer, max_lr=self.hparams.learning_rate, total_steps=t_total
@@ -973,7 +981,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             "--model_name_or_path",
             type=str,
             default="bert-base-uncased",
-            help="Path to pre-trained model or shortcut name. A list of shortcut names can be found at https://huggingface.co/models.",
+            help="Path to pre-trained model or shortcut name. A list of shortcut names can be found at https://huggingface.co/transformers/pretrained_models.html. Community-uploaded models are located at https://huggingface.co/models.",
         )
         parser.add_argument(
             "--model_type",
@@ -1047,22 +1055,10 @@ class ExtractiveSummarizer(pl.LightningModule):
             help="Freeze (don't train) the word embedding model for this many steps.",
         )
         parser.add_argument(
-            "--train_batch_size",
+            "--batch_size",
             default=8,
             type=int,
-            help="Batch size per GPU/CPU for training.",
-        )
-        parser.add_argument(
-            "--val_batch_size",
-            default=8,
-            type=int,
-            help="Batch size per GPU/CPU for evaluation.",
-        )
-        parser.add_argument(
-            "--test_batch_size",
-            default=8,
-            type=int,
-            help="Batch size per GPU/CPU for testing.",
+            help="Batch size per GPU/CPU for training/evaluation/testing.",
         )
         parser.add_argument(
             "--processor_no_bert_compatible_cls",

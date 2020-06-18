@@ -44,7 +44,7 @@ def main(args):
             model.hparams.data_path = args.data_path
     else:
         model = ExtractiveSummarizer(hparams=args)
-    
+
     # Create learning rate logger
     lr_logger = LearningRateLogger()
     args.callbacks = [lr_logger]
@@ -55,18 +55,19 @@ def main(args):
             log_model=(not args.no_wandb_logger_log_model),
         )
         args.logger = wandb_logger
-        models_path = os.path.join(wandb_logger.experiment.dir, "models/")
-    else:
-        models_path = "models/"
+        if not args.no_wandb_logger_log_model:
+            args.weights_save_path = os.path.join(
+                wandb_logger.experiment.dir, "models/"
+            )
 
     if args.use_custom_checkpoint_callback:
         args.checkpoint_callback = ModelCheckpoint(
-            filepath=models_path, save_top_k=-1, period=1, verbose=True,
+            filepath=args.weights_save_path, save_top_k=-1, period=1, verbose=True,
         )
     if args.custom_checkpoint_every_n:
         custom_checkpoint_callback = StepCheckpointCallback(
             step_interval=args.custom_checkpoint_every_n,
-            save_path=args.custom_checkpoint_every_n_save_path,
+            save_path=args.weights_save_path,
         )
         args.callbacks.append(custom_checkpoint_callback)
 
@@ -87,7 +88,22 @@ if __name__ == "__main__":
 
     # parametrize the network: general options
     parser.add_argument(
-        "--default_save_path", type=str, help="Default path for logs and weights. To use this option with the `wandb` logger specify the `--no_wandb_logger_log_model` option.",
+        "--default_root_dir",
+        type=str,
+        help="Default path for logs and weights. To use this option with the `wandb` logger specify the `--no_wandb_logger_log_model` option.",
+    )
+    parser.add_argument(
+        "--weights_save_path",
+        type=str,
+        help="""Where to save weights if specified. Will override `--default_root_dir` for 
+        checkpoints only. Use this if for whatever reason you need the checkpoints stored in 
+        a different place than the logs written in `--default_root_dir`. This option will 
+        override the save locations when using a custom checkpoint callback, such as those
+        created when using `--use_custom_checkpoint_callback or `--custom_checkpoint_every_n`.
+        If you are using the `wandb` logger, then you must also set `--no_wandb_logger_log_model`
+        when using this option. Model weights are saved with the wandb logs to be uploaded to 
+        wandb.ai by default. Setting this option without setting `--no_wandb_logger_log_model` 
+        effectively creates two save paths, which will crash the script.""",
     )
     parser.add_argument(
         "--learning_rate",
@@ -205,7 +221,7 @@ if __name__ == "__main__":
         default="wandb",
         type=str,
         choices=["tensorboard", "wandb"],
-        help="Which program to use for logging. If `--use_custom_checkpoint_callback` is specified and `wandb` is chosen then model weights will automatically be uploaded to wandb.ai.",
+        help="Which program to use for logging. If `wandb` is chosen then model weights will automatically be uploaded to wandb.ai.",
     )
     parser.add_argument(
         "--do_train", action="store_true", help="Run the training procedure."
@@ -226,17 +242,18 @@ if __name__ == "__main__":
         help="Loads the model weights and hyperparameters from a given checkpoint.",
     )
     parser.add_argument(
+        "--resume_from_checkpoint",
+        default=None,
+        type=str,
+        help="To resume training from a specific checkpoint pass in the path here. Automatically restores model, epoch, step, LR schedulers, apex, etc...",
+    )
+    parser.add_argument(
         "--use_custom_checkpoint_callback",
         action="store_true",
-        help="""Use the custom checkpointing callback specified in main() by 
+        help="""Use the custom checkpointing callback specified in `main()` by 
         `args.checkpoint_callback`. By default this custom callback saves the model every 
-        epoch and never deletes and saved weights files. Set this option and `--use_logger` 
-        to `wandb` to automatically upload model weights to wandb.ai. DO NOT set this and 
-        `--user_logger` to "tensorboard" because a custom TensorBoardLogger is not created. 
-        Thus, when the trainer attempts to save the model, the program will crash since
-        `--default_save_path` is set and a custom checkpoint callback is passed.
-        See: https://pytorch-lightning.readthedocs.io/en/latest/trainer.html#default-root-dir
-        ("Default path for logs and weights when **no logger or ModelCheckpoint callback** passed.")""",
+        epoch and never deletes the saved weights files. You can change the save path by 
+        setting the `--weights_save_path` option.""",
     )
     parser.add_argument(
         "--custom_checkpoint_every_n",
@@ -245,18 +262,25 @@ if __name__ == "__main__":
         help="""The number of steps between additional checkpoints. By default checkpoints are saved 
         every epoch. Setting this value will save them every epoch and every N steps. This does not 
         use the same callback as `--use_custom_checkpoint_callback` but instead uses a different class 
-        called `StepCheckpointCallback`.""",
-    )
-    parser.add_argument(
-        "--custom_checkpoint_every_n_save_path",
-        type=str,
-        default=".",
-        help="Path to save models when using `--custom_checkpoint_every_n`.",
+        called `StepCheckpointCallback`. You can change the save path by  setting the 
+        `--weights_save_path` option.""",
     )
     parser.add_argument(
         "--no_wandb_logger_log_model",
         action="store_true",
         help="Only applies when using the `wandb` logger. Set this argument to NOT save checkpoints in wandb directory to upload to W&B servers.",
+    )
+    parser.add_argument(
+        "--auto_scale_batch_size",
+        default=None,
+        type=str,
+        help="""Auto scaling of batch size may be enabled to find the largest batch size that fits 
+        into memory. Larger batch size often yields better estimates of gradients, but may also 
+        result in longer training time. Currently, this feature supports two modes 'power' scaling 
+        and 'binsearch' scaling. In 'power' scaling, starting from a batch size of 1 keeps doubling 
+        the batch size until an out-of-memory (OOM) error is encountered. Setting the argument to 
+        'binsearch' continues to finetune the batch size by performing a binary search. 'binsearch'
+        is the recommended option.""",
     )
     parser.add_argument(
         "-l",

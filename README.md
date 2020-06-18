@@ -296,7 +296,7 @@ The `--data_path` argument specifies where the extractive dataset json file are 
 The `--default_save_path` argument specifies where the logs and model weights should be stored.
 If you prefer to measure training progress by epochs instead of steps, the `--max_epochs` and `--min_epochs` options exist just for you.
 
-The batch sizes can be changed with the `--train_batch_size`, `--val_batch_size`, and `--test_batch_size` options.
+The batch size can be changed with the `--batch_size` option. This changes the batch size for training, validation, and testing. You can set the `--auto_scale_batch_size` option to automatically determine this value. See ["Auto scaling of batch size" from the pytorch_lightning documentation](https://pytorch-lightning.readthedocs.io/en/0.7.6/training_tricks.html#auto-scaling-of-batch-size) for more information about the algorithm and available options.
 
 If the extractive dataset json files are compressed using json, then they will be automatically decompressed during the data preprocessing step of training.
 

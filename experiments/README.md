@@ -33,7 +33,7 @@ python main.py \
 --profiler \
 --do_train --do_test \
 --loss_key [Loss Key Here] \
---val_batch_size 32 --train_batch_size 32 --test_batch_size 32
+--batch_size 32
 ```
 
 ### Loss Functions Results
@@ -100,7 +100,7 @@ python main.py \
 --use_scheduler linear \
 --profiler \
 --do_train --do_test \
---val_batch_size [Batch Size] --train_batch_size [Batch Size] --test_batch_size [Batch Size]
+--batch_size [Batch Size]
 ```
 
 ### WEB Results
@@ -249,7 +249,7 @@ python main.py \
 --use_scheduler linear \
 --profiler \
 --do_train --do_test \
---val_batch_size 16 --train_batch_size 16 --test_batch_size 16
+--batch_size 16
 ```
 
 ### Pooling Mode Results
@@ -315,7 +315,7 @@ python main.py \
 --use_scheduler linear \
 --profiler \
 --do_train --do_test \
---val_batch_size 16 --train_batch_size 16 --test_batch_size 16
+--batch_size 16
 ```
 
 ### Classifier/Encoder Results
