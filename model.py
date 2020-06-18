@@ -23,7 +23,7 @@ from spacy.lang.en import English
 from pooling import Pooling
 from data import SentencesProcessor, FSIterableDataset, pad_batch_collate
 from classifier import LinearClassifier, TransformerEncoderClassifier
-from helpers import load_json, lr_lambda_func
+from helpers import load_json, lr_lambda_func, block_trigrams
 
 logger = logging.getLogger(__name__)
 
@@ -158,6 +158,10 @@ class ExtractiveSummarizer(pl.LightningModule):
                     + " is not a valid value for `--classifier`. Exiting..."
                 )
                 sys.exit(1)
+
+        # Set `hparams.no_test_block_trigrams` to False if it does not exist,
+        # otherwise set its value to itself, resulting in no change
+        self.hparams.no_test_block_trigrams = getattr(hparams, "no_test_block_trigrams", False):
 
         # BCELoss: https://pytorch.org/docs/stable/nn.html#bceloss
         # `reduction` is "none" so the mean can be computed with padding ignored.
@@ -807,7 +811,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             torch.argsort(outputs, dim=1, descending=True).detach().cpu().numpy()
         )
         if self.hparams.test_id_method == "top_k":
-            selected_ids = sorted_ids[:, : self.hparams.test_k]
+            selected_ids = sorted_ids  # [:, : self.hparams.test_k]
         elif self.hparams.test_id_method == "greater_k":
             # `indexes` is sorted by original sentence order (sentences that appear first in the
             # original document are first in the summary)
@@ -857,9 +861,9 @@ class ExtractiveSummarizer(pl.LightningModule):
         for idx, (source, source_ids, target) in enumerate(
             zip(sources, selected_ids, targets)
         ):
-            current_prediction = ""
+            current_prediction = []
             for sent_idx, i in enumerate(source_ids):
-                if i > len(source):
+                if i >= len(source):
                     logger.debug(
                         "Only "
                         + str(sent_idx + 1)
@@ -872,11 +876,37 @@ class ExtractiveSummarizer(pl.LightningModule):
                     continue
 
                 candidate = source[i].strip()
-                current_prediction += candidate + " "
+                # If trigram blocking is enabled and searching for matching trigrams finds no matches
+                # then add the candidate to the current prediction list.
+                # During the predicting process, Trigram Blocking is used to reduce redundancy. Given
+                # selected summary S and a candidate sentence c, we will skip c is there exists a
+                # trigram overlapping between c and S.
+                if (not self.hparams.no_test_block_trigrams) and (
+                    not block_trigrams(candidate, current_prediction)
+                ):
+                    current_prediction.append(candidate)
+
+                # If the testing method is "top_k" and correct number of sentences have been
+                # added then break the loop and stop adding sentences. If the testing method
+                # is "greater_k" then we will continue to add all the sentences from `selected_ids`
+                if (self.hparams.test_id_method == "top_k") and (
+                    len(current_prediction) >= self.hparams.test_k
+                ):
+                    break
+
+            # Convert `current_prediction` from list to string with a space between each
+            # item/sentence.
+            current_prediction = " ".join(current_prediction)
+
             rouge_scores = self.rouge_scorer.score(target, current_prediction)
 
         output = OrderedDict(
-            {"test_acc": acc, "test_f1": f1, "test_acc_and_f1": acc_f1, "rouge_scores": rouge_scores}
+            {
+                "test_acc": acc,
+                "test_f1": f1,
+                "test_acc_and_f1": acc_f1,
+                "rouge_scores": rouge_scores,
+            }
         )
         return output
 
@@ -899,7 +929,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         # is also a named tuple, that contains the precision, recall, and fmeasure values.
         # For more info see the source code: https://github.com/google-research/google-research/blob/master/rouge/scoring.py
         rouge_result = aggregator.aggregate()
-        
+
         for metric, value in rouge_result.items():
             rouge_scores_log[metric + "-precision"] = value.mid.precision
             rouge_scores_log[metric + "-recall"] = value.mid.recall
@@ -1145,6 +1175,11 @@ class ExtractiveSummarizer(pl.LightningModule):
             type=float,
             default=3,
             help="The `k` parameter for the `--test_id_method`. Must be set if using the `greater_k` option. (default: 3)",
+        )
+        parser.add_argument(
+            "--no_test_block_trigrams",
+            action="store_true",
+            help="Disable trigram blocking when calculating ROUGE scores during testing. This will increase repetition and thus decrease accuracy.",
         )
         parser.add_argument(
             "--loss_key",
