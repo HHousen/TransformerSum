@@ -161,7 +161,7 @@ class ExtractiveSummarizer(pl.LightningModule):
 
         # Set `hparams.no_test_block_trigrams` to False if it does not exist,
         # otherwise set its value to itself, resulting in no change
-        self.hparams.no_test_block_trigrams = getattr(hparams, "no_test_block_trigrams", False):
+        self.hparams.no_test_block_trigrams = getattr(hparams, "no_test_block_trigrams", False)
 
         # BCELoss: https://pytorch.org/docs/stable/nn.html#bceloss
         # `reduction` is "none" so the mean can be computed with padding ignored.
@@ -806,7 +806,6 @@ class ExtractiveSummarizer(pl.LightningModule):
         f1 = torch.tensor(result["f1"])
         acc_f1 = torch.tensor(result["acc_and_f1"])
 
-        rouge_outputs = {}
         sorted_ids = (
             torch.argsort(outputs, dim=1, descending=True).detach().cpu().numpy()
         )
@@ -857,6 +856,8 @@ class ExtractiveSummarizer(pl.LightningModule):
                 str(self.hparams.test_id_method)
                 + " is not a valid option for `--test_id_method`."
             )
+        
+        rouge_outputs = []
         # get ROUGE scores for each (source, target) pair
         for idx, (source, source_ids, target) in enumerate(
             zip(sources, selected_ids, targets)
@@ -898,14 +899,14 @@ class ExtractiveSummarizer(pl.LightningModule):
             # item/sentence.
             current_prediction = " ".join(current_prediction)
 
-            rouge_scores = self.rouge_scorer.score(target, current_prediction)
+            rouge_outputs.append(self.rouge_scorer.score(target, current_prediction))
 
         output = OrderedDict(
             {
                 "test_acc": acc,
                 "test_f1": f1,
                 "test_acc_and_f1": acc_f1,
-                "rouge_scores": rouge_scores,
+                "rouge_scores": rouge_outputs,
             }
         )
         return output
@@ -920,7 +921,14 @@ class ExtractiveSummarizer(pl.LightningModule):
 
         rouge_scores_log = {}
         aggregator = scoring.BootstrapAggregator()
-        rouge_scores_list = [x["rouge_scores"] for x in outputs]
+
+        # In `outputs` there is an entry for each batch that was passwed through the
+        # `test_step()` function. For each batch a list containing the rouge scores
+        # for each example exists under the key "rouge_scores" in `batch_list`. Thus,
+        # the below list comprehension loops through the list of outputs and grabs the
+        # items stored under the "rouge_scores" key. Then it flattens the list of lists
+        # to a list of rouge score objects that can be added to the `aggregator`.
+        rouge_scores_list = [rouge_score_set for batch_list in outputs for rouge_score_set in batch_list["rouge_scores"]]
         for score in rouge_scores_list:
             aggregator.add_scores(score)
         # The aggregator returns a dictionary with keys coresponding to the rouge metric
