@@ -4,7 +4,8 @@ import torch
 import numpy as np
 import random
 from pytorch_lightning import Trainer
-from model import ExtractiveSummarizer
+from extractive import ExtractiveSummarizer
+from abstractive import AbstractiveSummarizer
 from helpers import StepCheckpointCallback
 from argparse import ArgumentParser
 from pytorch_lightning.loggers import WandbLogger
@@ -29,21 +30,26 @@ def main(args):
     if args.seed:
         set_seed(args.seed)
 
+    if args.mode == "abstractive":
+        summarizer = AbstractiveSummarizer
+    else:
+        summarizer = ExtractiveSummarizer
+
     if args.load_weights:
-        model = ExtractiveSummarizer(hparams=args)
+        model = summarizer(hparams=args)
         checkpoint = torch.load(
             args.load_weights, map_location=lambda storage, loc: storage
         )
         model.load_state_dict(checkpoint["state_dict"])
     elif args.load_from_checkpoint:
-        model = ExtractiveSummarizer.load_from_checkpoint(args.load_from_checkpoint)
+        model = summarizer.load_from_checkpoint(args.load_from_checkpoint)
         # The model is loaded with self.hparams.data_path set to the directory where the data
         # was located during training. When loading the model, it may be desired to change
         # the data path, which the below line accomplishes.
         if args.data_path:
             model.hparams.data_path = args.data_path
     else:
-        model = ExtractiveSummarizer(hparams=args)
+        model = summarizer(hparams=args)
 
     # Create learning rate logger
     lr_logger = LearningRateLogger()
@@ -87,6 +93,13 @@ if __name__ == "__main__":
     parser = ArgumentParser(add_help=False)
 
     # parametrize the network: general options
+    parser.add_argument(
+        "--mode",
+        type=str,
+        default="extractive",
+        choices=["extractive", "abstractive"],
+        help="Extractive or abstractive summarization training. Default is 'extractive'.",
+    )
     parser.add_argument(
         "--default_root_dir",
         type=str,
@@ -291,7 +304,12 @@ if __name__ == "__main__":
         help="Set the logging level (default: 'Info').",
     )
 
-    parser = ExtractiveSummarizer.add_model_specific_args(parser)
+    args = parser.parse_known_args()
+
+    if args[0].mode == "abstractive":
+        parser = AbstractiveSummarizer.add_model_specific_args(parser)
+    else:
+        parser = ExtractiveSummarizer.add_model_specific_args(parser)
 
     args = parser.parse_args()
 

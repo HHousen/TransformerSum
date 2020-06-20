@@ -282,7 +282,7 @@ def check_resume_success(nlp, source_file, last_shard, output_path, split, compr
                 "Common causes of this issue:\n"
                 + "1. You changed the `--shard_interval`. You used a different interval previously than you used in the command to resume.\n"
                 + "2. The abstractive (`.source` and `.target`) or extractive (`.json`) dataset files were modified or removed. The last `.json` file needs to be in the same folder it was originally outputted to so the last shard index and be determined and the last line can be read.\n"
-                + "3. It is entirely possible that there is a bug in this script. If you have checked that the above were not the cause and that there were no issues pertaining to your dataset then open an issue at https://github.com/HHousen/TransformerExtSum/issues/new."
+                + "3. It is entirely possible that there is a bug in this script. If you have checked that the above were not the cause and that there were no issues pertaining to your dataset then open an issue at https://github.com/HHousen/TransformerSum/issues/new."
             )
         )
         return False

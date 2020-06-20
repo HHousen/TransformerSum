@@ -31,7 +31,9 @@ def load_json(json_file):
 
 
 class StepCheckpointCallback(pl.callbacks.base.Callback):
-    def __init__(self, step_interval=1000, save_name="model", save_path=".", num_saves_to_keep=5):
+    def __init__(
+        self, step_interval=1000, save_name="model", save_path=".", num_saves_to_keep=5
+    ):
         super(StepCheckpointCallback, self).__init__()
         self.step_interval = step_interval
         self.save_name = save_name
@@ -40,31 +42,49 @@ class StepCheckpointCallback(pl.callbacks.base.Callback):
 
     def on_batch_end(self, trainer, pl_module):
         # check if `step_interval` has passed and that the `global_step` is not 0
-        if trainer.global_step % self.step_interval == 0 and not trainer.global_step == 0:
+        if (
+            trainer.global_step % self.step_interval == 0
+            and not trainer.global_step == 0
+        ):
+            logger.info(
+                "Saving model to "
+                + str(self.save_path)
+                + ".ckpt at step "
+                + str(trainer.global_step)
+                + "."
+            )
             final_save_location = os.path.join(
-                self.save_path, (self.save_name + "." + str(trainer.global_step) + ".ckpt")
+                self.save_path,
+                (self.save_name + "." + str(trainer.global_step) + ".ckpt"),
             )
             trainer.save_checkpoint(final_save_location)
             # remove previous saves
             offset = self.step_interval * self.num_saves_to_keep
-            path_to_remove = self.save_name + "." + str(trainer.global_step-offset) + ".ckpt"
+            path_to_remove = (
+                self.save_name + "." + str(trainer.global_step - offset) + ".ckpt"
+            )
             if os.path.isfile(path_to_remove):
                 os.remove(path_to_remove)
+
 
 def lr_lambda_func(current_step, num_warmup_steps, num_training_steps):
     if current_step < num_warmup_steps:
         return float(current_step) / float(max(1, num_warmup_steps))
     return max(
-        0.0, float(num_training_steps - current_step) / float(max(1, num_training_steps - num_warmup_steps))
+        0.0,
+        float(num_training_steps - current_step)
+        / float(max(1, num_training_steps - num_warmup_steps)),
     )
+
 
 def block_trigrams(c, p):
     tri_c = _get_ngrams(3, c.split())
     for s in p:
         tri_s = _get_ngrams(3, s.split())
-        if len(tri_c.intersection(tri_s))>0:
+        if len(tri_c.intersection(tri_s)) > 0:
             return True
     return False
+
 
 def _get_ngrams(n, text):
     """Calcualtes n-grams.

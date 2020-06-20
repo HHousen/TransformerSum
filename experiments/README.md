@@ -1,17 +1,17 @@
 # Experiments
 
-Interactive charts, graphs, raw data, run commands, hyperparameter choices, and more for all experiments are publicly available on the [TransformerExtSum Weights & Biases page](https://app.wandb.ai/hhousen/transformerextsum).
+Interactive charts, graphs, raw data, run commands, hyperparameter choices, and more for all experiments are publicly available on the [TransformerSum Weights & Biases page](https://app.wandb.ai/hhousen/transformerextsum).
 
 **Reproducibility Notes:**
 
-If you are unable to reproduce the results for the experiments below by following the instructions for each experiment, then please open an [issue](https://github.com/HHousen/TransformerExtSum/issues/new). The following is a list of things to double check if you cannot reproduce the results:
+If you are unable to reproduce the results for the experiments below by following the instructions for each experiment, then please open an [issue](https://github.com/HHousen/TransformerSum/issues/new). The following is a list of things to double check if you cannot reproduce the results:
 
-* If you are using `--overfit_pct`, then `overfit_pct` percent of the testing data is being used as well as `overfit_pct` percent of the training data. Due to the way `pytorch_lightning` was written, it is necessary to use the same `batch_size` when using `overfit_pct` in order to get the exact same results. I currently am not sure why this is the case but removing `overfit_pct` and using different `batch_size`s produces identical results. Open an [issue](https://github.com/HHousen/TransformerExtSum/issues/new) or submit a pull request if you know why.
-* Have another note that should be stated here? Open an [issue](https://github.com/HHousen/TransformerExtSum/issues/new). All contributions are very helpful.
+* If you are using `--overfit_pct`, then `overfit_pct` percent of the testing data is being used as well as `overfit_pct` percent of the training data. Due to the way `pytorch_lightning` was written, it is necessary to use the same `batch_size` when using `overfit_pct` in order to get the exact same results. I currently am not sure why this is the case but removing `overfit_pct` and using different `batch_size`s produces identical results. Open an [issue](https://github.com/HHousen/TransformerSum/issues/new) or submit a pull request if you know why.
+* Have another note that should be stated here? Open an [issue](https://github.com/HHousen/TransformerSum/issues/new). All contributions are very helpful.
 
 ## Loss Functions
 
-The loss function implementation can be found in [model.py](model.py) with signature `compute_loss(self, outputs, labels, mask)`. The function uses `nn.BCELoss` with `reduction="none"` and then applies 5 different reduction techniques. Special reduction methods were needed to ignore padding and operate on the multi-class-per-document approach (each input is assigned more than one of the same class) that this research uses to perform extractive summarization. See the comments throughout the function for more information. The five different reduction methods were tested with the `distilbert-base-uncased` word embedding model and the `pooling_mode` set to `sent_rep_tokens`. Training time is just under 4 hours on a Tesla P100 (3h52m average).
+The loss function implementation can be found in [extractive.py](extractive.py) with signature `compute_loss(self, outputs, labels, mask)`. The function uses `nn.BCELoss` with `reduction="none"` and then applies 5 different reduction techniques. Special reduction methods were needed to ignore padding and operate on the multi-class-per-document approach (each input is assigned more than one of the same class) that this research uses to perform extractive summarization. See the comments throughout the function for more information. The five different reduction methods were tested with the `distilbert-base-uncased` word embedding model and the `pooling_mode` set to `sent_rep_tokens`. Training time is just under 4 hours on a Tesla P100 (3h52m average).
 
 The `--loss_key` argument specifies the reduction method to use. It can be one of the following: `loss_total`, `loss_total_norm_batch`, `loss_avg_seq_sum`, `loss_avg_seq_mean`, `loss_avg`.
 

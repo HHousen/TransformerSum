@@ -18,7 +18,7 @@ from rouge_score import rouge_scorer, scoring
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, RandomSampler, TensorDataset
-from torch.optim.lr_scheduler import LambdaLR
+from torch.optim.lr_scheduler import LambdaLR, OneCycleLR
 from spacy.lang.en import English
 from pooling import Pooling
 from data import SentencesProcessor, FSIterableDataset, pad_batch_collate
@@ -637,7 +637,7 @@ class ExtractiveSummarizer(pl.LightningModule):
                 scheduler = LambdaLR(optimizer, lr_lambda, -1)
 
             elif self.hparams.use_scheduler == "onecycle":
-                scheduler = torch.optim.lr_scheduler.OneCycleLR(
+                scheduler = OneCycleLR(
                     optimizer, max_lr=self.hparams.learning_rate, total_steps=t_total
                 )
             else:
