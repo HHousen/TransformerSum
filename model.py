@@ -161,7 +161,9 @@ class ExtractiveSummarizer(pl.LightningModule):
 
         # Set `hparams.no_test_block_trigrams` to False if it does not exist,
         # otherwise set its value to itself, resulting in no change
-        self.hparams.no_test_block_trigrams = getattr(hparams, "no_test_block_trigrams", False)
+        self.hparams.no_test_block_trigrams = getattr(
+            hparams, "no_test_block_trigrams", False
+        )
 
         # BCELoss: https://pytorch.org/docs/stable/nn.html#bceloss
         # `reduction` is "none" so the mean can be computed with padding ignored.
@@ -856,7 +858,7 @@ class ExtractiveSummarizer(pl.LightningModule):
                 str(self.hparams.test_id_method)
                 + " is not a valid option for `--test_id_method`."
             )
-        
+
         rouge_outputs = []
         # get ROUGE scores for each (source, target) pair
         for idx, (source, source_ids, target) in enumerate(
@@ -928,7 +930,11 @@ class ExtractiveSummarizer(pl.LightningModule):
         # the below list comprehension loops through the list of outputs and grabs the
         # items stored under the "rouge_scores" key. Then it flattens the list of lists
         # to a list of rouge score objects that can be added to the `aggregator`.
-        rouge_scores_list = [rouge_score_set for batch_list in outputs for rouge_score_set in batch_list["rouge_scores"]]
+        rouge_scores_list = [
+            rouge_score_set
+            for batch_list in outputs
+            for rouge_score_set in batch_list["rouge_scores"]
+        ]
         for score in rouge_scores_list:
             aggregator.add_scores(score)
         # The aggregator returns a dictionary with keys coresponding to the rouge metric

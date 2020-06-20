@@ -95,3 +95,28 @@ def _get_word_ngrams(n, sentences):
     words = sum(sentences, [])
     # words = [w for w in words if w not in stopwords]
     return _get_ngrams(n, words)
+
+
+def pad(data, pad_id, width=None, pad_on_left=False):
+    """Pad `data` with `pad_id` to `width` on the right by default but if `pad_on_left` then left."""
+    if not width:
+        width = max(len(d) for d in data)
+    if pad_on_left:
+        rtn_data = [[pad_id] * (width - len(d)) + d for d in data]
+    else:
+        rtn_data = [d + [pad_id] * (width - len(d)) for d in data]
+    return rtn_data
+
+
+def pad_tensors(tensors, pad_id=0, width=None, pad_on_left=False):
+    """Pad `tensors` with `pad_id` to `width` on the right by default but if `pad_on_left` then left."""
+    if not width:
+        width = max(len(d) for d in tensors)
+    if pad_on_left:
+        pad_params = ((width - len(tensor)), 0)
+    else:
+        pad_params = (0, (width - len(tensor)))
+    return [
+        F.pad(tensor, pad=pad_params, mode="constant", value=pad_id)
+        for tensor in tensors
+    ]
