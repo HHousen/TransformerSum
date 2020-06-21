@@ -8,6 +8,14 @@ logger = logging.getLogger(__name__)
 
 
 def load_json(json_file):
+    """Load a json file even if it is compressed with gzip.
+
+    Args:
+        json_file (str): Path to json file
+
+    Returns:
+        tuple: (documents, file_path), loaded json and path to file
+    """
     # `file_extension` is second and path (without extension) is first
     # `file_extension` only contains last extension so ".json.gz" will output ".gz"
     file_path, file_extension = os.path.splitext(json_file)
@@ -77,9 +85,19 @@ def lr_lambda_func(current_step, num_warmup_steps, num_training_steps):
     )
 
 
-def block_trigrams(c, p):
-    tri_c = _get_ngrams(3, c.split())
-    for s in p:
+def block_trigrams(candidate, prediction):
+    """Decrease repetition in summaries by checking if a trigram from ``prediction`` 
+    exists in ``candidate``
+
+    Args:
+        candidate (str): The string to check for trigrams from ``prediction``
+        prediction (list): A list of strings to extract trigrams from
+
+    Returns:
+        bool: True if overlapping trigrams detected, False otherwise.
+    """
+    tri_c = _get_ngrams(3, candidate.split())
+    for s in prediction:
         tri_s = _get_ngrams(3, s.split())
         if len(tri_c.intersection(tri_s)) > 0:
             return True
@@ -87,14 +105,14 @@ def block_trigrams(c, p):
 
 
 def _get_ngrams(n, text):
-    """Calcualtes n-grams.
+    """Calculates n-grams.
 
     Args:
-      n: which n-grams to calculate
-      text: An array of tokens
+        n (int): which n-grams to calculate
+        text (list): An array of tokens
 
     Returns:
-      A set of n-grams
+        A set of n-grams
     """
     ngram_set = set()
     text_length = len(text)
@@ -105,8 +123,7 @@ def _get_ngrams(n, text):
 
 
 def _get_word_ngrams(n, sentences):
-    """Calculates word n-grams for multiple sentences.
-    """
+    """Calculates word n-grams for multiple sentences."""
     assert len(sentences) > 0
     assert n > 0
 
@@ -118,7 +135,7 @@ def _get_word_ngrams(n, sentences):
 
 
 def pad(data, pad_id, width=None, pad_on_left=False):
-    """Pad `data` with `pad_id` to `width` on the right by default but if `pad_on_left` then left."""
+    """Pad ``data`` with ``pad_id`` to ``width`` on the right by default but if ``pad_on_left`` then left."""
     if not width:
         width = max(len(d) for d in data)
     if pad_on_left:
@@ -129,7 +146,7 @@ def pad(data, pad_id, width=None, pad_on_left=False):
 
 
 def pad_tensors(tensors, pad_id=0, width=None, pad_on_left=False):
-    """Pad `tensors` with `pad_id` to `width` on the right by default but if `pad_on_left` then left."""
+    """Pad ``tensors`` with ``pad_id`` to ``width`` on the right by default but if ``pad_on_left`` then left."""
     if not width:
         width = max(len(d) for d in tensors)
     if pad_on_left:

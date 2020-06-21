@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 def read_in_chunks(file_object, chunk_size=5000):
-    """ Read a file line by line but yield chunks of `chunk_size` number of lines at a time. """
+    """Read a file line by line but yield chunks of ``chunk_size`` number of lines at a time."""
     # https://stackoverflow.com/a/519653
     # zero mod anything is zero so start counting at 1
     current_line_num = 1
@@ -58,7 +58,7 @@ def convert_to_extractive_driver(args):
     """
     Driver function to convert an abstractive summarization dataset to an extractive dataset.
     The abstractive dataset must be formatted with two files for each split: a source and target file.
-    Example file list for two splits: ["train.source", "train.target", "val.source", "val.target"]
+    Example file list for two splits: ``["train.source", "train.target", "val.source", "val.target"]``
     """
     # default is to output to input data directory if no output directory specified
     if not args.base_output_path:
@@ -155,7 +155,8 @@ def convert_to_extractive_process(
 ):
     """
     Main process to convert an abstractive summarization dataset to extractive.
-    Tokenizes, gets the `oracle_ids`, splits into `source` and `labels`, and saves processed data.
+    Tokenizes, gets the ``oracle_ids``, splits into ``source`` and ``labels``, and 
+    saves processed data.
     """
     # tokenize the source and target documents
     # each step runs in parallel on `args.n_process` threads with batch size `args.batch_size`
@@ -221,7 +222,10 @@ def convert_to_extractive_process(
 
 
 def resume(output_path, split, chunk_size):
-    """ Find the last shard created and return the total number of lines read and last shard number. """
+    """
+    Find the last shard created and return the total number of lines read and last 
+    shard number.
+    """
     glob_str = os.path.join(output_path, (split + ".*.json*"))
     all_json_in_split = glob.glob(glob_str)
 
@@ -291,7 +295,7 @@ def check_resume_success(nlp, source_file, last_shard, output_path, split, compr
 
 
 def seek_files(files, line_num):
-    """ Seek a set of files to line number `line_num` and return the files. """
+    """Seek a set of files to line number ``line_num`` and return the files."""
     rtn_file_objects = []
     for file_object in files:
         line_offset = []
@@ -308,7 +312,10 @@ def seek_files(files, line_num):
 
 
 def save(json_to_save, output_path, compression=False):
-    """ Save `json_to_save` to `output_path` with optional gzip compresssion specified by `compression` """
+    """
+    Save ``json_to_save`` to ``output_path`` with optional gzip compresssion 
+    specified by ``compression``.
+    """
     logger.info("Saving to " + str(output_path))
     if compression:
         # https://stackoverflow.com/a/39451012
@@ -324,7 +331,7 @@ def save(json_to_save, output_path, compression=False):
 def tokenize(
     nlp, docs, n_process=5, batch_size=100, name="", tokenizer_log_interval=0.1
 ):
-    """ Tokenize using spacy and split into sentences and tokens """
+    """Tokenize using spacy and split into sentences and tokens."""
     tokenized = []
 
     for idx, doc in tqdm(
@@ -353,7 +360,10 @@ def tokenize(
 
 
 def example_processor(inputs, args=None, oracle_mode="greedy", no_preprocess=False):
-    """ Create `oracle_ids`, convert them to `labels` and run preprocess(). """
+    """
+    Create ``oracle_ids``, convert them to ``labels`` and run 
+    :meth:`~convert_to_extractive.preprocess`.
+    """
     source_doc, target_doc = inputs
     if oracle_mode == "greedy":
         oracle_ids = greedy_selection(source_doc, target_doc, 3)
@@ -398,7 +408,10 @@ def preprocess(
     min_example_nsents=3,
     max_example_nsents=100,
 ):
-    """ Removes sentences that are too long/short and examples that have too few/many sentences. """
+    """
+    Removes sentences that are too long/short and examples that have
+    too few/many sentences.
+    """
     # pick the sentence indexes in `example` if they are larger then `min_sentence_ntokens`
     idxs = [i for i, s in enumerate(example) if (len(s) > min_sentence_ntokens)]
     # truncate selected source sentences to `max_sentence_ntokens`

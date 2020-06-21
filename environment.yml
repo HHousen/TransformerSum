@@ -1,4 +1,4 @@
-name: transformerextsum
+name: transformersum
 channels:
     - conda-forge
     - pytorch
@@ -8,6 +8,7 @@ dependencies:
     - scikit-learn
     - tensorboard
     - spacy
+    - sphinx
     - pip
     - pip:
       - pytorch_lightning
@@ -16,3 +17,4 @@ dependencies:
       - wandb
       - rouge-score
       - packaging
+      - nlp

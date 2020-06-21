@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 def trim_batch(
     input_ids, pad_token_id, attention_mask=None,
 ):
-    """Remove columns that are populated exclusively by pad_token_id"""
+    """Remove columns that are populated exclusively by ``pad_token_id``."""
     keep_column_mask = input_ids.ne(pad_token_id).any(dim=0)
     if attention_mask is None:
         return input_ids[:, keep_column_mask]
@@ -35,6 +35,12 @@ def trim_batch(
 
 
 class AbstractiveSummarizer(pl.LightningModule):
+    """
+    A machine learning model that abstractively summarizes an input text using a seq2seq model.
+    Main class that handles the data loading, initial processing, training/testing/validating setup,
+    and contains the actual model.
+    """
+
     def __init__(self, hparams):
         super(AbstractiveSummarizer, self).__init__()
 
@@ -60,7 +66,12 @@ class AbstractiveSummarizer(pl.LightningModule):
         )
 
         # Add special tokens so that they are ignored when decoding.
-        special_tokens_dict = {"additional_special_tokens": [self.target_boseq_token, self.target_eoseq_token]}
+        special_tokens_dict = {
+            "additional_special_tokens": [
+                self.target_boseq_token,
+                self.target_eoseq_token,
+            ]
+        }
         self.tokenizer.add_special_tokens(special_tokens_dict)
 
         self.loss_func = nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
@@ -68,6 +79,33 @@ class AbstractiveSummarizer(pl.LightningModule):
     def forward(
         self, source=None, target=None, source_mask=None, target_mask=None, labels=None
     ):
+        """Model forward function. See the `60 minute bliz tutorial <https://pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html>`_
+        if you are unsure what a forward function is.
+
+        Args:
+            source (``torch.LongTensor`` of shape ``(batch_size, sequence_length)``, optional): Indices 
+                of input sequence tokens in the vocabulary for the encoder. 
+                `What are input IDs? <https://huggingface.co/transformers/glossary.html#input-ids>`_ 
+                Defaults to None.
+            target (``torch.LongTensor`` of shape ``(batch_size, target_sequence_length)``, optional): Provide 
+                for sequence to sequence training to the decoder. Defaults to None.
+            source_mask (``torch.FloatTensor`` of shape ``(batch_size, sequence_length)``, optional): Mask 
+                to avoid performing attention on padding token indices for the encoder. Mask values 
+                selected in ``[0, 1]``: ``1`` for tokens that are NOT MASKED, ``0`` for MASKED tokens. 
+                Defaults to None.
+            target_mask (``torch.BoolTensor`` of shape ``(batch_size, tgt_seq_len)``, optional): ``source_mask``
+                but for the target sequence. Is an attention mask. Defaults to None.
+            labels (``torch.LongTensor`` of shape ``(batch_size, sequence_length)``, optional): Labels 
+                for computing the masked language modeling loss for the decoder. Indices should be in 
+                ``[-100, 0, ..., config.vocab_size]``. Tokens with indices set to ``-100`` are 
+                ignored (masked), the loss is only computed for the tokens with labels in 
+                ``[0, ..., config.vocab_size]`` Defaults to None.
+
+        Returns:
+            tuple: (cross_entropy_loss, prediction_scores) The cross entropy loss and the
+            prediction scores, which are the scores for each token in the vocabulary for each
+            token in the output.
+        """
         # `self.model.forward()` returns `decoder_outputs + encoder_outputs`
         outputs = self.model.forward(
             input_ids=source,
@@ -81,6 +119,11 @@ class AbstractiveSummarizer(pl.LightningModule):
         return cross_entropy_loss, prediction_scores
 
     def prepare_data(self):
+        """
+        Create the data using the ``huggingface/nlp`` library. This function handles
+        downloading, preprocessing, tokenization, and feature extraction.
+        """
+
         def convert_to_features(example_batch):
             articles = example_batch[self.hparams.data_example_column]
             highlights = example_batch[self.hparams.data_summarized_column]
@@ -147,6 +190,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         self.dataset["test"].set_format(type="torch", columns=columns)
 
     def train_dataloader(self):
+        """Create dataloader for training."""
         train_dataset = self.dataset["train"]
 
         train_dataloader = DataLoader(
@@ -159,6 +203,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         return train_dataloader
 
     def val_dataloader(self):
+        """Create dataloader for validation."""
         val_dataset = self.dataset["validation"]
 
         val_dataloader = DataLoader(
@@ -175,6 +220,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         return val_dataloader
 
     def test_dataloader(self):
+        """Create dataloader for testing."""
         self.rouge_metrics = ["rouge1", "rouge2", "rougeL"]
         self.rouge_scorer = rouge_scorer.RougeScorer(
             self.rouge_metrics, use_stemmer=True
@@ -198,6 +244,10 @@ class AbstractiveSummarizer(pl.LightningModule):
         return test_dataloader
 
     def configure_optimizers(self):
+        """
+        Configure the optimizers. Returns the optimizer and scheduler specified by
+        the values in ``self.hparams``.
+        """
         # create the train dataloader so the number of examples can be determined
         self.train_dataloader_object = self.train_dataloader()
         # check that max_steps is not None and is greater than 0
@@ -281,6 +331,10 @@ class AbstractiveSummarizer(pl.LightningModule):
             return optimizer
 
     def _step(self, batch):
+        """
+        Perform a generic step of the model. Pass the batch through the model 
+        and return the loss.
+        """
         source, target, source_mask, target_mask = (
             batch["source"],
             batch["target"],
@@ -294,6 +348,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         return loss
 
     def training_step(self, batch, batch_idx):
+        """Training step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.training_step>`__"""
         cross_entropy_loss = self._step(batch)
 
         tqdm_dict = {"train_loss": cross_entropy_loss}
@@ -303,6 +358,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         return output
 
     def validation_step(self, batch, batch_idx):
+        """Validation step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.validation_step>`__"""
         cross_entropy_loss = self._step(batch)
 
         tqdm_dict = {"val_loss": cross_entropy_loss}
@@ -316,6 +372,10 @@ class AbstractiveSummarizer(pl.LightningModule):
         return output
 
     def validation_epoch_end(self, outputs):
+        """
+        Called at the end of a validation epoch: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.validation_epoch_end>`__
+        Finds the mean of all the metrics logged by :meth:`~abstractive.AbstractiveSummarizer.validation_step`.
+        """
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
 
         tqdm_dict = {"val_loss": avg_loss}
@@ -327,6 +387,12 @@ class AbstractiveSummarizer(pl.LightningModule):
         return output
 
     def test_step(self, batch, batch_idx):
+        """
+        Test step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.test_step>`__
+        Similar to :meth:`~abstractive.AbstractiveSummarizer.validation_step` in that in runs the inputs
+        through the model. However, this method also calculates the ROUGE scores for each example-summary
+        pair.
+        """
         source_ids, target_ids, source_mask, _ = batch.values()
 
         source_ids, source_mask = trim_batch(
@@ -390,6 +456,10 @@ class AbstractiveSummarizer(pl.LightningModule):
         return output
 
     def test_epoch_end(self, outputs):
+        """
+        Called at the end of a testing epoch: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.test_epoch_end>`__
+        Finds the mean of all the metrics logged by :meth:`~abstractive.AbstractiveSummarizer.test_step`.
+        """
         avg_generation_time = torch.stack(
             [x["generation_time"] for x in outputs]
         ).mean()
@@ -449,6 +519,15 @@ class AbstractiveSummarizer(pl.LightningModule):
         return result
 
     def predict(self, input_sequence):
+        """Summaries ``input_sequence`` using the model. Can summarize a list of
+        sequences at once.
+
+        Args:
+            input_sequence (str or list[str]): The text to be summarized.
+
+        Returns:
+            str or list[str]: The summary text.
+        """
         # If a single string is passed, wrap it in a list so `batch_encode_plus()`
         # processes it correctly
         if type(input_sequence) is str:
@@ -484,6 +563,10 @@ class AbstractiveSummarizer(pl.LightningModule):
         return prediction
 
     def ids_to_clean_text(self, generated_ids):
+        """
+        Convert IDs generated from ``tokenizer.encode`` to a string using 
+        ``tokenizer.batch_decode and also clean up spacing and special tokens``.
+        """
         gen_text = self.tokenizer.batch_decode(
             generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True
         )
@@ -492,6 +575,7 @@ class AbstractiveSummarizer(pl.LightningModule):
 
     @pl.utilities.rank_zero_only
     def on_save_checkpoint(self, checkpoint):
+        """Save the model in the ``huggingface/transformers`` format when a checkpoint is saved."""
         if self.hparams.save_hg_transformer:
             save_path = os.path.join(self.hparams.weights_save_path, "best_tfmr")
 
@@ -503,6 +587,7 @@ class AbstractiveSummarizer(pl.LightningModule):
 
     @staticmethod
     def add_model_specific_args(parent_parser):
+        """Arguments specific to this model"""
         parser = ArgumentParser(parents=[parent_parser])
         parser.add_argument(
             "--model_name_or_path",

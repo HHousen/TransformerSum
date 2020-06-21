@@ -213,6 +213,38 @@ class ExtractiveSummarizer(pl.LightningModule):
         sent_lengths_mask=None,
         **kwargs,
     ):
+        """Model forward function. See the `60 minute bliz tutorial <https://pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html>`_
+        if you are unsure what a forward function is.
+
+        Args:
+            input_ids (torch.Tensor): Indices of input sequence tokens in the vocabulary. 
+                `What are input IDs? <https://huggingface.co/transformers/glossary.html#input-ids>`_
+            attention_mask (torch.Tensor): Mask to avoid performing attention on padding token 
+                indices. Mask values selected in ``[0, 1]``: ``1`` for tokens that are NOT 
+                MASKED, ``0`` for MASKED tokens. `What are attention masks? <https://huggingface.co/transformers/glossary.html#attention-mask>`_
+            sent_rep_mask (torch.Tensor, optional): Indicates which numbers in ``sent_rep_token_ids`` 
+                are actually the locations of sentence representation ids and which are padding. 
+                Defaults to None.
+            token_type_ids (torch.Tensor, optional): Usually, segment token indices to indicate 
+                first and second portions of the inputs. However, for summarization they are used 
+                to indicate different sentences. Depending on the size of the token type id vocabulary, 
+                these values may alternate between ``0`` and ``1`` or they may increase sequentially 
+                for each sentence in the input.. Defaults to None.
+            sent_rep_token_ids (torch.Tensor, optional): The locations of the sentence representation 
+                tokens. Defaults to None.
+            sent_lengths (torch.Tensor, optional):  A list of the lengths of each sentence in 
+                ``input_ids``. See :meth:`data.pad_batch_collate` for more info about the 
+                generation of thisfeature. Defaults to None.
+            sent_lengths_mask (torch.Tensor, optional): Created on-the-fly by :meth:`data.pad_batch_collate`. 
+                Similar to ``sent_rep_mask``: ``1`` for value and ``0`` for padding. See 
+                :meth:`data.pad_batch_collate` for more info about the generation of this
+                feature. Defaults to None.
+
+        Returns:
+            tuple: Contains the sentence scores and mask as ``torch.Tensor``\ s. The mask is either
+            the ``sent_rep_mask`` or ``sent_lengths_mask`` depending on the pooling mode used
+            during model initialization.
+        """
         inputs = {
             "input_ids": input_ids,
             "attention_mask": attention_mask,
@@ -238,16 +270,31 @@ class ExtractiveSummarizer(pl.LightningModule):
         return sent_scores, mask
 
     def unfreeze_web_model(self):
-        """ Un-freezes the `word_embedding_model` """
+        """Un-freezes the ``word_embedding_model``"""
         for param in self.word_embedding_model.parameters():
             param.requires_grad = True
 
     def freeze_web_model(self):
-        """ Freezes the encoder `word_embedding_model` """
+        """Freezes the encoder ``word_embedding_model``"""
         for param in self.word_embedding_model.parameters():
             param.requires_grad = False
 
     def compute_loss(self, outputs, labels, mask):
+        """Compute the loss between model outputs and ground-truth labels.
+
+        Args:
+            outputs (torch.Tensor): Output sentence scores obtained from :meth:`~extractive.ExtractiveSummarizer.forward`
+            labels (torch.Tensor): Ground-truth labels (``1`` for sentences that should be in 
+                the summary, ``0`` otherwise) from the batch generated during the data 
+                preprocessing stage.
+            mask (torch.Tensor): Mask returned by :meth:`~extractive.ExtractiveSummarizer.forward`,
+                either ``sent_rep_mask`` or ``sent_lengths_mask`` depending on the pooling mode used
+                during model initialization.
+
+        Returns:
+            [tuple]: Losses: (total_loss, total_norm_batch_loss, sum_avg_seq_loss, mean_avg_seq_loss, 
+                average_loss)
+        """
         # self.loss_func() is nn.BCELoss(reduction="none")
         # The nn.BCEWithLogitsLoss (which combines a Sigmoid layer and the BCELoss in one single class
         # and takes advantage of the log-sum-exp trick for numerical stability) was not used because
@@ -297,6 +344,22 @@ class ExtractiveSummarizer(pl.LightningModule):
     def json_to_dataset(
         self, tokenizer, hparams, inputs=None, num_files=0, processor=None,
     ):
+        """Convert json output from ``convert_to_extractive.py`` to a ".pt" file containing
+        lists or tensors using a :class:`data.SentencesProcessor`. This function is run by 
+        :meth:`~extractive.ExtractiveSummarizer.prepare_data` in parallel.
+
+        Args:
+            tokenizer (transformers.PreTrainedTokenizer): Tokenizer used to convert examples
+                to input_ids. Usually is ``self.tokenizer``.
+            hparams (argparse.Namespace): Hyper-parameters used to create the model. Usually
+                is ``self.hparams``.
+            inputs (tuple, optional): (idx, json_file) Current loop index and path to json 
+                file. Defaults to None.
+            num_files (int, optional): The total number of files to process. Used to display
+                a nice progress indicator. Defaults to 0.
+            processor (data.SentencesProcessor, optional): The :class:`data.SentencesProcessor`
+                object to convert the json file to usable features. Defaults to None.
+        """
         idx, json_file = inputs
         logger.info(
             "Processing "
@@ -358,19 +421,18 @@ class ExtractiveSummarizer(pl.LightningModule):
 
     def prepare_data(self):
         """
-        Runs `json_to_dataset()` in parallel. `json_to_dataset()` is the function that actually
+        Runs :meth:`~extractive.ExtractiveSummarizer.json_to_dataset` in parallel. 
+        :meth:`~extractive.ExtractiveSummarizer.json_to_dataset` is the function that actually
         loads and processes the examples as described below.
-        Algorithm:
-        For each json file outputted by the convert_to_extractive.py script:
-            1. Load json file.
-            2. Add each document in json file to `SentencesProcessor` defined in `self.processor`,
-            overwriting any previous data in the processor.
-            3. Run `processor.get_features()` to save the extracted features to disk as a `.pt`
-            file containing a pickled python list of dictionaries, which each dictionary contains
-            the extracted features.
-        Memory Usage Note: If sharding was turned off during the `convert_to_extractive` process
-        then `prepare_data()` will run once, loading the entire dataset into memory to process
-        just like the convert_to_extractive.py script.
+        Algorithm: For each json file outputted by the ``convert_to_extractive.py`` script:
+
+        1. Load json file.
+        2. Add each document in json file to ``SentencesProcessor`` defined in ``self.processor``, overwriting any previous data in the processor.
+        3. Run :meth:`data.SentencesProcessor.get_features` to save the extracted features to disk as a ``.pt`` file containing a pickled python list of dictionaries, which each dictionary contains the extracted features.
+        
+        Memory Usage Note: If sharding was turned off during the ``convert_to_extractive`` process
+        then this function will run once, loading the entire dataset into memory to process
+        just like the ``convert_to_extractive.py`` script.
         """
         datasets = dict()
 
@@ -467,8 +529,8 @@ class ExtractiveSummarizer(pl.LightningModule):
                 task. For example, for classification, the `<s>` token should be given global attention. 
                 For QA, all question tokens should also have global attention. For summarization, 
                 global attention is given to all of the `<s>` (RoBERTa 'CLS' equivalent) tokens. Please 
-                refer to the Longformer paper (https://arxiv.org/abs/2004.05150) for more details. Mask 
-                values selected in `[0, 1]`: `0` for local attention, `1` for global attention.
+                refer to the `Longformer paper <https://arxiv.org/abs/2004.05150>`_ for more details. Mask 
+                values selected in ``[0, 1]``: ``0`` for local attention, ``1`` for global attention.
                 """
                 # `batch_size` is the number of attention masks (one mask per input sequence)
                 batch_size = len(final_dictionary["attention_mask"])
@@ -493,6 +555,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             self.pad_batch_collate = pad_batch_collate
 
     def train_dataloader(self):
+        """Create dataloader for training if it has not already been created."""
         if self.train_dataloader_object:
             return self.train_dataloader_object
         self.global_step_tracker = 0
@@ -510,6 +573,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         return train_dataloader
 
     def val_dataloader(self):
+        """Create dataloader for validation."""
         valid_dataset = self.datasets[self.hparams.val_name]
         # valid_sampler = RandomSampler(valid_dataset)
         valid_dataloader = DataLoader(
@@ -521,6 +585,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         return valid_dataloader
 
     def test_dataloader(self):
+        """Create dataloader for testing."""
         self.rouge_metrics = ["rouge1", "rouge2", "rougeL"]
         self.rouge_scorer = rouge_scorer.RougeScorer(
             self.rouge_metrics, use_stemmer=True
@@ -536,6 +601,10 @@ class ExtractiveSummarizer(pl.LightningModule):
         return test_dataloader
 
     def configure_optimizers(self):
+        """
+        Configure the optimizers. Returns the optimizer and scheduler specified by
+        the values in ``self.hparams``.
+        """
         # create the train dataloader so the number of examples can be determined
         self.train_dataloader_object = self.train_dataloader()
         # check that max_steps is not None and is greater than 0
@@ -654,6 +723,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             return optimizer
 
     def training_step(self, batch, batch_idx):
+        """Training step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.training_step>`__"""
         # Get batch information
         labels = batch["labels"]
 
@@ -701,6 +771,13 @@ class ExtractiveSummarizer(pl.LightningModule):
         return output
 
     def validation_step(self, batch, batch_idx):
+        """
+        Validation step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.validation_step>`__
+        Similar to :meth:`~extractive.ExtractiveSummarizer.training_step` in that in runs the inputs
+        through the model. However, this method also calculates accuracy and f1 score by marking every
+        sentence score >0.5 as 1 (meaning should be in the summary) and each score <0.5 as 0 (meaning
+        should not be in the summary).
+        """
         # Get batch information
         labels = batch["labels"]
 
@@ -747,6 +824,10 @@ class ExtractiveSummarizer(pl.LightningModule):
         return output
 
     def validation_epoch_end(self, outputs):
+        """
+        Called at the end of a validation epoch: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.validation_epoch_end>`__
+        Finds the mean of all the metrics logged by :meth:`~extractive.ExtractiveSummarizer.validation_step`.
+        """
         # Get the average loss and accuracy metrics over all evaluation runs
         avg_loss_total = torch.stack([x["val_loss_total"] for x in outputs]).mean()
         avg_loss_total_norm_batch = torch.stack(
@@ -782,6 +863,12 @@ class ExtractiveSummarizer(pl.LightningModule):
         return result
 
     def test_step(self, batch, batch_idx):
+        """
+        Test step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.test_step>`__
+        Similar to :meth:`~extractive.ExtractiveSummarizer.validation_step` in that in runs the inputs
+        through the model. However, this method also calculates the ROUGE scores for each example-summary
+        pair.
+        """
         # Get batch information
         labels = batch["labels"]
         sources = batch["source"]
@@ -914,6 +1001,10 @@ class ExtractiveSummarizer(pl.LightningModule):
         return output
 
     def test_epoch_end(self, outputs):
+        """
+        Called at the end of a testing epoch: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.test_epoch_end>`__
+        Finds the mean of all the metrics logged by :meth:`~extractive.ExtractiveSummarizer.test_step`.
+        """
         # Get the accuracy metrics over all testing runs
         avg_test_acc = torch.stack([x["test_acc"] for x in outputs]).mean()
         avg_test_f1 = torch.stack([x["test_f1"] for x in outputs]).mean()
@@ -960,6 +1051,17 @@ class ExtractiveSummarizer(pl.LightningModule):
         return result
 
     def predict(self, input_text, raw_scores=False):
+        """Summaries ``input_text`` using the model.
+
+        Args:
+            input_text (str): The text to be summarized.
+            raw_scores (bool, optional): Return a dictionary containing each sentence
+                and its corespoding score instead of the summary. Defaults to False.
+
+        Returns:
+            str: The summary text. If ``raw_scores`` is set then returns a dictionary
+            of input sentences and their corespoding scores.
+        """
         nlp = English()
         sentencizer = nlp.create_pipe("sentencizer")
         nlp.add_pipe(sentencizer)
@@ -1021,6 +1123,7 @@ class ExtractiveSummarizer(pl.LightningModule):
 
     @staticmethod
     def add_model_specific_args(parent_parser):
+        """Arguments specific to this model"""
         parser = ArgumentParser(parents=[parent_parser])
         parser.add_argument(
             "--model_name_or_path",

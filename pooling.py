@@ -3,15 +3,17 @@ from torch import nn
 
 
 class Pooling(nn.Module):
+    """Methods to obtains sentence embeddings from word vectors. Multiple methods 
+    can be specificed and their results will be concatenated together. 
+    
+    Arguments:
+        sent_rep_tokens (bool, optional): Use the sentence representation token 
+                as sentence embeddings. Default is True.
+        mean_tokens (bool, optional): Take the mean of all the token vectors in 
+        each sentence. Default is False.
+    """
+
     def __init__(self, sent_rep_tokens=True, mean_tokens=False):
-        """Methods to obtains sentence embeddings from word vectors. Multiple methods can be specificed
-        and their results will be concatenated together. 
-        
-        Keyword Arguments:
-            sent_rep_tokens {bool} -- Use the sentence representation token vectors as sentence
-                                      embeddings. (default: {True})
-            mean_tokens {bool} -- Take the mean of all the token vectors in each sentence. (default: {False})
-        """
         super(Pooling, self).__init__()
 
         self.sent_rep_tokens = sent_rep_tokens
@@ -28,6 +30,25 @@ class Pooling(nn.Module):
         sent_lengths=None,
         sent_lengths_mask=None,
     ):
+        """Forward pass of the Pooling nn.Module.
+
+        Args:
+            word_vectors (torch.Tensor, optional): Vectors representing words created by 
+                a ``word_embedding_model``. Defaults to None.
+            sent_rep_token_ids (torch.Tensor, optional): See :meth:`extractive.ExtractiveSummarizer.forward`.
+                Defaults to None.
+            sent_rep_mask (torch.Tensor, optional): See :meth:`extractive.ExtractiveSummarizer.forward`. 
+                Defaults to None.
+            sent_lengths (torch.Tensor, optional): See :meth:`extractive.ExtractiveSummarizer.forward`. 
+                Defaults to None.
+            sent_lengths_mask (torch.Tensor, optional): See :meth:`extractive.ExtractiveSummarizer.forward`. 
+                Defaults to None.
+
+        Returns:
+            tuple: (output_vector, output_mask) Contains the sentence scores and mask as 
+            ``torch.Tensor``\ s. The mask is either the ``sent_rep_mask`` or ``sent_lengths_mask`` 
+            depending on the pooling mode used during model initialization.
+        """
         output_vectors = []
         output_masks = []
 

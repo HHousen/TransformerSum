@@ -15,6 +15,20 @@ except ImportError:
 
 
 class LinearClassifier(nn.Module):
+    """``nn.Module`` to classify sentences by reducing the hidden dimension to 1.
+    
+    Arguments:
+        web_hidden_size (int): The output hidden size from the word embedding model. Used as
+            the input to the first linear layer in this nn.Module.
+        linear_hidden (int, optional): The number of hidden parameters for this Classifier. 
+            Default is 1536.
+        first_dropout (float, optional): The value for dropout applied before any other layers.
+            Default is 0.1.
+        last_dropout (float, optional): The dropout after the last linear layer. Default is 0.1.
+        activation_string (str, optional): A string representing an activation function 
+            in ``get_activation()`` Default is "gelu".
+    """
+
     def __init__(
         self,
         web_hidden_size,
@@ -23,18 +37,6 @@ class LinearClassifier(nn.Module):
         last_dropout=0.1,
         activation_string="gelu",
     ):
-        """nn.Module to classify sentences by reducing the hidden dimension to 1
-        
-        Arguments:
-            web_hidden_size {int} -- The output hidden size from the word embedding model. Used as
-                                     the input to the first linear layer in this nn.Module.
-        
-        Keyword Arguments:
-            linear_hidden {int} -- The number of hidden parameters for this Classifier. (default: {1536})
-            first_dropout {float} -- The value for dropout applied before any other layers. (default: {0.1})
-            last_dropout {float} -- The dropout after the last linear layer. (default: {0.1})
-            activation_string {str} -- A string representing an activation function in `get_activation()` (default: {"gelu"})
-        """
         super(LinearClassifier, self).__init__()
         self.dropout1 = nn.Dropout(first_dropout) if first_dropout else nn.Identity()
         self.dropout2 = nn.Dropout(last_dropout) if last_dropout else nn.Identity()
@@ -53,6 +55,10 @@ class LinearClassifier(nn.Module):
             )
 
     def forward(self, x, mask):
+        """
+        Forward function. ``x`` is the input ``sent_vector`` tensor and ``mask`` avoids computations
+        on padded values. Returns ``sent_scores``.
+        """
         x = self.dropout1(x)
         x = self.linear1(x)
         x = self.activation(x)
@@ -64,6 +70,22 @@ class LinearClassifier(nn.Module):
 
 
 class TransformerEncoderClassifier(nn.Module):
+    """
+    ``nn.Module`` to classify sentences by running the sentence vectors through some
+    ``nn.TransformerEncoder`` layers and then reducing the hidden dimension to 1 with a
+    linear layer.
+
+    Arguments:
+        d_model (int): The number of expected features in the input
+        nhead (int, optional): The number of heads in the multiheadattention models. Default is 8.
+        dim_feedforward (int, optional): The dimension of the feedforward network model. Default is 2048.
+        dropout (float, optional): The dropout value. Default is 0.1.
+        num_layers (int, optional): The number of ``TransformerEncoderLayer``\ s. Default is 2.
+        reduction (nn.Module, optional): a nn.Module that maps `d_model` inputs to 1 value; if not specified
+            then a ``nn.Sequential()`` module consisting of a linear layer and a
+            sigmoid will automatically be created. Default is ``nn.Sequential(linear, sigmoid)``.
+    """
+
     def __init__(
         self,
         d_model,
@@ -73,22 +95,6 @@ class TransformerEncoderClassifier(nn.Module):
         num_layers=2,
         reduction=None,
     ):
-        """nn.Module to classify sentences by running the sentence vectors through some
-        nn.TransformerEncoder layers and then reducing the hidden dimension to 1 with a
-        linear layer.
-
-        Arguments:
-            d_model {int} -- the number of expected features in the input
-
-        Keyword Arguments:
-            nhead {int} -- the number of heads in the multiheadattention models (default: {8})
-            dim_feedforward {int} -- the dimension of the feedforward network model (default: {2048})
-            dropout {float} -- the dropout value (default: {0.1})
-            num_layers {int} -- the number of `TransformerEncoderLayer`s (default: {2})
-            reduction {nn.Module} -- a nn.Module that maps `d_model` inputs to 1 value; if not specified
-                                     then a `nn.Sequential()` module consisting of a linear layer and a
-                                     sigmoid will automatically be created. (default: nn.Sequential(linear, sigmoid))
-        """
         super(TransformerEncoderClassifier, self).__init__()
 
         if version.parse(torch.__version__) < version.parse("1.5.0"):
@@ -115,6 +121,10 @@ class TransformerEncoderClassifier(nn.Module):
             self.reduction = nn.Sequential(linear, sigmoid)
 
     def forward(self, x, mask):
+        """
+        Forward function. ``x`` is the input ``sent_vector`` tensor and ``mask`` avoids computations
+        on padded values. Returns ``sent_scores``.
+        """
         # add dimension in the middle
         attn_mask = mask.unsqueeze(1)
         # expand the middle dimension to the same size as the last dimension (the number of sentences/source length)
