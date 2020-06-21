@@ -3,6 +3,58 @@ Training an Abstractive Summarization Model
 
 .. _abstractive_script_help:
 
+Example
+-------
+
+Example training command:
+
+.. code-block::
+
+    python main.py \
+    --mode abstractive \
+    --model_name_or_path bert-base-uncased \
+    --cache_file_path data \
+    --max_epochs 4 \
+    --do_train --do_test \
+    --batch_size 4 \
+    --weights_save_path model_weights \
+    --no_wandb_logger_log_model \
+    --accumulate_grad_batches 5 \
+    --use_scheduler linear \
+    --warmup_steps 8000 \
+    --gradient_clip_val 1.0 \
+    --custom_checkpoint_every_n 300
+
+This command will train and test a bert-to-bert model for abstractive summarization for 4 epochs with a batch size of 4. The weights are saved to ``model_weights/`` and will not be uploaded to wandb.ai due to the ``--no_wandb_logger_log_model`` option. The CNN/DM dataset (which is the default dataset) will be downloaded (and automatically processed) to ``data/``\ . The gradients will be accumulated every 5 batches and training will be optimized by AdamW with a scheduler that warms up linearly for 8000 then decays. A checkpoint file will be saved every 300 steps.
+
+Long Summarization
+------------------
+
+This script can perform abstractive summarization on long sequences using the ``longbart`` model. ``longbart`` is `BART <https://huggingface.co/transformers/model_doc/bart.html>`_ (`paper <https://arxiv.org/abs/1910.13461>`__) but with components from the `longformer <https://huggingface.co/transformers/model_doc/longformer.html>`_ (`paper <https://arxiv.org/abs/2004.05150>`__) that enable it to operate with long sequences.
+
+Install ``longbart`` by running ``pip install git+https://github.com/patil-suraj/longbart.git``. Then generate a long model with the below code:
+
+.. code-block:: python
+
+    import os
+    from longbart.convert_bart_to_longbart import create_long_model
+
+    model_path = 'longbart-base-4096'
+    if not os.path.exists(model_path):
+        os.makedirs(model_path)
+
+    model, tokenizer = create_long_model(
+        save_model_to=model_path,
+        base_model='facebook/bart-base',
+        tokenizer_name_or_path='facebook/bart-base',
+        attention_window=512,
+        max_pos=4096
+    )
+
+With the ``longbart`` model generated you can run the training script with the ``--model_name_or_path`` set to ``longbart-base-4096`` (or wherever the configuration and model files are located).
+
+.. warning:: For this script to work correctly with ``longbart`` the ``--model_name_or_path`` must contain the phrase "longbart".
+
 Script Help
 -----------
 

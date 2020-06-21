@@ -17,10 +17,18 @@ from transformers import (
     BertModel,
     AutoTokenizer,
     EncoderDecoderModel,
+    BartTokenizer,
 )
 from helpers import lr_lambda_func, pad
 
 logger = logging.getLogger(__name__)
+
+try:
+    from longbart import LongBartForConditionalGeneration
+except ImportError:
+    logger.warn(
+        "Could not import `LongBartForConditionalGeneration` from `longbart`, which means the `longbart` model is not available. Install with `pip install git+https://github.com/patil-suraj/longbart.git`."
+    )
 
 
 def trim_batch(
@@ -46,18 +54,41 @@ class AbstractiveSummarizer(pl.LightningModule):
 
         self.hparams = hparams
 
-        self.model = EncoderDecoderModel.from_encoder_decoder_pretrained(
-            self.hparams.model_name_or_path, self.hparams.model_name_or_path
-        )
+        if "longbart" in self.hparams.model_name_or_path.lower():
+            self.model = LongBartForConditionalGeneration.from_pretrained(
+                self.hparams.model_name_or_path
+            )
+            self.tokenizer = BartTokenizer.from_pretrained(
+                self.hparams.model_name_or_path
+            )
+        else:
+            self.model = EncoderDecoderModel.from_encoder_decoder_pretrained(
+                self.hparams.model_name_or_path, self.hparams.model_name_or_path
+            )
 
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.hparams.model_name_or_path, use_fast=True
-        )
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                self.hparams.model_name_or_path, use_fast=True
+            )
+
         # bo = beginning of
         # eo = ending of
         # seq = sequence (not using 's' because 's' stands for sentence in other places)
-        self.target_boseq_token = "[unused0]"
-        self.target_eoseq_token = "[unused1]"
+        # Use `bos_token` for boseq if `bos_token` is set, otherwise use "[unused0]"
+        # Use `pad_token` for eoseq if `pad_token` is set, otherwise use "[unused1]"
+        do_seq_special_add = False
+        if self.tokenizer.bos_token:
+            self.target_boseq_token = self.tokenizer.bos_token
+        else:
+            self.target_boseq_token = "[unused0]"
+            do_seq_special_add = True
+
+        if self.tokenizer.pad_token:
+            self.target_eoseq_token = self.tokenizer.pad_token
+        else:
+            self.target_eoseq_token = "[unused1]"
+            do_seq_special_add = True
+
+        # Convert `target_boseq_token` and `target_eoseq_token` to IDs
         self.target_boseq_token_id = self.tokenizer.convert_tokens_to_ids(
             self.target_boseq_token
         )
@@ -65,14 +96,16 @@ class AbstractiveSummarizer(pl.LightningModule):
             self.target_eoseq_token
         )
 
-        # Add special tokens so that they are ignored when decoding.
-        special_tokens_dict = {
-            "additional_special_tokens": [
-                self.target_boseq_token,
-                self.target_eoseq_token,
-            ]
-        }
-        self.tokenizer.add_special_tokens(special_tokens_dict)
+        # If the `*oseq` tokens are not already "special" then add them as special
+        # tokens so that they are ignored when decoding.
+        if do_seq_special_add:
+            special_tokens_dict = {
+                "additional_special_tokens": [
+                    self.target_boseq_token,
+                    self.target_eoseq_token,
+                ]
+            }
+            self.tokenizer.add_special_tokens(special_tokens_dict)
 
         self.loss_func = nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
 
@@ -112,7 +145,7 @@ class AbstractiveSummarizer(pl.LightningModule):
             attention_mask=source_mask,
             decoder_input_ids=target,
             decoder_attention_mask=target_mask,
-            labels=labels,
+            lm_labels=labels,
         )
 
         cross_entropy_loss, prediction_scores = outputs[:2]
@@ -125,17 +158,19 @@ class AbstractiveSummarizer(pl.LightningModule):
         """
 
         def convert_to_features(example_batch):
+            max_length = self.tokenizer.max_len
+
             articles = example_batch[self.hparams.data_example_column]
             highlights = example_batch[self.hparams.data_summarized_column]
             articles_encoded = self.tokenizer.batch_encode_plus(
-                articles, pad_to_max_length=True, truncation=True
+                articles, pad_to_max_length=True, truncation=True,
             )
             # `max_length` is the max length minus 2 because we need to add the
             # beginning and ending tokens to the target
             highlights_input_ids = self.tokenizer.batch_encode_plus(
                 highlights,
                 truncation=True,
-                max_length=(self.tokenizer.max_len - 2),
+                max_length=(max_length - 2),
                 return_attention_mask=False,
                 return_token_type_ids=False,
             )["input_ids"]
@@ -155,12 +190,10 @@ class AbstractiveSummarizer(pl.LightningModule):
             # The articles have already been padded because they do not need the extra
             # `boseq` and `eoseq` tokens.
             highlights_input_ids = pad(
-                highlights_input_ids,
-                self.tokenizer.pad_token_id,
-                width=self.tokenizer.max_len,
+                highlights_input_ids, self.tokenizer.pad_token_id, width=max_length,
             )
             highlights_attention_masks = pad(
-                highlights_attention_masks, 0, width=self.tokenizer.max_len
+                highlights_attention_masks, 0, width=max_length
             )
 
             return {
@@ -175,13 +208,25 @@ class AbstractiveSummarizer(pl.LightningModule):
         )
 
         self.dataset["train"] = self.dataset["train"].map(
-            convert_to_features, batched=True, cache_file_name="train_tokenized"
+            convert_to_features,
+            batched=True,
+            cache_file_name=os.path.join(
+                self.hparams.cache_file_path, "train_tokenized"
+            ),
         )
         self.dataset["validation"] = self.dataset["validation"].map(
-            convert_to_features, batched=True, cache_file_name="validation_tokenized"
+            convert_to_features,
+            batched=True,
+            cache_file_name=os.path.join(
+                self.hparams.cache_file_path, "validation_tokenized"
+            ),
         )
         self.dataset["test"] = self.dataset["test"].map(
-            convert_to_features, batched=True, cache_file_name="test_tokenized"
+            convert_to_features,
+            batched=True,
+            cache_file_name=os.path.join(
+                self.hparams.cache_file_path, "test_tokenized"
+            ),
         )
 
         columns = ["source", "target", "source_mask", "target_mask"]
@@ -663,6 +708,12 @@ class AbstractiveSummarizer(pl.LightningModule):
             type=str,
             default="highlights",
             help="The column of the `nlp` dataset that contains the summarized text. Default value is for the `cnn_dailymail` dataset.",
+        )
+        parser.add_argument(
+            "--cache_file_path",
+            type=str,
+            default=".",
+            help="Path to cache the tokenized dataset.",
         )
         parser.add_argument(
             "--save_percentage",
