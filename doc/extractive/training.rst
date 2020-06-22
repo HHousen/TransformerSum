@@ -1,3 +1,5 @@
+.. _train_extractive_model:
+
 Training an Extractive Summarization Model
 ==========================================
 

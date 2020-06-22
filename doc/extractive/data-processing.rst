@@ -1,3 +1,5 @@
+.. _data_automatic_preprocessing:
+
 Automatic Preprocessing
 =======================
 

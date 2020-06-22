@@ -63,7 +63,12 @@ class AbstractiveSummarizer(pl.LightningModule):
             )
         else:
             self.model = EncoderDecoderModel.from_encoder_decoder_pretrained(
-                self.hparams.model_name_or_path, self.hparams.model_name_or_path
+                self.hparams.model_name_or_path,
+                (
+                    self.hparams.decoder_model_name_or_path
+                    if self.hparams.decoder_model_name_or_path
+                    else self.hparams.model_name_or_path
+                ),
             )
 
             self.tokenizer = AutoTokenizer.from_pretrained(
@@ -639,6 +644,12 @@ class AbstractiveSummarizer(pl.LightningModule):
             type=str,
             default="bert-base-uncased",
             help="Path to pre-trained model or shortcut name. A list of shortcut names can be found at https://huggingface.co/transformers/pretrained_models.html. Community-uploaded models are located at https://huggingface.co/models.",
+        )
+        parser.add_argument(
+            "--decoder_model_name_or_path",
+            type=str,
+            default=None,
+            help="Path to pre-trained model or shortcut name to use as the decoder. Default is the value of `--model_name_or_path`.",
         )
         parser.add_argument(
             "--batch_size",

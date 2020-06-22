@@ -1,3 +1,5 @@
+.. _extractive_supported_datasets:
+
 Extractive Supported Datasets
 =============================
 
@@ -16,17 +18,17 @@ CNN/DM
 
 The **CNN/DailyMail** (Hermann et al., 2015) dataset contains 93k articles from the CNN, and 220k articles the Daily Mail newspapers. Both publishers supplement their articles with bullet point summaries. Non-anonymized variant in See et al. (2017).
 
-+-------------------------------+-------------------------------------------------------------------------------------+
-| Type                          | Link                                                                                |
-+===============================+=====================================================================================+
-| Processor Repository          | `artmatsak/cnn-dailymail <https://github.com/artmatsak/cnn-dailymail>`_             |
-+-------------------------------+-------------------------------------------------------------------------------------+
-| Data Download Link            | `CNN/DM official website <https://cs.nyu.edu/~kcho/DMQA/>`_                         |
-+-------------------------------+-------------------------------------------------------------------------------------+
-| Processed Abstractive Dataset | `Google Drive <https://drive.google.com/uc?id=1OMJWMoO367yPZH5yp-TsAai_kUmWVQY2>`__ |
-+-------------------------------+-------------------------------------------------------------------------------------+
-| Extractive Version            | `Google Drive <https://drive.google.com/uc?id=1_nmp6nzbiW2HUEtJPXn8WzF2XhMVem2n>`__ |
-+-------------------------------+-------------------------------------------------------------------------------------+
++-------------------------------+--------------------------------------------------------------------------------------+
+| Type                          | Link                                                                                 |
++===============================+======================================================================================+
+| Processor Repository          | `artmatsak/cnn-dailymail <https://github.com/artmatsak/cnn-dailymail>`_              |
++-------------------------------+--------------------------------------------------------------------------------------+
+| Data Download Link            | `CNN/DM official website <https://cs.nyu.edu/~kcho/DMQA/>`__                         |
++-------------------------------+--------------------------------------------------------------------------------------+
+| Processed Abstractive Dataset | `Google Drive <https://drive.google.com/uc?id=1OMJWMoO367yPZH5yp-TsAai_kUmWVQY2>`__  |
++-------------------------------+--------------------------------------------------------------------------------------+
+| Extractive Version            | `Google Drive <https://drive.google.com/uc?id=1_nmp6nzbiW2HUEtJPXn8WzF2XhMVem2n>`__  |
++-------------------------------+--------------------------------------------------------------------------------------+
 
 Download and unzip the stories directories from `here <https://cs.nyu.edu/~kcho/DMQA/>`_ for both CNN and Daily Mail. The files can be downloaded from the terminal with `gdown`, which can be installed with `pip install gdown`.
 
@@ -38,7 +40,7 @@ Download and unzip the stories directories from `here <https://cs.nyu.edu/~kcho/
     tar zxf cnn_stories.tgz
     tar zxf dailymail_stories.tgz
 
-.. note:: The above Google Drive links may be outdated depending on the time you are reading this. Check the `CNN/DM official website <https://cs.nyu.edu/~kcho/DMQA/>`_ for the most up-to-date download links.
+.. note:: The above Google Drive links may be outdated depending on the time you are reading this. Check the `CNN/DM official website <https://cs.nyu.edu/~kcho/DMQA/>`__ for the most up-to-date download links.
 
 Next, run the processing code in the git submodule for `artmatsak/cnn-dailymail <https://github.com/artmatsak/cnn-dailymail>`_ located in ``datasets/cnn_dailymail_processor``. Run ``python make_datafiles.py /path/to/cnn/stories /path/to/dailymail/stories``, replacing `/`path/to/cnn/stories`` with the path to where you saved the ``cnn/stories`` directory that you downloaded; similarly for ``dailymail/stories``.
 

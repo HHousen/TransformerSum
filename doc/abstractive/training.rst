@@ -1,7 +1,7 @@
 Training an Abstractive Summarization Model
 ===========================================
 
-.. _abstractive_script_help:
+.. _abstractive_command_example:
 
 Example
 -------
@@ -27,10 +27,12 @@ Example training command:
 
 This command will train and test a bert-to-bert model for abstractive summarization for 4 epochs with a batch size of 4. The weights are saved to ``model_weights/`` and will not be uploaded to wandb.ai due to the ``--no_wandb_logger_log_model`` option. The CNN/DM dataset (which is the default dataset) will be downloaded (and automatically processed) to ``data/``\ . The gradients will be accumulated every 5 batches and training will be optimized by AdamW with a scheduler that warms up linearly for 8000 then decays. A checkpoint file will be saved every 300 steps.
 
-Long Summarization
-------------------
+.. _abstractive_long_summarization:
 
-This script can perform abstractive summarization on long sequences using the ``longbart`` model. ``longbart`` is `BART <https://huggingface.co/transformers/model_doc/bart.html>`_ (`paper <https://arxiv.org/abs/1910.13461>`__) but with components from the `longformer <https://huggingface.co/transformers/model_doc/longformer.html>`_ (`paper <https://arxiv.org/abs/2004.05150>`__) that enable it to operate with long sequences.
+Abstractive Long Summarization
+------------------------------
+
+This script can perform abstractive summarization on long sequences using the ``longbart`` model (`GitHub repo <https://github.com/patil-suraj/longbart>`__). ``longbart`` is `BART <https://huggingface.co/transformers/model_doc/bart.html>`_ (`paper <https://arxiv.org/abs/1910.13461>`__) but with components from the `longformer <https://huggingface.co/transformers/model_doc/longformer.html>`_ (`paper <https://arxiv.org/abs/2004.05150>`__) that enable it to operate with long sequences.
 
 Install ``longbart`` by running ``pip install git+https://github.com/patil-suraj/longbart.git``. Then generate a long model with the below code:
 
@@ -51,9 +53,13 @@ Install ``longbart`` by running ``pip install git+https://github.com/patil-suraj
         max_pos=4096
     )
 
+You can change ``max_pos`` to a different value to summarize sequences longer than 4096 tokens.
+
 With the ``longbart`` model generated you can run the training script with the ``--model_name_or_path`` set to ``longbart-base-4096`` (or wherever the configuration and model files are located).
 
 .. warning:: For this script to work correctly with ``longbart`` the ``--model_name_or_path`` must contain the phrase "longbart".
+
+.. _abstractive_script_help:
 
 Script Help
 -----------

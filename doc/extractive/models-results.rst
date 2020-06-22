@@ -1,6 +1,8 @@
 Pre-trained Models & Results
 ============================
 
+.. _pretrained_ext_cnn_dm:
+
 CNN/DM
 ------
 

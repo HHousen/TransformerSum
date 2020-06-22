@@ -1,3 +1,5 @@
+.. _abstractive_supported_datasets:
+
 Abstractive Supported Datasets
 ==============================
 
