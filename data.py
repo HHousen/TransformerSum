@@ -548,7 +548,7 @@ class SentencesProcessor:
         else:
             src_txt = example.text
 
-        input_ids = cls.get_input_ids(
+        input_ids = self.get_input_ids(
             tokenizer, src_txt, bert_compatible_cls, sep_token, cls_token, max_length
         )
 

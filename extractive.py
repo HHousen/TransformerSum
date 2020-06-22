@@ -12,7 +12,7 @@ import numpy as np
 from functools import partial
 from multiprocessing import Pool
 from collections import OrderedDict
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 import pytorch_lightning as pl
 from rouge_score import rouge_scorer, scoring
 import torch
@@ -72,6 +72,9 @@ class ExtractiveSummarizer(pl.LightningModule):
 
     def __init__(self, hparams, embedding_model_config=None, classifier_obj=None):
         super(ExtractiveSummarizer, self).__init__()
+
+        if type(hparams) is not Namespace:
+            hparams = Namespace(**hparams)
 
         self.hparams = hparams
         self.forward_modify_inputs_callback = None
@@ -177,28 +180,8 @@ class ExtractiveSummarizer(pl.LightningModule):
             hparams.tokenizer_name
             if hparams.tokenizer_name
             else hparams.model_name_or_path,
-            do_lower_case=hparams.tokenizer_lowercase,
+            use_fast=True,
         )
-        # if using longformer then change the tokenizer maximum length
-        # and set the modify_inputs_callback to use the required `pad_to_window_size`
-        # function
-        # if hparams.model_type == "longformer":
-        #     self.tokenizer.max_len = (
-        #         self.word_embedding_model.config.max_position_embeddings
-        #     )
-
-        #     def longformer_forward_callback(inputs):
-        #         input_ids, attention_mask = pad_to_window_size(
-        #             inputs["input_ids"],
-        #             inputs["attention_mask"],
-        #             self.word_embedding_model.config.attention_window[0],
-        #             self.tokenizer.pad_token_id,
-        #         )
-        #         inputs["input_ids"] = input_ids
-        #         inputs["attention_mask"] = attention_mask
-        #         return inputs
-
-        #     self.forward_modify_inputs_callback = longformer_forward_callback
 
         self.train_dataloader_object = None  # not created yet
 
@@ -586,7 +569,7 @@ class ExtractiveSummarizer(pl.LightningModule):
 
     def test_dataloader(self):
         """Create dataloader for testing."""
-        self.rouge_metrics = ["rouge1", "rouge2", "rougeL"]
+        self.rouge_metrics = ["rouge1", "rouge2", "rougeL", "rougeLsum"]
         self.rouge_scorer = rouge_scorer.RougeScorer(
             self.rouge_metrics, use_stemmer=True
         )
@@ -1138,7 +1121,6 @@ class ExtractiveSummarizer(pl.LightningModule):
             help="Model type selected in the list: " + ", ".join(MODEL_CLASSES),
         )
         parser.add_argument("--tokenizer_name", type=str, default="")
-        parser.add_argument("--tokenizer_lowercase", action="store_true")
         parser.add_argument("--max_seq_length", type=int, default=0)
         parser.add_argument(
             "--data_path", type=str, help="Directory containing the dataset."

@@ -7,17 +7,17 @@ CNN/DM
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------+
 | Name                            | Comments | Model Download | Data Download                                                                             |
 +=================================+==========+================+===========================================================================================+
-| distilbert-base-uncased-ext-sum | None     | Not yet...     | `CNN/DM Bert Uncased <https://drive.google.com/uc?id=1i1G7dEBsJ1ZIuty-wJrEGqbzdLvZCnV9>`_ |
+| distilbert-base-uncased-ext-sum | None     | Not yet...     | `CNN/DM Bert Uncased <https://drive.google.com/uc?id=1B62nViCHY-qZNZAlftPGbvLGxGqToWrS>`_ |
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------+
 | distilroberta-base-ext-sum      | None     | Not yet...     | `CNN/DM Roberta <https://drive.google.com/uc?id=1g2bAAUuDvt3WZ3giSDaN7j4xew-RGfT3>`_      |
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------+
-| bert-base-uncased-ext-sum       | None     | Not yet...     | `CNN/DM Bert Uncased <https://drive.google.com/uc?id=1i1G7dEBsJ1ZIuty-wJrEGqbzdLvZCnV9>`_ |
+| bert-base-uncased-ext-sum       | None     | Not yet...     | `CNN/DM Bert Uncased <https://drive.google.com/uc?id=1B62nViCHY-qZNZAlftPGbvLGxGqToWrS>`_ |
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------+
 | roberta-base-ext-sum            | None     | Not yet...     | `CNN/DM Roberta <https://drive.google.com/uc?id=1g2bAAUuDvt3WZ3giSDaN7j4xew-RGfT3>`_      |
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------+
 | albert-base-v2-ext-sum          | None     | Not yet...     | `CNN/DM Albert <https://drive.google.com/uc?id=1MPWFtcauXtzEVPDXZTA7o0MWi47GuhFU>`_       |
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------+
-| bert-large-uncased-ext-sum      | None     | Not yet...     | `CNN/DM Bert Uncased <https://drive.google.com/uc?id=1i1G7dEBsJ1ZIuty-wJrEGqbzdLvZCnV9>`_ |
+| bert-large-uncased-ext-sum      | None     | Not yet...     | `CNN/DM Bert Uncased <https://drive.google.com/uc?id=1B62nViCHY-qZNZAlftPGbvLGxGqToWrS>`_ |
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------+
 | roberta-large-ext-sum           | None     | Not yet...     | `CNN/DM Roberta <https://drive.google.com/uc?id=1g2bAAUuDvt3WZ3giSDaN7j4xew-RGfT3>`_      |
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------+

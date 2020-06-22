@@ -27,7 +27,7 @@ try:
     from longbart import LongBartForConditionalGeneration
 except ImportError:
     logger.warn(
-        "Could not import `LongBartForConditionalGeneration` from `longbart`, which means the `longbart` model is not available. Install with `pip install git+https://github.com/patil-suraj/longbart.git`."
+        "Abstractive Only: Could not import `LongBartForConditionalGeneration` from `longbart`, which means the `longbart` model is not available. Install with `pip install git+https://github.com/patil-suraj/longbart.git`."
     )
 
 
