@@ -69,6 +69,31 @@ class LinearClassifier(nn.Module):
         return sent_scores
 
 
+class SimpleLinearClassifier(nn.Module):
+    """``nn.Module`` to classify sentences by reducing the hidden dimension to 1. This module
+    contains a single linear layer and a sigmoid.
+    
+    Arguments:
+        web_hidden_size (int): The output hidden size from the word embedding model. Used as
+            the input to the first linear layer in this nn.Module.
+    """
+
+    def __init__(self, web_hidden_size):
+        super(SimpleLinearClassifier, self).__init__()
+        self.linear = nn.Linear(web_hidden_size, 1)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x, mask):
+        """
+        Forward function. ``x`` is the input ``sent_vector`` tensor and ``mask`` avoids computations
+        on padded values. Returns ``sent_scores``.
+        """
+        x = self.linear(x).squeeze(-1)
+        x = self.sigmoid(x)
+        sent_scores = x * mask.float()
+        return sent_scores
+
+
 class TransformerEncoderClassifier(nn.Module):
     """
     ``nn.Module`` to classify sentences by running the sentence vectors through some

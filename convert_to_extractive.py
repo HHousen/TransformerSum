@@ -190,14 +190,19 @@ def convert_to_extractive_process(
     pool = Pool(args.n_process)
     logger.info("Processing " + name)
     t0 = time()
-    for idx, preprocessed_data in enumerate(
+    for idx, (preprocessed_data, target_doc) in enumerate(
         pool.map(_example_processor, zip(source_docs_tokenized, target_docs_tokenized),)
     ):
         if preprocessed_data is not None:
             # preprocessed_data is (source_doc, labels)
             to_append = {"src": preprocessed_data[0], "labels": preprocessed_data[1]}
             if name in args.add_target_to:
-                to_append["tgt"] = target_docs[idx]
+                # Convert the tokenized list of sentences where each sentence is a list of tokens
+                # to a string where each sentence is separated by "<q>". This is necessary for
+                # proper ROUGE score calculation.
+                to_append["tgt"] = "<q>".join(
+                    [" ".join(sent) for sent in target_doc]
+                )
             dataset.append(to_append)
 
     pool.close()
@@ -369,7 +374,7 @@ def example_processor(inputs, args=None, oracle_mode="greedy", no_preprocess=Fal
         oracle_ids = greedy_selection(source_doc, target_doc, 3)
     elif oracle_mode == "combination":
         oracle_ids = combination_selection(source_doc, target_doc, 3)
-    del target_doc
+
     # `oracle_ids` to labels
     labels = [0] * len(source_doc)
     for l in oracle_ids:
@@ -397,7 +402,7 @@ def example_processor(inputs, args=None, oracle_mode="greedy", no_preprocess=Fal
             args.max_example_nsents,
         )
 
-    return preprocessed_data
+    return preprocessed_data, target_doc
 
 
 def preprocess(

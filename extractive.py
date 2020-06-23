@@ -22,7 +22,11 @@ from torch.optim.lr_scheduler import LambdaLR, OneCycleLR
 from spacy.lang.en import English
 from pooling import Pooling
 from data import SentencesProcessor, FSIterableDataset, pad_batch_collate
-from classifier import LinearClassifier, TransformerEncoderClassifier
+from classifier import (
+    LinearClassifier,
+    SimpleLinearClassifier,
+    TransformerEncoderClassifier,
+)
 from helpers import load_json, lr_lambda_func, block_trigrams
 
 logger = logging.getLogger(__name__)
@@ -136,6 +140,10 @@ class ExtractiveSummarizer(pl.LightningModule):
                     self.word_embedding_model.config.hidden_size,
                     first_dropout=hparams.classifier_dropout,
                     last_dropout=hparams.classifier_dropout,
+                )
+            elif hparams.classifier == "simple_linear":
+                self.encoder = SimpleLinearClassifier(
+                    self.word_embedding_model.config.hidden_size
                 )
             elif hparams.classifier == "transformer":
                 self.encoder = TransformerEncoderClassifier(
@@ -930,6 +938,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             )
 
         rouge_outputs = []
+        predictions = []
         # get ROUGE scores for each (source, target) pair
         for idx, (source, source_ids, target) in enumerate(
             zip(sources, selected_ids, targets)
@@ -967,11 +976,32 @@ class ExtractiveSummarizer(pl.LightningModule):
                 ):
                     break
 
-            # Convert `current_prediction` from list to string with a space between each
-            # item/sentence.
-            current_prediction = " ".join(current_prediction)
+            # See this issue https://github.com/google-research/google-research/issues/168
+            # for info about the differences between `pyrouge` and `rouge-score`.
+            # Archive Link: https://web.archive.org/web/20200622205503/https://github.com/google-research/google-research/issues/168
+            if self.hparams.test_use_pyrouge:
+                # Convert `current_prediction` from list to string with a "<q>" between each
+                # item/sentence. In ROUGE 1.5.5 (`pyrouge`), a "<q>" token indicates sentence
+                # boundaries.
+                current_prediction = "<q>".join(current_prediction)
+                predictions.append(current_prediction)
+            else:
+                # Convert `current_prediction` from list to string with a newline between each
+                # item/sentence. `rouge-score` splits sentences by newline.
+                current_prediction = "\n".join(current_prediction)
+                target = target.replace("<q>", "\n")
+                rouge_outputs.append(
+                    self.rouge_scorer.score(target, current_prediction)
+                )
 
-            rouge_outputs.append(self.rouge_scorer.score(target, current_prediction))
+        if self.hparams.test_use_pyrouge:
+            with open("save_gold.txt", "a+") as save_gold, open(
+                "save_pred.txt", "a+"
+            ) as save_pred:
+                for i in range(len(targets)):
+                    save_gold.write(targets[i].strip() + "\n")
+                for i in range(len(predictions)):
+                    save_pred.write(predictions[i].strip() + "\n")
 
         output = OrderedDict(
             {
@@ -996,32 +1026,36 @@ class ExtractiveSummarizer(pl.LightningModule):
         ).mean()
 
         rouge_scores_log = {}
-        aggregator = scoring.BootstrapAggregator()
 
-        # In `outputs` there is an entry for each batch that was passwed through the
-        # `test_step()` function. For each batch a list containing the rouge scores
-        # for each example exists under the key "rouge_scores" in `batch_list`. Thus,
-        # the below list comprehension loops through the list of outputs and grabs the
-        # items stored under the "rouge_scores" key. Then it flattens the list of lists
-        # to a list of rouge score objects that can be added to the `aggregator`.
-        rouge_scores_list = [
-            rouge_score_set
-            for batch_list in outputs
-            for rouge_score_set in batch_list["rouge_scores"]
-        ]
-        for score in rouge_scores_list:
-            aggregator.add_scores(score)
-        # The aggregator returns a dictionary with keys coresponding to the rouge metric
-        # and values that are `AggregateScore` objects. Each `AggregateScore` object is a
-        # named tuple with a low, mid, and high value. Each value is a `Score` object, which
-        # is also a named tuple, that contains the precision, recall, and fmeasure values.
-        # For more info see the source code: https://github.com/google-research/google-research/blob/master/rouge/scoring.py
-        rouge_result = aggregator.aggregate()
+        if self.hparams.test_use_pyrouge:
+            test_rouge("tmp", "save_pred.txt", "save_gold.txt")
+        else:
+            aggregator = scoring.BootstrapAggregator()
 
-        for metric, value in rouge_result.items():
-            rouge_scores_log[metric + "-precision"] = value.mid.precision
-            rouge_scores_log[metric + "-recall"] = value.mid.recall
-            rouge_scores_log[metric + "-fmeasure"] = value.mid.fmeasure
+            # In `outputs` there is an entry for each batch that was passwed through the
+            # `test_step()` function. For each batch a list containing the rouge scores
+            # for each example exists under the key "rouge_scores" in `batch_list`. Thus,
+            # the below list comprehension loops through the list of outputs and grabs the
+            # items stored under the "rouge_scores" key. Then it flattens the list of lists
+            # to a list of rouge score objects that can be added to the `aggregator`.
+            rouge_scores_list = [
+                rouge_score_set
+                for batch_list in outputs
+                for rouge_score_set in batch_list["rouge_scores"]
+            ]
+            for score in rouge_scores_list:
+                aggregator.add_scores(score)
+            # The aggregator returns a dictionary with keys coresponding to the rouge metric
+            # and values that are `AggregateScore` objects. Each `AggregateScore` object is a
+            # named tuple with a low, mid, and high value. Each value is a `Score` object, which
+            # is also a named tuple, that contains the precision, recall, and fmeasure values.
+            # For more info see the source code: https://github.com/google-research/google-research/blob/master/rouge/scoring.py
+            rouge_result = aggregator.aggregate()
+
+            for metric, value in rouge_result.items():
+                rouge_scores_log[metric + "-precision"] = value.mid.precision
+                rouge_scores_log[metric + "-recall"] = value.mid.recall
+                rouge_scores_log[metric + "-fmeasure"] = value.mid.fmeasure
 
         # Generate logs
         tqdm_dict = {
@@ -1222,10 +1256,11 @@ class ExtractiveSummarizer(pl.LightningModule):
         parser.add_argument(
             "--classifier",
             type=str,
-            choices=["linear", "transformer", "transformer_linear"],
-            default="linear",
+            choices=["linear", "simple_linear", "transformer", "transformer_linear"],
+            default="simple_linear",
             help="""Which classifier/encoder to use to reduce the hidden dimension of the sentence vectors.
                     `linear` - a `LinearClassifier` with two linear layers, dropout, and an activation function.
+                    `simple_linear` - a `LinearClassifier` with one linear layer and a sigmoid.
                     `transformer` - a `TransformerEncoderClassifier` which runs the sentence vectors through some 
                                     `nn.TransformerEncoderLayer`s and then a simple `nn.Linear` layer.
                     `transformer_linear` - a `TransformerEncoderClassifier` with a `LinearClassifier` as the 
@@ -1279,6 +1314,16 @@ class ExtractiveSummarizer(pl.LightningModule):
             "--no_test_block_trigrams",
             action="store_true",
             help="Disable trigram blocking when calculating ROUGE scores during testing. This will increase repetition and thus decrease accuracy.",
+        )
+        parser.add_argument(
+            "--test_use_pyrouge",
+            action="store_true",
+            help="""Use `pyrouge`, which is an interface to the official ROUGE software, instead of 
+            the pure-python implementation provided by `rouge-score`. You must have the real ROUGE 
+            package installed. More details about ROUGE 1.5.5 here: https://github.com/andersjo/pyrouge/tree/master/tools/ROUGE-1.5.5. 
+            It is recommended to use this option for official scores. The `ROUGE-L` measurements
+            from `pyrouge` are equivalent to the `rougeLsum` measurements from the default 
+            `rouge-score` package.""",
         )
         parser.add_argument(
             "--loss_key",

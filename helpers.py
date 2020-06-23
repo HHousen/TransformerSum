@@ -1,4 +1,6 @@
 import os
+import time
+import shutil
 import json
 import gzip
 import logging
@@ -157,3 +159,45 @@ def pad_tensors(tensors, pad_id=0, width=None, pad_on_left=False):
         F.pad(tensor, pad=pad_params, mode="constant", value=pad_id)
         for tensor in tensors
     ]
+
+def test_rouge(temp_dir, cand, ref):
+    import pyrouge
+
+    candidates = [line.strip() for line in open(cand, encoding='utf-8')]
+    references = [line.strip() for line in open(ref, encoding='utf-8')]
+    print(len(candidates))
+    print(len(references))
+    assert len(candidates) == len(references)
+
+    cnt = len(candidates)
+    current_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
+    os.makedirs(temp_dir, exist_ok=True)
+    tmp_dir = os.path.join(temp_dir, "rouge-tmp-{}".format(current_time))
+    os.makedirs(tmp_dir, exist_ok=True)
+    os.makedirs(tmp_dir + "/candidate", exist_ok=True)
+    os.makedirs(tmp_dir + "/reference", exist_ok=True)
+
+    try:
+
+        for i in range(cnt):
+            if len(references[i]) < 1:
+                continue
+            with open(tmp_dir + "/candidate/cand.{}.txt".format(i), "w",
+                      encoding="utf-8") as f:
+                f.write(candidates[i])
+            with open(tmp_dir + "/reference/ref.{}.txt".format(i), "w",
+                      encoding="utf-8") as f:
+                f.write(references[i])
+        r = pyrouge.Rouge155()
+        r.model_dir = tmp_dir + "/reference/"
+        r.system_dir = tmp_dir + "/candidate/"
+        r.model_filename_pattern = 'ref.#ID#.txt'
+        r.system_filename_pattern = r'cand.(\d+).txt'
+        rouge_results = r.convert_and_evaluate()
+        print(rouge_results)
+        results_dict = r.output_to_dict(rouge_results)
+    finally:
+        pass
+        if os.path.isdir(tmp_dir):
+            shutil.rmtree(tmp_dir)
+    return results_dict
