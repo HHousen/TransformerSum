@@ -4,6 +4,7 @@ import gc
 import json
 import gzip
 import glob
+import math
 import logging
 import spacy
 from spacy.lang.en import English
@@ -52,6 +53,11 @@ def read_in_chunks(file_object, chunk_size=5000):
             current_line_num += 1
         lines.append(line.strip())
         current_line_num += 1
+    # When the `file_object` has no more lines left then yield the current chunk,
+    # even if it is not a chunk of 5000 (`chunk_size`) as long as it contains more than
+    # 0 examples.
+    if len(lines) > 0:
+        yield lines
 
 
 def convert_to_extractive_driver(args):
@@ -92,8 +98,9 @@ def convert_to_extractive_driver(args):
                 # reset pointer back to beginning after getting length
                 target_file.seek(0)
 
-                # find how long the loop will run
-                tot_num_interations = int(target_file_len / args.shard_interval)
+                # find how long the loop will run, round up because any extra examples
+                # will form a chunk of size less than `args.shard_interval`
+                tot_num_interations = math.ceil(target_file_len / args.shard_interval)
 
                 # default is that there was no previous shard (aka not resuming)
                 last_shard = 0
@@ -199,7 +206,9 @@ def convert_to_extractive_process(
             if name in args.add_target_to:
                 # Convert the tokenized list of sentences where each sentence is a list of tokens
                 # to a string where each sentence is separated by "<q>". This is necessary for
-                # proper ROUGE score calculation.
+                # proper ROUGE score calculation. Each sentence should be separated by a newline
+                # for ROUGE to work properly, but we use "<q>" and convert it back to a newline
+                # when necessary since "<q>" is easier to store than "\n".
                 to_append["tgt"] = "<q>".join(
                     [" ".join(sent) for sent in target_doc]
                 )

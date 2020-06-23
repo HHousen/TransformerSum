@@ -48,6 +48,9 @@ def main(args):
         # the data path, which the below line accomplishes.
         if args.data_path:
             model.hparams.data_path = args.data_path
+        # Same as above but for `test_use_pyrouge`
+        if args.test_use_pyrouge:
+            model.hparams.test_use_pyrouge = args.test_use_pyrouge
     else:
         model = summarizer(hparams=args)
 

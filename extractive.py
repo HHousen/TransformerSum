@@ -981,8 +981,11 @@ class ExtractiveSummarizer(pl.LightningModule):
             # Archive Link: https://web.archive.org/web/20200622205503/https://github.com/google-research/google-research/issues/168
             if self.hparams.test_use_pyrouge:
                 # Convert `current_prediction` from list to string with a "<q>" between each
-                # item/sentence. In ROUGE 1.5.5 (`pyrouge`), a "<q>" token indicates sentence
-                # boundaries.
+                # item/sentence. In ROUGE 1.5.5 (`pyrouge`), a "\n" indicates sentence
+                # boundaries but the below "save_gold.txt" and "save_pred.txt" could not be
+                # created if each sentence had to be separated by a newline. Thus, each
+                # sentence is separated by a "<q>" token and is then converted to a newline
+                # in `helpers.test_rouge`.
                 current_prediction = "<q>".join(current_prediction)
                 predictions.append(current_prediction)
             else:

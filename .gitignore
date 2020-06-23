@@ -114,3 +114,4 @@ train.target
 wandb
 *.ckpt
 doc/_build
+notebooks/
