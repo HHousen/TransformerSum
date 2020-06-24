@@ -188,7 +188,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             hparams.tokenizer_name
             if hparams.tokenizer_name
             else hparams.model_name_or_path,
-            use_fast=True,
+            use_fast=(not self.hparams.tokenizer_no_use_fast),
         )
 
         self.train_dataloader_object = None  # not created yet
@@ -1158,6 +1158,11 @@ class ExtractiveSummarizer(pl.LightningModule):
             help="Model type selected in the list: " + ", ".join(MODEL_CLASSES),
         )
         parser.add_argument("--tokenizer_name", type=str, default="")
+        parser.add_argument(
+            "--tokenizer_no_use_fast",
+            action="store_true",
+            help="Don't use the fast version of the tokenizer for the specified model. More info: https://huggingface.co/transformers/main_classes/tokenizer.html.",
+        )
         parser.add_argument("--max_seq_length", type=int, default=0)
         parser.add_argument(
             "--data_path", type=str, help="Directory containing the dataset."

@@ -64,10 +64,10 @@ def main(args):
             log_model=(not args.no_wandb_logger_log_model),
         )
         args.logger = wandb_logger
-        if not args.no_wandb_logger_log_model:
-            args.weights_save_path = os.path.join(
-                wandb_logger.experiment.dir, "models/"
-            )
+        # if not args.no_wandb_logger_log_model:
+        #     args.weights_save_path = os.path.join(
+        #         wandb_logger.experiment.dir, "models/"
+        #     )
 
     if args.use_custom_checkpoint_callback:
         args.checkpoint_callback = ModelCheckpoint(
