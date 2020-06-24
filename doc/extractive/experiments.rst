@@ -1,11 +1,23 @@
 Experiments
 ===========
 
-Interactive charts, graphs, raw data, run commands, hyperparameter choices, and more for all experiments are publicly available on the `TransformerSum Weights & Biases page <https://app.wandb.ai/hhousen/transformerextsum>`__.
+Interactive charts, graphs, raw data, run commands, hyperparameter choices, and more for all experiments are publicly available on the `TransformerSum Weights & Biases page <https://app.wandb.ai/hhousen/transformerextsum>`__. Please open an `issue <https://github.com/HHousen/TransformerSum/issues/new>`__ if you have questions about these experiments.
 
 **Reproducibility Notes:**
 
-If you are unable to reproduce the results for the experiments below by following the instructions for each experiment, then please open an `issue <https://github.com/HHousen/TransformerSum/issues/new>`__. The following is a list of things to double check if you cannot reproduce the results:
+.. important:: These experiments may be difficult to reproduce because they were conducted on an early version of the project that contained several bugs.
+
+Bugs present in the version these experiments were conducted with:
+
+1. Sentences were not split properly when computing ROUGE scores (fixed in commit dfefd15).
+2. Data was missing from the training, validation, and testing sets (fixed in commit 4de5532).
+3. Tokens were not converted to lowercase for models with the word "uncased" in their name (fixed in commit d934e09).
+4. ``rougeLsum`` is not reported. See :ref:`about_rouge_scores` for the difference between ``rougeL`` and ``rougeLsum`` (fixed in commit d934e09).
+5. Trigram blocking was not used (fixed in commit 60f868e).
+
+Despite these differences from the official models, the relative results of these experiments should hold true, so their general findings should remain constant with newer models. If you find conflicting results please open an `issue <https://github.com/HHousen/TransformerSum/issues/new>`__.
+
+Important notes when running experiments:
 
 * If you are using ``--overfit_pct``, then ``overfit_pct`` percent of the testing data is being used as well as ``overfit_pct`` percent of the training data. Due to the way ``pytorch_lightning`` was written, it is necessary to use the same ``batch_size`` when using ``overfit_pct`` in order to get the exact same results. I currently am not sure why this is the case but removing ``overfit_pct`` and using different ``batch_size``\ s produces identical results. Open an `issue <https://github.com/HHousen/TransformerSum/issues/new>`__ or submit a pull request if you know why.
 * Have another note that should be stated here? Open an `issue <https://github.com/HHousen/TransformerSum/issues/new>`__. All contributions are very helpful.

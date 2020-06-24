@@ -1,6 +1,8 @@
 Getting Started
 ===============
 
+.. _installation_instructions:
+
 Install
 -------
 
@@ -14,8 +16,39 @@ Step-by-Step Instructions
 3. Run installation command: ``conda env create --file environment.yml``.
 4. **(Optional)** If using the ``convert_to_extractive.py`` script then download the ``en_core_web_sm`` spacy model: ``python -m spacy download en_core_web_sm``.
 
+.. _getting_started_tutorial:
+
 Tutorial
 --------
+
+I just want to summarize some text
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If all you want to do is summarize a text string using a pre-trained model then follow the below steps:
+
+1. Download a summarization model. Link to :ref:`pre-trained extractive models <pretrained_ext>`. Link to :ref:`pre-trained abstractive models <pretrained_abs>`.
+2. Instantiate the model:
+
+    For extractive summarization:
+
+    .. code-block:: python
+
+        from extractive import ExtractiveSummarizer
+        model = ExtractiveSummarizer.load_from_checkpoint("path/to/ckpt/file")
+
+    For abstractive summarization:
+
+    .. code-block:: python
+
+        from abstractive import AbstractiveSummarizer
+        model = AbstractiveSummarizer.load_from_checkpoint("path/to/ckpt/file")
+
+3. Run prediction on a string of text:
+
+    .. code-block:: python
+    
+        text_to_summarize = "Something Awesome"
+        summary = model.predict(text_to_summarize)
 
 Extractive Summarization
 ^^^^^^^^^^^^^^^^^^^^^^^^

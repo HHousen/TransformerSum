@@ -167,7 +167,7 @@ def test_rouge(temp_dir, cand, ref):
     sentences based on newlines but we cannot store all the summaries easily in a single text 
     file if there is a newline between each sentence since newlines mark new summaries. Thus, 
     the "<q>" token is used in the text files and is converted to a newline in this function.
-    Using "<q>" instead of ``\n`` also makes it easier to store the ground-truth summaries
+    Using "<q>" instead of ``\\n`` also makes it easier to store the ground-truth summaries
     in the ``convert_to_extractive.py`` script.
 
     Args:
@@ -178,7 +178,7 @@ def test_rouge(temp_dir, cand, ref):
             with "<q>" tokens in between each sentence.
 
     Returns:
-        dictionary: Results from the ROUGE script as a python dictionary.
+        dict: Results from the ROUGE script as a python dictionary.
     """
     import pyrouge
 
