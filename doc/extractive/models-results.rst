@@ -11,21 +11,21 @@ CNN/DM
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------+
 | Name                            | Comments | Model Download | Data Download                                                                             |
 +=================================+==========+================+===========================================================================================+
-| distilbert-base-uncased-ext-sum | None     | Not yet...     | `CNN/DM Bert Uncased <https://drive.google.com/uc?id=1-WymH7hOsUgbvyZIHC_KGdwCMZg9RNZN>`_ |
+| distilbert-base-uncased-ext-sum | None     | Not yet...     | `CNN/DM Bert Uncased <https://drive.google.com/uc?id=100ZE4fVU73EU3K_EGktrYDoMSLJ6EUQW>`_ |
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------+
-| distilroberta-base-ext-sum      | None     | Not yet...     | `CNN/DM Roberta <https://drive.google.com/uc?id=1-q84DL6tfvLkzSGCyRDeAuFmkOtRu1z9>`_      |
+| distilroberta-base-ext-sum      | None     | Not yet...     | `CNN/DM Roberta <https://drive.google.com/uc?id=11_DCHDLI2nMUzr-ZsIvLRbG_IPTplC12>`_      |
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------+
-| bert-base-uncased-ext-sum       | None     | Not yet...     | `CNN/DM Bert Uncased <https://drive.google.com/uc?id=1-WymH7hOsUgbvyZIHC_KGdwCMZg9RNZN>`_ |
+| bert-base-uncased-ext-sum       | None     | Not yet...     | `CNN/DM Bert Uncased <https://drive.google.com/uc?id=100ZE4fVU73EU3K_EGktrYDoMSLJ6EUQW>`_ |
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------+
-| roberta-base-ext-sum            | None     | Not yet...     | `CNN/DM Roberta <https://drive.google.com/uc?id=1-q84DL6tfvLkzSGCyRDeAuFmkOtRu1z9>`_      |
+| roberta-base-ext-sum            | None     | Not yet...     | `CNN/DM Roberta <https://drive.google.com/uc?id=11_DCHDLI2nMUzr-ZsIvLRbG_IPTplC12>`_      |
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------+
-| albert-base-v2-ext-sum          | None     | Not yet...     | `CNN/DM Albert <https://drive.google.com/uc?id=1-xOsdEvyzgg2uGAI8wVrBRXYg2IDbmek>`_       |
+| albert-base-v2-ext-sum          | None     | Not yet...     | `CNN/DM Albert <https://drive.google.com/uc?id=12vLY7Z2gIYYyTBfeSKmZQuZCIcKU8TVF>`_       |
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------+
-| bert-large-uncased-ext-sum      | None     | Not yet...     | `CNN/DM Bert Uncased <https://drive.google.com/uc?id=1-WymH7hOsUgbvyZIHC_KGdwCMZg9RNZN>`_ |
+| bert-large-uncased-ext-sum      | None     | Not yet...     | `CNN/DM Bert Uncased <https://drive.google.com/uc?id=100ZE4fVU73EU3K_EGktrYDoMSLJ6EUQW>`_ |
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------+
-| roberta-large-ext-sum           | None     | Not yet...     | `CNN/DM Roberta <https://drive.google.com/uc?id=1-q84DL6tfvLkzSGCyRDeAuFmkOtRu1z9>`_      |
+| roberta-large-ext-sum           | None     | Not yet...     | `CNN/DM Roberta <https://drive.google.com/uc?id=11_DCHDLI2nMUzr-ZsIvLRbG_IPTplC12>`_      |
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------+
-| albert-xlarge-v2-ext-sum        | None     | Not yet...     | `CNN/DM Albert <https://drive.google.com/uc?id=1-xOsdEvyzgg2uGAI8wVrBRXYg2IDbmek>`_       |
+| albert-xlarge-v2-ext-sum        | None     | Not yet...     | `CNN/DM Albert <https://drive.google.com/uc?id=12vLY7Z2gIYYyTBfeSKmZQuZCIcKU8TVF>`_       |
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------+
 
 CNN/DM ROUGE Scores

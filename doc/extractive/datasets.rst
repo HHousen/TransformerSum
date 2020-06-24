@@ -27,7 +27,7 @@ The **CNN/DailyMail** (Hermann et al., 2015) dataset contains 93k articles from 
 +-------------------------------+--------------------------------------------------------------------------------------+
 | Processed Abstractive Dataset | `Google Drive <https://drive.google.com/uc?id=1OMJWMoO367yPZH5yp-TsAai_kUmWVQY2>`__  |
 +-------------------------------+--------------------------------------------------------------------------------------+
-| Extractive Version            | `Google Drive <https://drive.google.com/uc?id=1-J6pNtkeVXpWmPYozFxQWerxBX7bjpKa>`__  |
+| Extractive Version            | `Google Drive <https://drive.google.com/uc?id=1-DLTTioISS8i3UrOG4sjjc_js0ncnBnn>`__  |
 +-------------------------------+--------------------------------------------------------------------------------------+
 
 Download and unzip the stories directories from `here <https://cs.nyu.edu/~kcho/DMQA/>`_ for both CNN and Daily Mail. The files can be downloaded from the terminal with `gdown`, which can be installed with `pip install gdown`.
