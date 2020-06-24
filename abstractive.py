@@ -3,6 +3,9 @@ import logging
 import random
 import torch
 import nlp
+import itertools
+import spacy
+from spacy.lang.en import English
 from functools import partial
 from time import time
 from collections import OrderedDict
@@ -20,6 +23,7 @@ from transformers import (
     BartTokenizer,
 )
 from helpers import lr_lambda_func, pad
+from convert_to_extractive import tokenize
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +154,7 @@ class AbstractiveSummarizer(pl.LightningModule):
             attention_mask=source_mask,
             decoder_input_ids=target,
             decoder_attention_mask=target_mask,
-            lm_labels=labels,
+            labels=labels,
         )
 
         cross_entropy_loss, prediction_scores = outputs[:2]
@@ -162,33 +166,75 @@ class AbstractiveSummarizer(pl.LightningModule):
         downloading, preprocessing, tokenization, and feature extraction.
         """
 
+        # load spacy english small model with the "tagger" and "ner" disabled since
+        # we only need the "tokenizer" and "parser"
+        # more info: https://spacy.io/usage/processing-pipelines
+        if self.hparams.sentencizer:
+            spacy_nlp = English()
+            sentencizer = spacy_nlp.create_pipe("sentencizer")
+            spacy_nlp.add_pipe(sentencizer)
+        else:
+            spacy_nlp = spacy.load("en_core_web_sm", disable=["tagger", "ner"])
+
         def convert_to_features(example_batch):
             max_length = self.tokenizer.max_len
 
             articles = example_batch[self.hparams.data_example_column]
-            highlights = example_batch[self.hparams.data_summarized_column]
             articles_encoded = self.tokenizer.batch_encode_plus(
                 articles, pad_to_max_length=True, truncation=True,
             )
-            # `max_length` is the max length minus 2 because we need to add the
-            # beginning and ending tokens to the target
-            highlights_input_ids = self.tokenizer.batch_encode_plus(
-                highlights,
-                truncation=True,
-                max_length=(max_length - 2),
-                return_attention_mask=False,
-                return_token_type_ids=False,
-            )["input_ids"]
 
+            highlights = example_batch[self.hparams.data_summarized_column]
+            # Tokenize highlights using spacy to split them into sentences
+            highlights_tokenized = tokenize(
+                spacy_nlp, highlights, disable_progress_bar=True
+            )
+            sep_token = self.tokenizer.sep_token
+
+            highlights_input_ids = []
             highlights_attention_masks = []
-            # For each highlight input ids
-            # 1. Insert beginning of sequence token and append end of sequence token.
-            # 2. Create attention mask
-            for input_ids in highlights_input_ids:
-                input_ids.insert(0, self.target_boseq_token_id)
-                input_ids.append(self.target_eoseq_token_id)
+            # For each ground-truth summary
+            for highlight in highlights_tokenized:
+                # `highlight` is a list of sentences where each sentence is a list of tokens
+                # Combine those tokens to create a list of sentences.
+                sents = [" ".join(list_of_ids) for list_of_ids in highlight]
+                # Tokenize each sentence and append the `sep_token`
+                sents_tokenized = []
+                for sent in sents:
+                    sent = self.tokenizer.tokenize(sent)
+                    sent.append(sep_token)
+                    sents_tokenized.append(sent)
 
-                attention_mask = [1] * len(input_ids)
+                # Delete the last `sep_token` from the last sentence
+                del sents_tokenized[-1][-1]
+                # Flatten `sents_tokenized` (a list of sentences where each sentence is a list
+                # of tokens) to a list of tokens
+                sents_tokenized_flat = list(
+                    itertools.chain.from_iterable(sents_tokenized)
+                )
+
+                # Convert the tokens to `input_ids`
+                # `max_length` is the max length minus 2 because we need to add the
+                # beginning and ending tokens to the target
+                sents_input_ids = self.tokenizer.encode_plus(
+                    sents_tokenized_flat,
+                    truncation=True,
+                    is_pretokenized=True,
+                    add_special_tokens=False,
+                    max_length=(max_length - 2),
+                    return_attention_mask=False,
+                    return_token_type_ids=False,
+                )["input_ids"]
+
+                # Insert beginning of sequence token and append end of sequence token.
+                sents_input_ids.insert(0, self.target_boseq_token_id)
+                sents_input_ids.append(self.target_eoseq_token_id)
+
+                # Create attention mask
+                attention_mask = [1] * len(sents_input_ids)
+
+                # Append the `input_ids` and `attention_mask`
+                highlights_input_ids.append(sents_input_ids)
                 highlights_attention_masks.append(attention_mask)
 
             # Pad the highlight input ids and attention masks to `tokenizer.max_len`.
@@ -463,7 +509,11 @@ class AbstractiveSummarizer(pl.LightningModule):
             bos_token_id=self.target_boseq_token_id,
             eos_token_id=self.target_eoseq_token_id,
             pad_token_id=self.target_eoseq_token_id,
-            max_length=self.tokenizer.max_len,
+            max_length=(
+                self.hparams.gen_max_len
+                if self.hparams.gen_max_len
+                else self.tokenizer.max_len / 2
+            ),
             no_repeat_ngram_size=3,
             use_cache=True,
         )
@@ -473,14 +523,25 @@ class AbstractiveSummarizer(pl.LightningModule):
         generated_ids = generated_ids.tolist()
         target_ids = target_ids.tolist()
 
-        predictions = self.ids_to_clean_text(generated_ids)
-        targets = self.ids_to_clean_text(target_ids)
+        predictions = self.ids_to_clean_text(generated_ids, replace_sep_with_q=True)
+        targets = self.ids_to_clean_text(target_ids, replace_sep_with_q=True)
 
         cross_entropy_loss, prediction_scores = self.forward(**batch)
 
         rouge_outputs = []
-        for target, prediction in zip(targets, predictions):
-            rouge_outputs.append(self.rouge_scorer.score(target, prediction))
+        if self.hparams.test_use_pyrouge:
+            with open("save_gold.txt", "a+") as save_gold, open(
+                "save_pred.txt", "a+"
+            ) as save_pred:
+                for i in range(len(targets)):
+                    save_gold.write(targets[i].strip() + "\n")
+                for i in range(len(predictions)):
+                    save_pred.write(predictions[i].strip() + "\n")
+        else:
+            for target, prediction in zip(targets, predictions):
+                target.replace("<q>", "\n")
+                prediction.replace("<q>", "\n")
+                rouge_outputs.append(self.rouge_scorer.score(target, prediction))
 
         # Save about `self.hparams.save_percentage` of the predictions and targets
         # if `self.hparams.save_percentage` is set.
@@ -515,25 +576,29 @@ class AbstractiveSummarizer(pl.LightningModule):
         ).mean()
 
         rouge_scores_log = {}
-        aggregator = scoring.BootstrapAggregator()
-        rouge_scores_list = [
-            rouge_score_set
-            for batch_list in outputs
-            for rouge_score_set in batch_list["rouge_scores"]
-        ]
-        for score in rouge_scores_list:
-            aggregator.add_scores(score)
-        # The aggregator returns a dictionary with keys coresponding to the rouge metric
-        # and values that are `AggregateScore` objects. Each `AggregateScore` object is a
-        # named tuple with a low, mid, and high value. Each value is a `Score` object, which
-        # is also a named tuple, that contains the precision, recall, and fmeasure values.
-        # For more info see the source code: https://github.com/google-research/google-research/blob/master/rouge/scoring.py
-        rouge_result = aggregator.aggregate()
 
-        for metric, value in rouge_result.items():
-            rouge_scores_log[metric + "-precision"] = value.mid.precision
-            rouge_scores_log[metric + "-recall"] = value.mid.recall
-            rouge_scores_log[metric + "-fmeasure"] = value.mid.fmeasure
+        if self.hparams.test_use_pyrouge:
+            test_rouge("tmp", "save_pred.txt", "save_gold.txt")
+        else:
+            aggregator = scoring.BootstrapAggregator()
+            rouge_scores_list = [
+                rouge_score_set
+                for batch_list in outputs
+                for rouge_score_set in batch_list["rouge_scores"]
+            ]
+            for score in rouge_scores_list:
+                aggregator.add_scores(score)
+            # The aggregator returns a dictionary with keys coresponding to the rouge metric
+            # and values that are `AggregateScore` objects. Each `AggregateScore` object is a
+            # named tuple with a low, mid, and high value. Each value is a `Score` object, which
+            # is also a named tuple, that contains the precision, recall, and fmeasure values.
+            # For more info see the source code: https://github.com/google-research/google-research/blob/master/rouge/scoring.py
+            rouge_result = aggregator.aggregate()
+
+            for metric, value in rouge_result.items():
+                rouge_scores_log[metric + "-precision"] = value.mid.precision
+                rouge_scores_log[metric + "-recall"] = value.mid.recall
+                rouge_scores_log[metric + "-fmeasure"] = value.mid.fmeasure
 
         # Write the saved predictions and targets to file
         if self.hparams.save_percentage:
@@ -557,15 +622,9 @@ class AbstractiveSummarizer(pl.LightningModule):
                 t_writer.close()
 
         # Generate logs
-        other_stats = {"generation_time": avg_generation_time}
-        tqdm_dict = {
-            "rouge1-fmeasure": rouge_scores_log["rouge1-fmeasure"],
-            "rouge2-fmeasure": rouge_scores_log["rouge2-fmeasure"],
-            "rougeL-fmeasure": rouge_scores_log["rougeL-fmeasure"],
-            "generation_time": avg_generation_time,
-        }
-        log = {**rouge_scores_log, **other_stats}
-        result = {"progress_bar": tqdm_dict, "log": rouge_scores_log}
+        tqdm_dict = {"generation_time": avg_generation_time}
+        log = {**rouge_scores_log, **tqdm_dict}
+        result = {"progress_bar": tqdm_dict, "log": log}
         return result
 
     def predict(self, input_sequence):
@@ -600,7 +659,11 @@ class AbstractiveSummarizer(pl.LightningModule):
             bos_token_id=self.target_boseq_token_id,
             eos_token_id=self.target_eoseq_token_id,
             pad_token_id=self.target_eoseq_token_id,
-            max_length=self.tokenizer.max_len,
+            max_length=(
+                self.hparams.gen_max_len
+                if self.hparams.gen_max_len
+                else self.tokenizer.max_len / 2
+            ),
             no_repeat_ngram_size=3,
             use_cache=True,
         )
@@ -612,16 +675,57 @@ class AbstractiveSummarizer(pl.LightningModule):
 
         return prediction
 
-    def ids_to_clean_text(self, generated_ids):
-        """
-        Convert IDs generated from ``tokenizer.encode`` to a string using 
-        ``tokenizer.batch_decode and also clean up spacing and special tokens``.
-        """
-        gen_text = self.tokenizer.batch_decode(
-            generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True
-        )
+    def ids_to_clean_text(self, generated_ids, replace_sep_with_q=False):
+        """Convert IDs generated from ``tokenizer.encode`` to a string using 
+        ``tokenizer.batch_decode`` and also clean up spacing and special tokens.
 
-        return list(map(str.strip, gen_text))
+        Args:
+            generated_ids (list): A list examples where each example is a list of 
+                IDs generated from ``tokenizer.encode``.
+            replace_sep_with_q (bool, optional): Replace the ``self.tokenizer.sep_token`` 
+                with "<q>". Useful for determineing sentence boundaries and calculating 
+                ROUGE scores. Defaults to False.
+
+        Returns:
+            list or string: A list of examples where each example is a string or just one 
+            string if only one example was passed to this function.
+        """
+
+        if replace_sep_with_q:
+            gen_texts = []
+            for ids in generated_ids:
+                # Removal of special tokens except `self.tokenizer.sep_token_id`
+                tokens = []
+                for index in ids:
+                    index = int(index)
+                    # If the current token is `tokenizer.sep_token` then set it to "<q>"
+                    if index == self.tokenizer.sep_token_id:
+                        tokens.append("<q>")
+                    elif index in self.tokenizer.all_special_ids:
+                        continue
+                    else:
+                        current_token = self.tokenizer._convert_id_to_token(index)
+                        tokens.append(current_token)
+
+                gen_text_messy = self.tokenizer.convert_tokens_to_string(tokens)
+
+                gen_text = self.tokenizer.clean_up_tokenization(gen_text_messy)
+
+                gen_texts.append(gen_text)
+                print(gen_text)
+
+            return gen_texts
+
+        else:
+            gen_texts = self.tokenizer.batch_decode(
+                generated_ids,
+                skip_special_tokens=True,
+                clean_up_tokenization_spaces=True,
+            )
+            if len(gen_texts) == 1:
+                return gen_texts[0]
+            else:
+                return list(map(str.strip, gen_text))
 
     @pl.utilities.rank_zero_only
     def on_save_checkpoint(self, checkpoint):
@@ -740,8 +844,26 @@ class AbstractiveSummarizer(pl.LightningModule):
             action="store_true",
             help="Save the `huggingface/transformers` model whenever a checkpoint is saved.",
         )
+        parser.add_argument(
+            "--test_use_pyrouge",
+            action="store_true",
+            help="""Use `pyrouge`, which is an interface to the official ROUGE software, instead of 
+            the pure-python implementation provided by `rouge-score`. You must have the real ROUGE 
+            package installed. More details about ROUGE 1.5.5 here: https://github.com/andersjo/pyrouge/tree/master/tools/ROUGE-1.5.5. 
+            It is recommended to use this option for official scores. The `ROUGE-L` measurements
+            from `pyrouge` are equivalent to the `rougeLsum` measurements from the default 
+            `rouge-score` package.""",
+        )
+        parser.add_argument(
+            "--sentencizer",
+            action="store_true",
+            help="Use a spacy sentencizer instead of a statistical model for sentence detection (much faster but less accurate) during data preprocessing; see https://spacy.io/api/sentencizer.",
+        )
+        parser.add_argument(
+            "--gen_max_len",
+            type=int,
+            default=None,
+            help="Maximum sequence length during generation while testing and when using the `predict()` function.",
+        )
 
         return parser
-
-
-# test = AbstractiveSummarizer(["test"])

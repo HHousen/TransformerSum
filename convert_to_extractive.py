@@ -209,9 +209,7 @@ def convert_to_extractive_process(
                 # proper ROUGE score calculation. Each sentence should be separated by a newline
                 # for ROUGE to work properly, but we use "<q>" and convert it back to a newline
                 # when necessary since "<q>" is easier to store than "\n".
-                to_append["tgt"] = "<q>".join(
-                    [" ".join(sent) for sent in target_doc]
-                )
+                to_append["tgt"] = "<q>".join([" ".join(sent) for sent in target_doc])
             dataset.append(to_append)
 
     pool.close()
@@ -343,7 +341,13 @@ def save(json_to_save, output_path, compression=False):
 
 
 def tokenize(
-    nlp, docs, n_process=5, batch_size=100, name="", tokenizer_log_interval=0.1
+    nlp,
+    docs,
+    n_process=5,
+    batch_size=100,
+    name="",
+    tokenizer_log_interval=0.1,
+    disable_progress_bar=False,
 ):
     """Tokenize using spacy and split into sentences and tokens."""
     tokenized = []
@@ -353,10 +357,11 @@ def tokenize(
         total=len(docs),
         desc="Tokenizing" + name,
         mininterval=tokenizer_log_interval,
+        disable=disable_progress_bar,
     ):
         tokenized.append(doc)
 
-    logger.info("Splitting into sentences and tokens and converting to lists")
+    logger.debug("Splitting into sentences and tokens and converting to lists")
     t0 = time()
 
     doc_sents = (doc.sents for doc in tokenized)
@@ -368,7 +373,7 @@ def tokenize(
     )
     del doc_sents
 
-    logger.info("Done in " + str(time() - t0) + " seconds")
+    logger.debug("Done in " + str(time() - t0) + " seconds")
     # `sents` is an array of documents where each document is an array sentences where each sentence is an array of tokens
     return sents
 
