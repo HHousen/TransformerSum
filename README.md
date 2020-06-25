@@ -13,8 +13,8 @@ All pre-trained models (including larger models and other architectures) are loc
 
 | Name | Dataset | Comments | Model Download | Data Download |
 |-|-|-|-|-|
-| distilroberta-base-ext-sum | CNN/DM | None | Not yet... | [CNN/DM Roberta](https://drive.google.com/uc?id=11_DCHDLI2nMUzr-ZsIvLRbG_IPTplC12) |
-| roberta-base-ext-sum | CNN/DM | None | Not yet... | [CNN/DM Roberta](https://drive.google.com/uc?id=11_DCHDLI2nMUzr-ZsIvLRbG_IPTplC12) |
+| distilroberta-base-ext-sum | CNN/DM | None | Not yet... | [CNN/DM Roberta](https://drive.google.com/uc?id=1-L7UOYe69dD--OPGCa4sS0QQEnZNb_Vb) |
+| roberta-base-ext-sum | CNN/DM | None | Not yet... | [CNN/DM Roberta](https://drive.google.com/uc?id=1-L7UOYe69dD--OPGCa4sS0QQEnZNb_Vb) |
 | distilroberta-base-ext-sum | WikiHow | None | Not yet... | [WikiHow Roberta]() |
 | roberta-base-ext-sum | WikiHow | None | Not yet... | [WikiHow Roberta]() |
 | distilroberta-base-ext-sum | arXiv-PubMed | None | Not yet... | [arXiv-PubMed Roberta]() |

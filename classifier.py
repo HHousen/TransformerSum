@@ -22,9 +22,8 @@ class LinearClassifier(nn.Module):
             the input to the first linear layer in this nn.Module.
         linear_hidden (int, optional): The number of hidden parameters for this Classifier. 
             Default is 1536.
-        first_dropout (float, optional): The value for dropout applied before any other layers.
+        dropout (float, optional): The value for dropout applied before the 2nd linear layer.
             Default is 0.1.
-        last_dropout (float, optional): The dropout after the last linear layer. Default is 0.1.
         activation_string (str, optional): A string representing an activation function 
             in ``get_activation()`` Default is "gelu".
     """
@@ -33,13 +32,11 @@ class LinearClassifier(nn.Module):
         self,
         web_hidden_size,
         linear_hidden=1536,
-        first_dropout=0.1,
-        last_dropout=0.1,
+        dropout=0.1,
         activation_string="gelu",
     ):
         super(LinearClassifier, self).__init__()
-        self.dropout1 = nn.Dropout(first_dropout) if first_dropout else nn.Identity()
-        self.dropout2 = nn.Dropout(last_dropout) if last_dropout else nn.Identity()
+        self.dropout1 = nn.Dropout(dropout) if dropout else nn.Identity()
         self.linear1 = nn.Linear(web_hidden_size, linear_hidden)
         self.linear2 = nn.Linear(linear_hidden, 1)
         self.sigmoid = nn.Sigmoid()
@@ -59,11 +56,10 @@ class LinearClassifier(nn.Module):
         Forward function. ``x`` is the input ``sent_vector`` tensor and ``mask`` avoids computations
         on padded values. Returns ``sent_scores``.
         """
-        x = self.dropout1(x)
         x = self.linear1(x)
         x = self.activation(x)
+        x = self.dropout1(x)
         x = self.linear2(x)
-        x = self.dropout2(x)
         x = self.sigmoid(x)
         sent_scores = x.squeeze(-1) * mask.float()
         return sent_scores

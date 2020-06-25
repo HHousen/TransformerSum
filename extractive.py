@@ -138,8 +138,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             if (not classifier_exists) or (hparams.classifier == "linear"):
                 self.encoder = LinearClassifier(
                     self.word_embedding_model.config.hidden_size,
-                    first_dropout=hparams.classifier_dropout,
-                    last_dropout=hparams.classifier_dropout,
+                    dropout=hparams.classifier_dropout,
                 )
             elif hparams.classifier == "simple_linear":
                 self.encoder = SimpleLinearClassifier(
