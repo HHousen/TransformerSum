@@ -79,6 +79,12 @@ class AbstractiveSummarizer(pl.LightningModule):
                 self.hparams.model_name_or_path, use_fast=True
             )
 
+        self.rouge_sentence_split_token = "<q>"
+        self.tokenizer.add_tokens(self.rouge_sentence_split_token)
+        self.rouge_sentence_split_token_id = self.tokenizer.convert_tokens_to_ids(
+            self.rouge_sentence_split_token
+        )
+
         # bo = beginning of
         # eo = ending of
         # seq = sequence (not using 's' because 's' stands for sentence in other places)
@@ -516,7 +522,7 @@ class AbstractiveSummarizer(pl.LightningModule):
             max_length=(
                 self.hparams.gen_max_len
                 if self.hparams.gen_max_len
-                else self.tokenizer.max_len / 2
+                else int(self.tokenizer.max_len / 2)
             ),
             no_repeat_ngram_size=3,
             use_cache=True,
@@ -666,7 +672,7 @@ class AbstractiveSummarizer(pl.LightningModule):
             max_length=(
                 self.hparams.gen_max_len
                 if self.hparams.gen_max_len
-                else self.tokenizer.max_len / 2
+                else int(self.tokenizer.max_len / 2)
             ),
             no_repeat_ngram_size=3,
             use_cache=True,
@@ -696,40 +702,24 @@ class AbstractiveSummarizer(pl.LightningModule):
         """
 
         if replace_sep_with_q:
-            gen_texts = []
-            for ids in generated_ids:
-                # Removal of special tokens except `self.tokenizer.sep_token_id`
-                tokens = []
-                for index in ids:
-                    index = int(index)
-                    # If the current token is `tokenizer.sep_token` then set it to "<q>"
-                    if index == self.tokenizer.sep_token_id:
-                        tokens.append("<q>")
-                    elif index in self.tokenizer.all_special_ids:
-                        continue
-                    else:
-                        current_token = self.tokenizer._convert_id_to_token(index)
-                        tokens.append(current_token)
-
-                gen_text_messy = self.tokenizer.convert_tokens_to_string(tokens)
-
-                gen_text = self.tokenizer.clean_up_tokenization(gen_text_messy)
-
-                gen_texts.append(gen_text)
-                print(gen_text)
-
-            return gen_texts
-
-        else:
-            gen_texts = self.tokenizer.batch_decode(
-                generated_ids,
-                skip_special_tokens=True,
-                clean_up_tokenization_spaces=True,
+            generated_ids = (
+                [
+                    self.rouge_sentence_split_token_id
+                    if token == self.tokenizer.sep_token_id
+                    else token
+                    for token in example_ids
+                ]
+                for example_ids in generated_ids
             )
-            if len(gen_texts) == 1:
-                return gen_texts[0]
-            else:
-                return list(map(str.strip, gen_text))
+
+        gen_texts = self.tokenizer.batch_decode(
+            generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True,
+        )
+
+        if len(gen_texts) == 1:
+            return gen_texts[0]
+        else:
+            return list(map(str.strip, gen_texts))
 
     @pl.utilities.rank_zero_only
     def on_save_checkpoint(self, checkpoint):
