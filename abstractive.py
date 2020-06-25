@@ -437,6 +437,10 @@ class AbstractiveSummarizer(pl.LightningModule):
             batch["source_mask"],
             batch["target_mask"],
         )
+        target, target_mask = trim_batch(
+            target, self.tokenizer.pad_token_id, target_mask
+        )
+
         labels = target.clone()
         labels[labels == 0] = -100  # -100 index = padding token
         outputs = self.forward(source, target, source_mask, target_mask, labels=labels)

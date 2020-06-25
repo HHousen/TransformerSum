@@ -59,15 +59,14 @@ def main(args):
     args.callbacks = [lr_logger]
 
     if args.use_logger == "wandb":
-        wandb_logger = WandbLogger(
-            project="transformerextsum-private",
-            log_model=(not args.no_wandb_logger_log_model),
-        )
+        wandb_logger = WandbLogger(project="transformerextsum-private",)
         args.logger = wandb_logger
-        # if not args.no_wandb_logger_log_model:
-        #     args.weights_save_path = os.path.join(
-        #         wandb_logger.experiment.dir, "models/"
-        #     )
+        if not args.no_wandb_logger_log_model:
+            import wandb
+
+            args.weights_save_path = wandb_logger.experiment.dir
+            checkpoint_glob = os.path.join(wandb_logger.experiment.dir, "*.ckpt")
+            wandb.save(checkpoint_glob)
 
     if args.use_custom_checkpoint_callback:
         args.checkpoint_callback = ModelCheckpoint(

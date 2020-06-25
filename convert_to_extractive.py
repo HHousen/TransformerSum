@@ -719,6 +719,11 @@ if __name__ == "__main__":
             "Resuming requires both shard mode (--shard_interval) to be enabled and shards to be created. Must use same 'shard_interval' that was used previously to create the files to be resumed from."
         )
 
+    # The `nlp` library has specific names for the dataset split names so set them
+    # if using a dataset from `nlp`
+    if args.dataset:
+        args.split_names = ["train", "validation", "test"]
+
     # Setup logging config
     logging.basicConfig(
         format="%(asctime)s|%(name)s|%(levelname)s> %(message)s",
