@@ -7,6 +7,7 @@ import glob
 import math
 import logging
 import spacy
+import nlp as hf_nlp
 from spacy.lang.en import English
 from argparse import ArgumentParser
 from functools import partial
@@ -80,81 +81,109 @@ def convert_to_extractive_driver(args):
     else:
         nlp = spacy.load("en_core_web_sm", disable=["tagger", "ner"])
 
+    if args.dataset:
+        dataset = hf_nlp.load_dataset(args.dataset, args.dataset_version)
+
     # for each split
     for name in tqdm(
         args.split_names, total=len(args.split_names), desc="Dataset Split"
     ):
-        # get the source and target paths
-        source_file_path = os.path.join(args.base_path, (name + "." + args.source_ext))
-        target_file_path = os.path.join(args.base_path, (name + "." + args.target_ext))
-        logger.info("Opening source and target " + str(name) + " files")
+        if args.dataset:  # if loading using the `nlp` library
+            current_dataset = dataset[name]
+            source_file = current_dataset[args.data_example_column]
+            target_file = current_dataset[args.data_summarized_column]
+        else:
+            # get the source and target paths
+            source_file_path = os.path.join(
+                args.base_path, (name + "." + args.source_ext)
+            )
+            target_file_path = os.path.join(
+                args.base_path, (name + "." + args.target_ext)
+            )
+            logger.info("Opening source and target " + str(name) + " files")
+            source_file = open(source_file_path, "r")
+            target_file = open(target_file_path, "r")
 
-        with open(source_file_path, "r") as source_file, open(
-            target_file_path, "r"
-        ) as target_file:
-            if args.shard_interval:  # if sharding is enabled
-                # get number of examples to process
+        if args.shard_interval:  # if sharding is enabled
+            # get number of examples to process
+            if args.dataset:
+                target_file_len = len(current_dataset)
+            else:
                 target_file_len = sum(1 for line in target_file)
                 # reset pointer back to beginning after getting length
                 target_file.seek(0)
 
-                # find how long the loop will run, round up because any extra examples
-                # will form a chunk of size less than `args.shard_interval`
-                tot_num_interations = math.ceil(target_file_len / args.shard_interval)
+            # find how long the loop will run, round up because any extra examples
+            # will form a chunk of size less than `args.shard_interval`
+            tot_num_interations = math.ceil(target_file_len / args.shard_interval)
 
-                # default is that there was no previous shard (aka not resuming)
-                last_shard = 0
-                if args.resume:
-                    num_lines_read, last_shard = resume(
-                        args.base_output_path, name, args.shard_interval
+            # default is that there was no previous shard (aka not resuming)
+            last_shard = 0
+            if args.resume:
+                assert (
+                    not args.dataset
+                ), "Cannot resume when using data loaded from the `nlp` library."
+                num_lines_read, last_shard = resume(
+                    args.base_output_path, name, args.shard_interval
+                )
+
+                # if lines have been read and shards have been written to disk
+                if num_lines_read:
+                    logger.info("Resuming to line " + str(num_lines_read - 1))
+                    # seek both the source and target to the next line
+                    seek_files([source_file, target_file], num_lines_read - 1)
+
+                    # checks to make sure the last documents match
+                    # this moves the file pointer in source_file forward 1...
+                    resume_success = check_resume_success(
+                        nlp,
+                        source_file,
+                        last_shard,
+                        args.base_output_path,
+                        name,
+                        args.compression,
                     )
+                    # ...so move the target_file pointed forward 1 as well
+                    target_file.readline()
 
-                    # if lines have been read and shards have been written to disk
-                    if num_lines_read:
-                        logger.info("Resuming to line " + str(num_lines_read - 1))
-                        # seek both the source and target to the next line
-                        seek_files([source_file, target_file], num_lines_read - 1)
+                    if not resume_success:
+                        logger.error("Exiting...")
+                        sys.exit(-1)
 
-                        # checks to make sure the last documents match
-                        # this moves the file pointer in source_file forward 1...
-                        resume_success = check_resume_success(
-                            nlp,
-                            source_file,
-                            last_shard,
-                            args.base_output_path,
-                            name,
-                            args.compression,
-                        )
-                        # ...so move the target_file pointed forward 1 as well
-                        target_file.readline()
+                    # subtract the number of shards already created
+                    tot_num_interations -= int(last_shard)
+                else:  # no shards on disk
+                    logger.warn("Tried to resume but no shards found on disk")
 
-                        if not resume_success:
-                            logger.error("Exiting...")
-                            sys.exit(-1)
-
-                        # subtract the number of shards already created
-                        tot_num_interations -= int(last_shard)
-                    else:  # no shards on disk
-                        logger.warn("Tried to resume but no shards found on disk")
-
-                for piece_idx, (source_docs, target_docs) in tqdm(
-                    enumerate(
-                        zip(
-                            read_in_chunks(source_file, args.shard_interval),
-                            read_in_chunks(target_file, args.shard_interval),
-                        )
-                    ),
-                    total=tot_num_interations,
-                    desc="Shards",
-                ):
-                    piece_idx += last_shard  # effective if resuming (offsets the index)
-                    convert_to_extractive_process(
-                        args, nlp, source_docs, target_docs, name, piece_idx
+            for piece_idx, (source_docs, target_docs) in tqdm(
+                enumerate(
+                    zip(
+                        read_in_chunks(source_file, args.shard_interval),
+                        read_in_chunks(target_file, args.shard_interval),
                     )
+                ),
+                total=tot_num_interations,
+                desc="Shards",
+            ):
+                piece_idx += last_shard  # effective if resuming (offsets the index)
+                convert_to_extractive_process(
+                    args, nlp, source_docs, target_docs, name, piece_idx
+                )
+        else:
+            # only `str.strip()` the lines if loading from an actual file, not
+            # the `nlp` library
+            if args.dataset:
+                source_docs = source_file
+                target_docs = target_file
             else:
                 source_docs = [line.strip() for line in source_file]
                 target_docs = [line.strip() for line in target_file]
-                convert_to_extractive_process(args, nlp, source_docs, target_docs, name)
+            convert_to_extractive_process(args, nlp, source_docs, target_docs, name)
+
+        # If not processing data from the `nlp` library then close the loaded files
+        if not args.dataset:
+            source_file.close()
+            target_file.close()
 
 
 def convert_to_extractive_process(
@@ -328,6 +357,7 @@ def save(json_to_save, output_path, compression=False):
     Save ``json_to_save`` to ``output_path`` with optional gzip compresssion 
     specified by ``compression``.
     """
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     logger.info("Saving to " + str(output_path))
     if compression:
         # https://stackoverflow.com/a/39451012
@@ -649,6 +679,30 @@ if __name__ == "__main__":
         type=int,
         default=100,
         help="maximum number of sentences per example",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default=None,
+        help="The dataset name from the `nlp` library to use for training/evaluation/testing. Default is None.",
+    )
+    parser.add_argument(
+        "--dataset_version",
+        type=str,
+        default=None,
+        help="The version of the dataset specified by `--dataset`. Default is None.",
+    )
+    parser.add_argument(
+        "--data_example_column",
+        type=str,
+        default=None,
+        help="The column of the `nlp` dataset that contains the text to be summarized. Default is None.",
+    )
+    parser.add_argument(
+        "--data_summarized_column",
+        type=str,
+        default=None,
+        help="The column of the `nlp` dataset that contains the summarized text. Default is None.",
     )
     parser.add_argument(
         "-l",

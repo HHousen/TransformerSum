@@ -6,6 +6,11 @@ Convert Abstractive to Extractive Dataset
 Overview
 --------
 
+This script will reformat an abstractive summarization dataset to be used for extractive summarization by determining the best extractive summary that maximizes ROUGE scores. It can be used on a dataset composed of the following file structure: ``train.source``, ``train.target``, ``val.source``, ``val.target``, and ``test.source`` and ``test.target`` where each file contains one example per line and the lines of every ``.train`` correspond to the lines in the respective ``.target``. All the datasets on the :ref:`extractive_supported_datasets` page will be processed to this format. You can also process any dataset contained in the `huggingface/nlp <https://github.com/huggingface/nlp`_ library. If you use a dataset this way, the downloading and pre-processing will happen automatically.
+
+Option 1: Manual Data Download
+------------------------------
+
 Simply run `convert_to_extractive.py` with the path to the data. For example, with the :ref:`CNN/DM dataset <extractive_dataset_cnn_dm>`: ``python convert_to_extractive.py ./datasets/cnn_dailymail_processor/cnn_dm``. However, the recommended command is:
 
 .. code-block:: bash
@@ -19,6 +24,29 @@ Simply run `convert_to_extractive.py` with the path to the data. For example, wi
 The default output directory is the input directory that was specified, but the output directory can be changed with ``--base_output_path`` if desired.
 
 If your files are not ``train``, ``val``, and ``test``, then the ``--split_names`` argument will let you specify the correct naming pattern. The ``--source_ext`` and ``--target_ext`` let you specify the file extension of the source and target files respectively. These must be different so the process can tell each section apart.
+
+.. _convert_to_extractive_option_2:
+
+Option 2: Automatic pre-processing through ``nlp``
+--------------------------------------------------
+
+You will need to run the ``convert_to_extractive.py`` command with the ``--dataset``, ``--dataset_version``, ``--data_example_column``, and ``--data_summarized_column`` options set. To use the CNN/DM dataset you would set these arguments as shown below:
+
+.. code-block:: 
+
+    --dataset cnn_dailymail \
+    --dataset_version 3.0.0 \
+    --data_example_column article \
+    --data_summarized_column highlights
+
+View the help page (``python convert_to_extractive.py --help``) for more info about these options. The options are nearly identical to the :ref:`abstractive script <abstractive_supported_datasets>`.
+
+.. important:: All of the :ref:`abstractive datasets <abstractive_supported_datasets>` can be converted for extractive summarization using this method.
+
+The `live nlp viewer <https://huggingface.co/nlp/viewer>`_ visualizes the data and describes each dataset that can be used with through parameters.
+
+Convert To Extractive Tips
+--------------------------
 
 **Large Dataset? Need to Resume?:** The ``--resume`` option will read the output directory and determine on which document the script left off based on the shard_file names. If ``--shard_interval`` was ``None`` then resuming is not possible. Resuming is guaranteed to produce the same output as if ``--resume`` was not used because of :meth:`convert_to_extractive.check_resume_success()`, which checks to make sure the last line in the shard file is the same as the line directly before the line to resume with.
 

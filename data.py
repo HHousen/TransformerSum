@@ -417,8 +417,9 @@ class SentencesProcessor:
             src_subtokens = tokenizer.tokenize(text)
             # select first `(max_length-2)` tokens (so the following line of tokens can be added)
             src_subtokens = src_subtokens[: (max_length - 2)]
-            # add '[CLS]' to beginning and '[SEP]' to end (or model equivalent tokens)
-            src_subtokens = [cls_token] + src_subtokens + [sep_token]
+            # Insert '[CLS]' at beginning and append '[SEP]' to end (or model equivalent tokens)
+            src_subtokens.insert(0, cls_token)
+            src_subtokens.append(sep_token)
             # create `input_ids`
             input_ids = tokenizer.convert_tokens_to_ids(src_subtokens)
         else:

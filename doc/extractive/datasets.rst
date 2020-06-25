@@ -3,6 +3,8 @@
 Extractive Supported Datasets
 =============================
 
+.. note:: In addition to the below datasets, all of the :ref:`abstractive datasets <abstractive_supported_datasets>` can be converted for extractive summarization and thus be used to train models. See :ref:`convert_to_extractive_option_2` for more information.
+
 There are several ways to obtain and process the datasets below:
 
 1. Download the converted extractive version for use with the training script (which will preprocess the data automatically (tokenization, etc.)). Note that all the provided extractive versions are split every 500 documents and are compressed. You will have to manually process if you desire different chunk sizes.
