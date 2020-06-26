@@ -3,9 +3,21 @@ Experiments
 
 Interactive charts, graphs, raw data, run commands, hyperparameter choices, and more for all experiments are publicly available on the `TransformerSum Weights & Biases page <https://app.wandb.ai/hhousen/transformerextsum>`__. Please open an `issue <https://github.com/HHousen/TransformerSum/issues/new>`__ if you have questions about these experiments.
 
-**Reproducibility Notes:**
+Important notes when running experiments:
+
+* If you are using ``--overfit_pct``, then ``overfit_pct`` percent of the testing data is being used as well as ``overfit_pct`` percent of the training data. Due to the way ``pytorch_lightning`` was written, it is necessary to use the same ``batch_size`` when using ``overfit_pct`` in order to get the exact same results. I currently am not sure why this is the case but removing ``overfit_pct`` and using different ``batch_size``\ s produces identical results. Open an `issue <https://github.com/HHousen/TransformerSum/issues/new>`__ or submit a pull request if you know why.
+* Have another note that should be stated here? Open an `issue <https://github.com/HHousen/TransformerSum/issues/new>`__. All contributions are very helpful.
+
+The :ref:`older_experiments` were conducted on a previous version of ``TransformerSum`` that contained bugs. Thus, the scores and graphs of the older experiments don't represent model performance but their results relative to each other should still be accurate. The :ref:`newer_experiments` were conducted on a new version without bugs and thus should be easily reproducible.
+
+.. _older_experiments:
+
+Older Experiments
+-----------------
 
 .. important:: These experiments may be difficult to reproduce because they were conducted on an early version of the project that contained several bugs.
+
+**Reproducibility Notes:**
 
 Bugs present in the version these experiments were conducted with:
 
@@ -17,15 +29,10 @@ Bugs present in the version these experiments were conducted with:
 
 Despite these differences from the official models, the relative results of these experiments should hold true, so their general findings should remain constant with newer models. If you find conflicting results please open an `issue <https://github.com/HHousen/TransformerSum/issues/new>`__.
 
-Important notes when running experiments:
-
-* If you are using ``--overfit_pct``, then ``overfit_pct`` percent of the testing data is being used as well as ``overfit_pct`` percent of the training data. Due to the way ``pytorch_lightning`` was written, it is necessary to use the same ``batch_size`` when using ``overfit_pct`` in order to get the exact same results. I currently am not sure why this is the case but removing ``overfit_pct`` and using different ``batch_size``\ s produces identical results. Open an `issue <https://github.com/HHousen/TransformerSum/issues/new>`__ or submit a pull request if you know why.
-* Have another note that should be stated here? Open an `issue <https://github.com/HHousen/TransformerSum/issues/new>`__. All contributions are very helpful.
-
 .. _loss_function_experiments:
 
 Loss Functions
---------------
+^^^^^^^^^^^^^^
 
 The loss function implementation can be found in the :meth:`extractive.ExtractiveSummarizer.compute_loss` function. The function uses ``nn.BCELoss`` with ``reduction="none"`` and then applies 5 different reduction techniques. Special reduction methods were needed to ignore padding and operate on the multi-class-per-document approach (each input is assigned more than one of the same class) that this research uses to perform extractive summarization. See the comments throughout the function for more information. The five different reduction methods were tested with the ``distilbert-base-uncased`` word embedding model and the ``pooling_mode`` set to ``sent_rep_tokens``. Training time is just under 4 hours on a Tesla P100 (3h52m average).
 
@@ -90,7 +97,7 @@ The CSV files the were used to generate the above graphs can be found in ``exper
 Based on the results, ``loss_avg_seq_mean`` was chosen as the default.
 
 Word Embedding Models
----------------------
+^^^^^^^^^^^^^^^^^^^^^
 
 Different transformer models of various architectures and sizes were tested.
 
@@ -158,12 +165,12 @@ All ``ROUGE Scores`` are test set results on the CNN/DailyMail dataset using ROU
 All model sizes are not compressed. They are the raw ``.ckpt`` output file sizes of the best performing epoch by ``val_loss``.
 
 Final (Combined) Results
-^^^^^^^^^^^^^^^^^^^^^^^^
+""""""""""""""""""""""""
 
 The ``loss_total``, ``loss_avg_seq_sum``, and ``loss_total_norm_batch`` loss reduction techniques depend on the batch size. That is, the larger the batch size, the larger these losses will be. The ``loss_avg_seq_mean`` and ``loss_avg`` do not depend on the batch size since they are averages instead of totals. Therefore, only the non-batch-size-dependent metrics were used for the final results because difference batch sizes were used.
 
 Distil\* Models
-^^^^^^^^^^^^^^^
+"""""""""""""""
 
 More information about distil\* models found in the `huggingface/transformers examples <https://github.com/huggingface/transformers/tree/master/examples/distillation>`__.
 
@@ -218,7 +225,7 @@ More information about distil\* models found in the `huggingface/transformers ex
    :width: 48%
 
 Base Models
-^^^^^^^^^^^
+"""""""""""
 
 .. warning:: ``roberta-base`` does not accept token type ids. So set ``--no_use_token_type_ids`` while training using the above command.
 
@@ -282,7 +289,7 @@ This is included because the batch size for ``albert-base-v2`` had to be lowered
    :width: 48%
 
 Large Models
-^^^^^^^^^^^^
+""""""""""""
 
 .. warning:: ``roberta-large`` does not accept token type ids. So set ``--no_use_token_type_ids`` while training using the above command.
 
@@ -348,7 +355,7 @@ This is included because the batch size for ``albert-large-v2`` had to be lowere
    :width: 48%
 
 Pooling Mode
-------------
+^^^^^^^^^^^^
 
 See `the main README.md <../README.md>`__ for more information on what the pooling model is.
 
@@ -441,11 +448,11 @@ Pooling Mode Results
    :width: 48%
 
 Classifier/Encoder
-------------------
+^^^^^^^^^^^^^^^^^^
 
 The classifier/encoder is responsible for removing the hidden features from each sentence embedding and converting them to a single number. The ``linear``, ``transformer`` (with 2 layers), ``transformer`` (with 6 layers "``--classifier_transformer_num_layers 6``"), and ``transformer_linear`` options were tested with the ``distilbert-base-uncased`` model. The ``transformer_linear`` test has a transformer with *2 layers* (like the ``transformer`` test).
 
-Unlike the experiments prior to this one (above), the "Classifier/Encoder" experiment used a ``--train_percent_check`` of 0.6, ``--val_percent_check`` of 0.6 and **``--test_percent_check`` of 1.0**. All of the data was used for testing whereas 60% of it was used for training and validation.
+Unlike the experiments prior to this one (above), the "Classifier/Encoder" experiment used a ``--train_percent_check`` of 0.6, ``--val_percent_check`` of 0.6 and ``--test_percent_check`` of **1.0**. All of the data was used for testing whereas 60% of it was used for training and validation.
 
 Full command used to run the tests:
 
@@ -534,4 +541,87 @@ Classifier/Encoder Results
 **Relative Time:**
 
 .. image:: ../_static/encoder/loss_avg_seq_mean_reltime.png
+   :width: 48%
+
+.. _newer_experiments:
+
+Newer Experiments
+-----------------
+
+Classifier/Encoder ``simple_linear`` vs ``linear``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Commit `dfefd15` added a :class:`~classifier.SimpleLinearClassifier`. This experiment servers to determine if ``simple_linear`` (:class:`~classifier.SimpleLinearClassifier`) is better than ``linear`` (:class:`~classifier.LinearClassifier`).
+
+Command used to run the tests:
+
+.. code-block:: 
+
+   python main.py \
+   --model_name_or_path distilbert-base-uncased \
+   --model_type distilbert \
+   --no_use_token_type_ids \
+   --use_custom_checkpoint_callback \
+   --data_path ./pt/bert-base-uncased \
+   --max_epochs 3 \
+   --accumulate_grad_batches 2 \
+   --warmup_steps 1400 \
+   --gradient_clip_val 1.0 \
+   --optimizer_type adamw \
+   --use_scheduler linear \
+   --do_train --do_test \
+   --batch_size 32 \
+   --classifier [`linear` or `simple_linear`]
+
+Classifier/Encoder Results
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Training Times and Model Sizes:**
+
++-------------------+------------+------------+
+| Model Key         | Time       | Model Size |
++===================+============+============+
+| ``linear``        | 6h 28m 21s | 810.6MB    |
++-------------------+------------+------------+
+| ``simple_linear`` | 6h 22m 32s | 796.4MB    |
++-------------------+------------+------------+
+
+**ROUGE Scores:**
+
++-------------------+---------+---------+---------+-------------+
+| Name              | ROUGE-1 | ROUGE-2 | ROUGE-L | ROUGE-L-Sum |
++===================+=========+=========+=========+=============+
+| ``linear``        | 42.8    | 19.9    | 27.5    | 39.2        |
++-------------------+---------+---------+---------+-------------+
+| ``simple_linear`` | 42.7    | 19.9    | 27.5    | 39.2        |
++-------------------+---------+---------+---------+-------------+
+
+**Main Takeaway:** There is no significant difference in performance between the ``linear`` and ``simple_linear`` classifiers/encoders. However, ``simple_linear`` is better due to its lower training and validation loss.
+
+**Outliers Included:**
+
+.. image:: ../_static/encoder_v2/loss_avg_seq_mean_outliers.png
+   :width: 48%
+
+.. image:: ../_static/encoder_v2/loss_total_outliers.png
+   :width: 48%
+
+**No Outliers:**
+
+.. image:: ../_static/encoder_v2/loss_avg_seq_sum.png
+   :width: 48%
+
+.. image:: ../_static/encoder_v2/loss_avg_seq_mean.png
+   :width: 48%
+
+.. image:: ../_static/encoder_v2/loss_total_norm_batch.png
+   :width: 48%
+
+.. image:: ../_static/encoder_v2/loss_avg.png
+   :width: 48%
+
+.. image:: ../_static/encoder_v2/loss_total.png
+   :width: 48%
+
+.. image:: ../_static/encoder_v2/loss_avg_seq_mean_val_only.png
    :width: 48%

@@ -6,7 +6,7 @@ Convert Abstractive to Extractive Dataset
 Overview
 --------
 
-This script will reformat an abstractive summarization dataset to be used for extractive summarization by determining the best extractive summary that maximizes ROUGE scores. It can be used on a dataset composed of the following file structure: ``train.source``, ``train.target``, ``val.source``, ``val.target``, and ``test.source`` and ``test.target`` where each file contains one example per line and the lines of every ``.train`` correspond to the lines in the respective ``.target``. All the datasets on the :ref:`extractive_supported_datasets` page will be processed to this format. You can also process any dataset contained in the `huggingface/nlp <https://github.com/huggingface/nlp`_ library. If you use a dataset this way, the downloading and pre-processing will happen automatically.
+This script will reformat an abstractive summarization dataset to be used for extractive summarization by determining the best extractive summary that maximizes ROUGE scores. It can be used on a dataset composed of the following file structure: ``train.source``, ``train.target``, ``val.source``, ``val.target``, and ``test.source`` and ``test.target`` where each file contains one example per line and the lines of every ``.train`` correspond to the lines in the respective ``.target``. All the datasets on the :ref:`extractive_supported_datasets` page will be processed to this format. You can also process any dataset contained in the `huggingface/nlp <https://github.com/huggingface/nlp>`_ library. If you use a dataset this way, the downloading and pre-processing will happen automatically.
 
 Option 1: Manual Data Download
 ------------------------------
