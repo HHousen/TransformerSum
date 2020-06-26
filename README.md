@@ -56,6 +56,7 @@ Distributed under the GNU General Public License v3.0. See the [LICENSE](LICENSE
 
 * Code heavily inspired by the following projects:
   * Adapting BERT for Extractive Summariation: [BertSum](https://github.com/nlpyang/BertSum)
+  * Text Summarization with Pretrained Encoders: [PreSumm](https://github.com/nlpyang/PreSumm)
   * Word/Sentence Embeddings: [sentence-transformers](https://github.com/UKPLab/sentence-transformers)
   * CNN/CM Dataset: [cnn-dailymail](https://github.com/artmatsak/cnn-dailymail)
   * PyTorch Lightning Classifier: [lightning-text-classification](https://github.com/ricardorei/lightning-text-classification)
