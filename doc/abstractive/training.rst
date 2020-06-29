@@ -59,6 +59,11 @@ With the ``longbart`` model generated you can run the training script with the `
 
 .. warning:: For this script to work correctly with ``longbart`` the ``--model_name_or_path`` must contain the phrase "longbart".
 
+GitHub issues that discuss ``longbart``:
+
+1. `huggingface/transformers #4406 <https://github.com/huggingface/transformers/issues/4406>`_
+2. `allenai/longformer #28 <https://github.com/allenai/longformer/issues/28>`_
+
 .. _abstractive_script_help:
 
 Script Help
