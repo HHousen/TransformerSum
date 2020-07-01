@@ -9,10 +9,12 @@ The most notable datasets (the ones pertaining to summarization) are listed belo
 
 .. warning:: The ``nlp`` library uses arrow files which are not compressed and can become large quite quickly. Thus, depending on your internet connection, hardware, and the size of the dataset it might be faster to reprocess the data than to download the pre-processed data.
 
+If you download the preprocessed data, you can use it by setting the ``--cache_file_path`` option to the path containing the ``train_tokenized``, ``validation_tokenized``, and ``test_tokenized`` files.
+
 +-----------------------+-----------------+--------------------------------------------------------------------------------------------------+
 | Dataset Name          | Processing Time | Preprocessed Data Download                                                                       |
 +=======================+=================+==================================================================================================+
-| ``cnn_dailymail``     | 30m / 59m       | `bert-base-uncased <https://bit.ly/38fMUHT>`__ & `longbert-base-4096 <https://bit.ly/3i5TCEJ>`__ |
+| ``cnn_dailymail``     | 30m / 59m       | `bert-base-uncased <https://bit.ly/38fMUHT>`__ & `longbart-base-4096 <https://bit.ly/3i5TCEJ>`__ |
 +-----------------------+-----------------+--------------------------------------------------------------------------------------------------+
 | ``redit_tifu``        |                 |                                                                                                  |
 +-----------------------+-----------------+--------------------------------------------------------------------------------------------------+

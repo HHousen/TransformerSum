@@ -1,6 +1,7 @@
 import os
 import re
 import gc
+import sys
 import json
 import gzip
 import glob
@@ -273,10 +274,10 @@ def resume(output_path, split, chunk_size):
     if not all_json_in_split:  # if no files found
         return None
 
-    # get the second match because the first one includes the "." and the text between
-    # but we only want the text between. also convert to int so max() operator works
+    # get the first match because and convert to int so max() operator works
+    # more info about the below RegEx: https://stackoverflow.com/a/1454936 (https://web.archive.org/web/20200701145857/https://stackoverflow.com/questions/1454913/regular-expression-to-find-a-string-included-between-two-characters-while-exclud/1454936)
     shard_file_idxs = [
-        int(re.search("\.((.*))\.", a).group(2)) for a in all_json_in_split
+        int(re.search("(?<=\.)(.*?)(?=\.)", a).group(1)) for a in all_json_in_split
     ]
 
     last_shard = int(max(shard_file_idxs)) + 1  # because the file indexes start at 0
@@ -298,6 +299,16 @@ def check_resume_success(nlp, source_file, last_shard, output_path, split, compr
 
     line_source_tokenized = next(tokenize(nlp, [line_source]))
 
+    # Apply preprocessing on the line
+    preprocessed_line = preprocess(
+        line_source_tokenized,
+        [1] * len(line_source_tokenized),
+        args.min_sentence_ntokens,
+        args.max_sentence_ntokens,
+        args.min_example_nsents,
+        args.max_example_nsents,
+    )[0]
+
     try:
         chunk_json, _ = load_json(chunk_file_path)
     except FileNotFoundError:
@@ -313,15 +324,13 @@ def check_resume_success(nlp, source_file, last_shard, output_path, split, compr
     if line_chunk[-1] == ["\n"]:
         line_chunk.pop()
 
-    if line_chunk == line_source_tokenized:
+    if line_chunk == preprocessed_line:
         logger.info("Resume Successful!")
         logger.debug("`source_file` moved forward one line")
     else:
         logger.info("Resume NOT Successful")
         logger.info("Last Chunk Line: " + str(line_chunk))
-        logger.info(
-            "Previous (to resume line) Source Line: " + str(line_source_tokenized)
-        )
+        logger.info("Previous (to resume line) Source Line: " + str(preprocessed_line))
         logger.info(
             (
                 "Common causes of this issue:\n"
