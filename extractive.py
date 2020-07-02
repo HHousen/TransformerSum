@@ -97,7 +97,8 @@ class ExtractiveSummarizer(pl.LightningModule):
         # else:
         if not embedding_model_config:
             embedding_model_config = AutoConfig.from_pretrained(
-                hparams.model_name_or_path
+                hparams.model_name_or_path,
+                gradient_checkpointing=hparams.gradient_checkpointing,
             )
         self.word_embedding_model = AutoModel.from_pretrained(
             hparams.model_name_or_path, config=embedding_model_config
@@ -1285,6 +1286,11 @@ class ExtractiveSummarizer(pl.LightningModule):
             type=int,
             default=2,
             help='The number of layers for the `transformer` classifier. Only has an effect if `--classifier` contains "transformer".',
+        )
+        parser.add_argument(
+            "--gradient_checkpointing",
+            action="store_true",
+            help="Enable gradient checkpointing (save memory at the expense of a slower backward pass) for the word embedding model. More info: https://github.com/huggingface/transformers/pull/4659#issue-424841871",
         )
         parser.add_argument(
             "--train_name",

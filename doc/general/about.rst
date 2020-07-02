@@ -8,6 +8,8 @@ Overview
 
 Check out the :ref:`installation instructions <installation_instructions>` and the :ref:`tutorial <getting_started_tutorial>` to get started training models and summarizing text.
 
+Both extractive and abstractive processed datasets and trained models can be found in their respective sections. Alternatively, you can browse from the root folder in Google Drive that contains all of the models and datasets: `TransformerSum Root Folder <https://drive.google.com/drive/folders/1SX8iQdUJkaLu8K6SoU0nrsxwOe4Qno6l>`_.
+
 Significant People
 ------------------
 

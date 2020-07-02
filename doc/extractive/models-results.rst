@@ -84,21 +84,21 @@ CNN/DM Training Times and Model Sizes
 WikiHow
 -------
 
-+---------------------------------+----------+----------------+--------------------------------------------------------------------------------------------+
-| Name                            | Comments | Model Download | Data Download                                                                              |
-+=================================+==========+================+============================================================================================+
-| distilbert-base-uncased-ext-sum | None     | Not yet...     | `WikiHow Bert Uncased <https://drive.google.com/uc?id=1-IO2AgjDsJcbrmsM3R4UIRM2bMHR-Dae>`_ |
-+---------------------------------+----------+----------------+--------------------------------------------------------------------------------------------+
-| distilroberta-base-ext-sum      | None     | Not yet...     | `WikiHow Roberta <https://drive.google.com/uc?id=1-aQMjCEQlKhEcimMW_WJwQusNScIT2Uf>`_      |
-+---------------------------------+----------+----------------+--------------------------------------------------------------------------------------------+
-| bert-base-uncased-ext-sum       | None     | Not yet...     | `WikiHow Bert Uncased <https://drive.google.com/uc?id=1-IO2AgjDsJcbrmsM3R4UIRM2bMHR-Dae>`_ |
-+---------------------------------+----------+----------------+--------------------------------------------------------------------------------------------+
-| roberta-base-ext-sum            | None     | Not yet...     | `WikiHow Roberta <https://drive.google.com/uc?id=1-aQMjCEQlKhEcimMW_WJwQusNScIT2Uf>`_      |
-+---------------------------------+----------+----------------+--------------------------------------------------------------------------------------------+
-| bert-large-uncased-ext-sum      | None     | Not yet...     | `WikiHow Bert Uncased <https://drive.google.com/uc?id=1-IO2AgjDsJcbrmsM3R4UIRM2bMHR-Dae>`_ |
-+---------------------------------+----------+----------------+--------------------------------------------------------------------------------------------+
-| roberta-large-ext-sum           | None     | Not yet...     | `WikiHow Roberta <https://drive.google.com/uc?id=1-aQMjCEQlKhEcimMW_WJwQusNScIT2Uf>`_      |
-+---------------------------------+----------+----------------+--------------------------------------------------------------------------------------------+
++---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+
+| Name                            | Comments | Model Download                                                                                                                                                                | Data Download                                                                              |
++=================================+==========+===============================================================================================================================================================================+============================================================================================+
+| distilbert-base-uncased-ext-sum | None     | `Model <https://drive.google.com/uc?id=1-5xfsEk8fsyJBA7638VdPHXbkEv_vWHN>`__ & `All Checkpoints <https://drive.google.com/drive/folders/1Ar8dn9cXQN_wMbzXj_vZddg1qwyVNIIv>`__ | `WikiHow Bert Uncased <https://drive.google.com/uc?id=1-IO2AgjDsJcbrmsM3R4UIRM2bMHR-Dae>`_ |
++---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+
+| distilroberta-base-ext-sum      | None     | `Model <https://drive.google.com/uc?id=1-79t0FvT2PBy1OubqsvY-nV3Kskt_Aem>`__ & `All Checkpoints <https://drive.google.com/drive/folders/1DhL0b7jubLvz93hbTwcCZdvTwRi5me7l>`__ | `WikiHow Roberta <https://drive.google.com/uc?id=1-aQMjCEQlKhEcimMW_WJwQusNScIT2Uf>`_      |
++---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+
+| bert-base-uncased-ext-sum       | None     | Not yet...                                                                                                                                                                    | `WikiHow Bert Uncased <https://drive.google.com/uc?id=1-IO2AgjDsJcbrmsM3R4UIRM2bMHR-Dae>`_ |
++---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+
+| roberta-base-ext-sum            | None     | Not yet...                                                                                                                                                                    | `WikiHow Roberta <https://drive.google.com/uc?id=1-aQMjCEQlKhEcimMW_WJwQusNScIT2Uf>`_      |
++---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+
+| bert-large-uncased-ext-sum      | None     | Not yet...                                                                                                                                                                    | `WikiHow Bert Uncased <https://drive.google.com/uc?id=1-IO2AgjDsJcbrmsM3R4UIRM2bMHR-Dae>`_ |
++---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+
+| roberta-large-ext-sum           | None     | Not yet...                                                                                                                                                                    | `WikiHow Roberta <https://drive.google.com/uc?id=1-aQMjCEQlKhEcimMW_WJwQusNScIT2Uf>`_      |
++---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+
 
 WikiHow ROUGE Scores
 ^^^^^^^^^^^^^^^^^^^^
@@ -108,9 +108,9 @@ Test set results on the WikiHow dataset using ROUGE F\ :sub:`1`\ .
 +---------------------------------+------------+------------+------------+-------------+
 | Name                            | ROUGE-1    | ROUGE-2    | ROUGE-L    | ROUGE-L-Sum |
 +=================================+============+============+============+=============+
-| distilbert-base-uncased-ext-sum | Not yet... | Not yet... | Not yet... | Not yet...  |
+| distilbert-base-uncased-ext-sum | 30.48      | 8.52       | 19.00      | 28.40       |
 +---------------------------------+------------+------------+------------+-------------+
-| distilroberta-base-ext-sum      | Not yet... | Not yet... | Not yet... | Not yet..   |
+| distilroberta-base-ext-sum      | 31.04      | 8.93       | 19.33      | 28.94       |
 +---------------------------------+------------+------------+------------+-------------+
 | bert-base-uncased-ext-sum       | Not yet... | Not yet... | Not yet... | Not yet...  |
 +---------------------------------+------------+------------+------------+-------------+
@@ -121,15 +121,18 @@ Test set results on the WikiHow dataset using ROUGE F\ :sub:`1`\ .
 | roberta-large-ext-sum           | Not yet... | Not yet... | Not yet... | Not yet...  |
 +---------------------------------+------------+------------+------------+-------------+
 
+.. note:: These are the results of an abstractive model, which means they are fairly good because they come close to abstractive models. The R1/R2/RL-Sum results of a base transformer model from the `PEGASUS paper <https://arxiv.org/abs/1912.08777>`_ are 32.48/10.53/23.86. The net difference from ``distilroberta-base-ext-sum`` is +1.44/+1.6/-5.08. Compared to the **abstractive** SOTA prior to PEGASUS, which was 28.53/9.23/26.54, ``distilroberta-base-ext-sum`` performs +2.51/-0.3/+2.4. However, the base PEGASUS model obtains scores of 36.58/15.64/30.01, which are much better than ``distilroberta-base-ext-sum``, as one would expect.
+
+
 WikiHow Training Times and Model Sizes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 +---------------------------------+------------+------------+
 | Name                            | Time       | Model Size |
 +=================================+============+============+
-| distilbert-base-uncased-ext-sum | Not yet... | Not yet... |
+| distilbert-base-uncased-ext-sum | 3h 44m 56s | 796.4MB    |
 +---------------------------------+------------+------------+
-| distilroberta-base-ext-sum      | Not yet... | Not yet... |
+| distilroberta-base-ext-sum      | 3h 41m 53s | 980.8MB    |
 +---------------------------------+------------+------------+
 | bert-base-uncased-ext-sum       | Not yet... | Not yet... |
 +---------------------------------+------------+------------+
@@ -146,17 +149,17 @@ arXiv-PubMed
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------------+
 | Name                            | Comments | Model Download | Data Download                                                                                   |
 +=================================+==========+================+=================================================================================================+
-| distilbert-base-uncased-ext-sum | None     | Not yet...     | `arXiv-PubMed Bert Uncased <https://drive.google.com/uc?id=>`_ |
+| distilbert-base-uncased-ext-sum | None     | Not yet...     | `arXiv-PubMed Bert Uncased <https://drive.google.com/uc?id=17doTVEvIHr9DGesN-BmyHVz5sqWEWdEa>`_ |
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------------+
-| distilroberta-base-ext-sum      | None     | Not yet...     | `arXiv-PubMed Roberta <>`_                                                                      |
+| distilroberta-base-ext-sum      | None     | Not yet...     | `arXiv-PubMed Roberta <https://drive.google.com/uc?id=11pVkVO1ivC3okWq-l_xW1qQmagDE5Htt>`_      |
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------------+
-| bert-base-uncased-ext-sum       | None     | Not yet...     | `arXiv-PubMed Bert Uncased <>`_                                                                 |
+| bert-base-uncased-ext-sum       | None     | Not yet...     | `arXiv-PubMed Bert Uncased <https://drive.google.com/uc?id=17doTVEvIHr9DGesN-BmyHVz5sqWEWdEa>`_ |
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------------+
-| roberta-base-ext-sum            | None     | Not yet...     | `arXiv-PubMed Roberta <>`_                                                                      |
+| roberta-base-ext-sum            | None     | Not yet...     | `arXiv-PubMed Roberta <https://drive.google.com/uc?id=11pVkVO1ivC3okWq-l_xW1qQmagDE5Htt>`_      |
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------------+
-| bert-large-uncased-ext-sum      | None     | Not yet...     | `arXiv-PubMed Bert Uncased <>`_                                                                 |
+| bert-large-uncased-ext-sum      | None     | Not yet...     | `arXiv-PubMed Bert Uncased <https://drive.google.com/uc?id=17doTVEvIHr9DGesN-BmyHVz5sqWEWdEa>`_ |
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------------+
-| roberta-large-ext-sum           | None     | Not yet...     | `arXiv-PubMed Roberta <>`_                                                                      |
+| roberta-large-ext-sum           | None     | Not yet...     | `arXiv-PubMed Roberta <https://drive.google.com/uc?id=11pVkVO1ivC3okWq-l_xW1qQmagDE5Htt>`_      |
 +---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------------+
 
 arXiv-PubMed ROUGE Scores
