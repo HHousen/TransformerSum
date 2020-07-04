@@ -666,7 +666,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             )
         else:
             optimizer = torch.optim.AdamW(
-                optimizer_grouped_parameters,  # optimizer_grouped_parameters,
+                optimizer_grouped_parameters,
                 lr=self.hparams.learning_rate,
                 eps=self.hparams.adam_epsilon,
             )
@@ -682,7 +682,7 @@ class ExtractiveSummarizer(pl.LightningModule):
                 # We have to import the function and create a partial because functions cannot be
                 # serialized by python pickle. Therefore, if the normal `get_linear_schedule_with_warmup`
                 # function provided by `transformers` was used, the program would fail to save
-                # `self.hparams` because the optimizer would contain a locale function that cannot be
+                # `self.hparams` because the optimizer would contain a local function that cannot be
                 # pickled.
                 lr_lambda = partial(
                     lr_lambda_func,

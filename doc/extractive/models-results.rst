@@ -12,9 +12,11 @@ The distil* models are of special significance. Distil* is a class of compressed
 
 The remarkable performance to size ratio of the distil* models can be transferred to summarization. ``distilroberta`` is recommended over ``distilbert`` because of the architecture improvements that the original RoBERTa brought over the original BERT. Essentially, ``distilroberta`` is more modern than ``distilbert``.
 
+`MobileBERT <https://arxiv.org/abs/2004.02984>`_ is similar to ``distilbert`` in that it is a smaller version of BERT that achieves amazing performance at a very small size. `According to the authors <https://openreview.net/forum?id=SJxjVaNKwB&noteId=S1gxqk_7jH>`__, MobileBERT is *2.64x smaller and 2.45x faster* than DistilBERT. DistilBERT successfully halves the depth of BERT model by knowledge distillation in the pre-training stage and an optional fine-tuning stage. MobileBERT only uses knowledge transfer in the pre-training stage and does not require a fine-tuned teacher or data augmentation in the down-stream tasks. DistilBERT compresses BERT by reducing its depth, while MobileBERT compresses BERT by reducing its width, which has been shown to be more effective.
+
 .. important:: Interactive charts, graphs, raw data, run commands, hyperparameter choices, and more for all trained models are publicly available on the `TransformerSum Weights & Biases page <https://app.wandb.ai/hhousen/transformerextsum>`__. Please open an `issue <https://github.com/HHousen/TransformerSum/issues/new>`__ if you have questions about these models.
 
-TODO: Add notes about 16-bit precision
+Additionally, all of the models on this page were trained completely for free using Tesla P100-PCIE-16GB GPUs on `Google Colaboratory <https://colab.research.google.com/>`_. Those that took over 12 hours to train were split into multiple training sessions since ``pytorch_lightning`` enables easy resuming with the ``--resume_from_checkpoint`` argument.
 
 .. _pretrained_ext_cnn_dm:
 
@@ -87,9 +89,9 @@ WikiHow
 +---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+
 | Name                            | Comments | Model Download                                                                                                                                                                | Data Download                                                                              |
 +=================================+==========+===============================================================================================================================================================================+============================================================================================+
-| distilbert-base-uncased-ext-sum | None     | `Model <https://drive.google.com/uc?id=1-5xfsEk8fsyJBA7638VdPHXbkEv_vWHN>`__ & `All Checkpoints <https://drive.google.com/drive/folders/1Ar8dn9cXQN_wMbzXj_vZddg1qwyVNIIv>`__ | `WikiHow Bert Uncased <https://drive.google.com/uc?id=1-IO2AgjDsJcbrmsM3R4UIRM2bMHR-Dae>`_ |
+| distilbert-base-uncased-ext-sum | None     | `Model <https://drive.google.com/uc?id=1-2Kjziq7hU4k0zMTlE26FjFyCc_A63xq>`__ & `All Checkpoints <https://drive.google.com/drive/folders/1Ar8dn9cXQN_wMbzXj_vZddg1qwyVNIIv>`__ | `WikiHow Bert Uncased <https://drive.google.com/uc?id=1-IO2AgjDsJcbrmsM3R4UIRM2bMHR-Dae>`_ |
 +---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+
-| distilroberta-base-ext-sum      | None     | `Model <https://drive.google.com/uc?id=1-79t0FvT2PBy1OubqsvY-nV3Kskt_Aem>`__ & `All Checkpoints <https://drive.google.com/drive/folders/1DhL0b7jubLvz93hbTwcCZdvTwRi5me7l>`__ | `WikiHow Roberta <https://drive.google.com/uc?id=1-aQMjCEQlKhEcimMW_WJwQusNScIT2Uf>`_      |
+| distilroberta-base-ext-sum      | None     | `Model <https://drive.google.com/uc?id=1-3NV3TdRcTta9JTi9Kh0sWtoNLEdWrY1>`__ & `All Checkpoints <https://drive.google.com/drive/folders/1DhL0b7jubLvz93hbTwcCZdvTwRi5me7l>`__ | `WikiHow Roberta <https://drive.google.com/uc?id=1-aQMjCEQlKhEcimMW_WJwQusNScIT2Uf>`_      |
 +---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+
 | bert-base-uncased-ext-sum       | None     | Not yet...                                                                                                                                                                    | `WikiHow Bert Uncased <https://drive.google.com/uc?id=1-IO2AgjDsJcbrmsM3R4UIRM2bMHR-Dae>`_ |
 +---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+
@@ -108,9 +110,9 @@ Test set results on the WikiHow dataset using ROUGE F\ :sub:`1`\ .
 +---------------------------------+------------+------------+------------+-------------+
 | Name                            | ROUGE-1    | ROUGE-2    | ROUGE-L    | ROUGE-L-Sum |
 +=================================+============+============+============+=============+
-| distilbert-base-uncased-ext-sum | 30.48      | 8.52       | 19.00      | 28.40       |
+| distilbert-base-uncased-ext-sum | 30.69      | 8.65       | 19.13      | 28.58       |
 +---------------------------------+------------+------------+------------+-------------+
-| distilroberta-base-ext-sum      | 31.04      | 8.93       | 19.33      | 28.94       |
+| distilroberta-base-ext-sum      | 31.07      | 8.96       | 19.34      | 28.95       |
 +---------------------------------+------------+------------+------------+-------------+
 | bert-base-uncased-ext-sum       | Not yet... | Not yet... | Not yet... | Not yet...  |
 +---------------------------------+------------+------------+------------+-------------+
@@ -121,7 +123,7 @@ Test set results on the WikiHow dataset using ROUGE F\ :sub:`1`\ .
 | roberta-large-ext-sum           | Not yet... | Not yet... | Not yet... | Not yet...  |
 +---------------------------------+------------+------------+------------+-------------+
 
-.. note:: These are the results of an abstractive model, which means they are fairly good because they come close to abstractive models. The R1/R2/RL-Sum results of a base transformer model from the `PEGASUS paper <https://arxiv.org/abs/1912.08777>`_ are 32.48/10.53/23.86. The net difference from ``distilroberta-base-ext-sum`` is +1.44/+1.6/-5.08. Compared to the **abstractive** SOTA prior to PEGASUS, which was 28.53/9.23/26.54, ``distilroberta-base-ext-sum`` performs +2.51/-0.3/+2.4. However, the base PEGASUS model obtains scores of 36.58/15.64/30.01, which are much better than ``distilroberta-base-ext-sum``, as one would expect.
+.. note:: These are the results of an extractive model, which means they are fairly good because they come close to abstractive models. The R1/R2/RL-Sum results of a base transformer model from the `PEGASUS paper <https://arxiv.org/abs/1912.08777>`_ are 32.48/10.53/23.86. The net difference from ``distilroberta-base-ext-sum`` is +1.41/+1.57/-5.09. Compared to the **abstractive** SOTA prior to PEGASUS, which was 28.53/9.23/26.54, ``distilroberta-base-ext-sum`` performs +2.54/-0.27/+2.41. However, the base PEGASUS model obtains scores of 36.58/15.64/30.01, which are much better than ``distilroberta-base-ext-sum``, as one would expect.
 
 
 WikiHow Training Times and Model Sizes
@@ -130,9 +132,9 @@ WikiHow Training Times and Model Sizes
 +---------------------------------+------------+------------+
 | Name                            | Time       | Model Size |
 +=================================+============+============+
-| distilbert-base-uncased-ext-sum | 3h 44m 56s | 796.4MB    |
+| distilbert-base-uncased-ext-sum | 3h 42m 12s | 796.4MB    |
 +---------------------------------+------------+------------+
-| distilroberta-base-ext-sum      | 3h 41m 53s | 980.8MB    |
+| distilroberta-base-ext-sum      | 4h 27m 23s | 980.8MB    |
 +---------------------------------+------------+------------+
 | bert-base-uncased-ext-sum       | Not yet... | Not yet... |
 +---------------------------------+------------+------------+
@@ -146,21 +148,23 @@ WikiHow Training Times and Model Sizes
 arXiv-PubMed
 ------------
 
-+---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------------+
-| Name                            | Comments | Model Download | Data Download                                                                                   |
-+=================================+==========+================+=================================================================================================+
-| distilbert-base-uncased-ext-sum | None     | Not yet...     | `arXiv-PubMed Bert Uncased <https://drive.google.com/uc?id=17doTVEvIHr9DGesN-BmyHVz5sqWEWdEa>`_ |
-+---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------------+
-| distilroberta-base-ext-sum      | None     | Not yet...     | `arXiv-PubMed Roberta <https://drive.google.com/uc?id=11pVkVO1ivC3okWq-l_xW1qQmagDE5Htt>`_      |
-+---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------------+
-| bert-base-uncased-ext-sum       | None     | Not yet...     | `arXiv-PubMed Bert Uncased <https://drive.google.com/uc?id=17doTVEvIHr9DGesN-BmyHVz5sqWEWdEa>`_ |
-+---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------------+
-| roberta-base-ext-sum            | None     | Not yet...     | `arXiv-PubMed Roberta <https://drive.google.com/uc?id=11pVkVO1ivC3okWq-l_xW1qQmagDE5Htt>`_      |
-+---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------------+
-| bert-large-uncased-ext-sum      | None     | Not yet...     | `arXiv-PubMed Bert Uncased <https://drive.google.com/uc?id=17doTVEvIHr9DGesN-BmyHVz5sqWEWdEa>`_ |
-+---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------------+
-| roberta-large-ext-sum           | None     | Not yet...     | `arXiv-PubMed Roberta <https://drive.google.com/uc?id=11pVkVO1ivC3okWq-l_xW1qQmagDE5Htt>`_      |
-+---------------------------------+----------+----------------+-------------------------------------------------------------------------------------------------+
++---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+
+| Name                            | Comments | Model Download                                                                                                                                                                | Data Download                                                                                   |
++=================================+==========+===============================================================================================================================================================================+=================================================================================================+
+| distilbert-base-uncased-ext-sum | None     | Not yet...                                                                                                                                                                    | `arXiv-PubMed Bert Uncased <https://drive.google.com/uc?id=17doTVEvIHr9DGesN-BmyHVz5sqWEWdEa>`_ |
++---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+
+| distilroberta-base-ext-sum      | None     | `Model <https://drive.google.com/uc?id=1-8xVR72-jWtIxvl6DYvcND2yVc0gxjGR>`__ & `All Checkpoints <https://drive.google.com/drive/folders/1jNWCOa8bxNh_AEKJ42-LeC6H5tZhWB8p>`__ | `arXiv-PubMed Roberta <https://drive.google.com/uc?id=11pVkVO1ivC3okWq-l_xW1qQmagDE5Htt>`_      |
++---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+
+| bert-base-uncased-ext-sum       | None     | Not yet...                                                                                                                                                                    | `arXiv-PubMed Bert Uncased <https://drive.google.com/uc?id=17doTVEvIHr9DGesN-BmyHVz5sqWEWdEa>`_ |
++---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+
+| roberta-base-ext-sum            | None     | Not yet...                                                                                                                                                                    | `arXiv-PubMed Roberta <https://drive.google.com/uc?id=11pVkVO1ivC3okWq-l_xW1qQmagDE5Htt>`_      |
++---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+
+| bert-large-uncased-ext-sum      | None     | Not yet...                                                                                                                                                                    | `arXiv-PubMed Bert Uncased <https://drive.google.com/uc?id=17doTVEvIHr9DGesN-BmyHVz5sqWEWdEa>`_ |
++---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+
+| roberta-large-ext-sum           | None     | Not yet...                                                                                                                                                                    | `arXiv-PubMed Roberta <https://drive.google.com/uc?id=11pVkVO1ivC3okWq-l_xW1qQmagDE5Htt>`_      |
++---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+
+| longformer-base-4096-ext-sum    | None     | Not yet...                                                                                                                                                                    | `arXiv-PubMed Longformer <https://drive.google.com/uc?id=17IEoiKzs_XO1xo4mQTTcHNGhUsTxbn4G>`_   |
++---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+
 
 arXiv-PubMed ROUGE Scores
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -172,7 +176,7 @@ Test set results on the arXiv-PubMed dataset using ROUGE F\ :sub:`1`\ .
 +=================================+============+============+============+=============+
 | distilbert-base-uncased-ext-sum | Not yet... | Not yet... | Not yet... | Not yet...  |
 +---------------------------------+------------+------------+------------+-------------+
-| distilroberta-base-ext-sum      | Not yet... | Not yet... | Not yet... | Not yet..   |
+| distilroberta-base-ext-sum      | 34.70      | 12.16      | 19.52      | 30.82       |
 +---------------------------------+------------+------------+------------+-------------+
 | bert-base-uncased-ext-sum       | Not yet... | Not yet... | Not yet... | Not yet...  |
 +---------------------------------+------------+------------+------------+-------------+
@@ -183,6 +187,8 @@ Test set results on the arXiv-PubMed dataset using ROUGE F\ :sub:`1`\ .
 | roberta-large-ext-sum           | Not yet... | Not yet... | Not yet... | Not yet...  |
 +---------------------------------+------------+------------+------------+-------------+
 
+.. note:: These are the results of an extractive model, which means they are fairly good because they come close to abstractive models. The R1/R2/RL-Sum results of a base transformer model from the `PEGASUS paper <https://arxiv.org/abs/1912.08777>`_ are 34.79/7.69/19.51 (average of 35.63/7.95/20.00 (arXiv) and 33.94/7.43/19.02 (PubMed)). The net difference from ``distilroberta-base-ext-sum`` is +0.09/-4.47/-11.31. Compared to the **abstractive** SOTA prior to PEGASUS, which was 41.09/14.93/23.57 (average of 41.59/14.26/23.55 (arXiv) and 40.59/15.59/23.59 (PubMed)), ``distilroberta-base-ext-sum`` performs -6.39/-2.77/+7.25. However, the base PEGASUS model obtains scores of 37.39/12.66/23.87 (average of 34.81/10.16/22.50 (arXiv) and 39.98/15.15/25.23 (PubMed)). The large model obtains scores of 45.10/18.59/26.75 (average of 44.70/17.27/25.80 (arXiv) and 45.49/19.90/27.69 (PubMed)) which are much better than ``distilroberta-base-ext-sum``, as one would expect.
+
 arXiv-PubMed Training Times and Model Sizes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -191,7 +197,7 @@ arXiv-PubMed Training Times and Model Sizes
 +=================================+============+============+
 | distilbert-base-uncased-ext-sum | Not yet... | Not yet... |
 +---------------------------------+------------+------------+
-| distilroberta-base-ext-sum      | Not yet... | Not yet... |
+| distilroberta-base-ext-sum      | 6h 33m 58s | 980.8MB    |
 +---------------------------------+------------+------------+
 | bert-base-uncased-ext-sum       | Not yet... | Not yet... |
 +---------------------------------+------------+------------+
