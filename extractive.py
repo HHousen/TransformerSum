@@ -549,6 +549,8 @@ class ExtractiveSummarizer(pl.LightningModule):
         """Create dataloader for training if it has not already been created."""
         if self.train_dataloader_object:
             return self.train_dataloader_object
+        if not hasattr(self, "datasets"):
+            self.prepare_data()
         self.global_step_tracker = 0
 
         train_dataset = self.datasets[self.hparams.train_name]

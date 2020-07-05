@@ -81,6 +81,13 @@ def main(args):
 
     trainer = Trainer.from_argparse_args(args)
 
+    if args.lr_find:
+        lr_finder = trainer.lr_find(model)
+        fig = lr_finder.plot(suggest=True)
+        fig.show()
+        new_lr = lr_finder.suggestion()
+        logger.info("Recommended Learning Rate: {}".format(new_lr))
+
     # remove `args.callbacks` if it exists so it does not get saved with the model (would result in crash)
     if args.custom_checkpoint_every_n:
         del args.callbacks
@@ -296,6 +303,11 @@ if __name__ == "__main__":
         the batch size until an out-of-memory (OOM) error is encountered. Setting the argument to 
         'binsearch' continues to finetune the batch size by performing a binary search. 'binsearch'
         is the recommended option.""",
+    )
+    parser.add_argument(
+        "--lr_find",
+        action="store_true",
+        help="Runs a learning rate finder algorithm (see https://arxiv.org/abs/1506.01186) before any training, to find optimal initial learning rate."
     )
     parser.add_argument(
         "-l",

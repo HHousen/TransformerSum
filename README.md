@@ -15,23 +15,18 @@ All pre-trained models (including larger models and other architectures) are loc
 
 | Name | Dataset | Comments | Model Download | Data Download |
 |-|-|-|-|-|
-| distilroberta-base-ext-sum | CNN/DM | None | Not yet... | [CNN/DM Roberta](https://drive.google.com/uc?id=1-L7UOYe69dD--OPGCa4sS0QQEnZNb_Vb) |
-| roberta-base-ext-sum | CNN/DM | None | Not yet... | [CNN/DM Roberta](https://drive.google.com/uc?id=1-L7UOYe69dD--OPGCa4sS0QQEnZNb_Vb) |
-| distilroberta-base-ext-sum | WikiHow | None | Not yet... | [WikiHow Roberta]() |
-| roberta-base-ext-sum | WikiHow | None | Not yet... | [WikiHow Roberta]() |
-| distilroberta-base-ext-sum | arXiv-PubMed | None | Not yet... | [arXiv-PubMed Roberta]() |
-| roberta-base-ext-sum | arXiv-PubMed | None | Not yet... | [arXiv-PubMed Roberta]() |
+| distilroberta-base-ext-sum | CNN/DM | None | [Model](https://drive.google.com/uc?id=1-2TZe28K8inHoJr2-WuVivj2qwBn7tFs) | [CNN/DM Roberta](https://drive.google.com/uc?id=1-L7UOYe69dD--OPGCa4sS0QQEnZNb_Vb) |
+| roberta-base-ext-sum | CNN/DM | None | [Model](https://drive.google.com/uc?id=18ZlImBv1P7VmDPUpiQHF9frk-q3AFfD0) | [CNN/DM Roberta](https://drive.google.com/uc?id=1-L7UOYe69dD--OPGCa4sS0QQEnZNb_Vb) |
+| distilroberta-base-ext-sum | WikiHow | None | [Model](https://drive.google.com/uc?id=1-3NV3TdRcTta9JTi9Kh0sWtoNLEdWrY1) | [WikiHow Roberta](https://drive.google.com/uc?id=1-aQMjCEQlKhEcimMW_WJwQusNScIT2Uf) |
+| roberta-base-ext-sum | WikiHow | None | Not yet... | [WikiHow Roberta](https://drive.google.com/uc?id=1-aQMjCEQlKhEcimMW_WJwQusNScIT2Uf) |
+| distilroberta-base-ext-sum | arXiv-PubMed | None | [Model](https://drive.google.com/uc?id=1-8xVR72-jWtIxvl6DYvcND2yVc0gxjGR) | [arXiv-PubMed Roberta](https://drive.google.com/uc?id=11pVkVO1ivC3okWq-l_xW1qQmagDE5Htt) |
+| roberta-base-ext-sum | arXiv-PubMed | None | Not yet... | [arXiv-PubMed Roberta](https://drive.google.com/uc?id=11pVkVO1ivC3okWq-l_xW1qQmagDE5Htt) |
 
 ### Abstractive
 
 | Name | Dataset | Comments | Model Download |
 |-|-|-|-|
-| distilroberta-base-abs-sum | CNN/DM | None | Not yet... |
-| roberta-base-abs-sum | CNN/DM | None | Not yet... |
-| distilroberta-base-abs-sum | WikiHow | None | Not yet... |
-| roberta-base-abs-sum | WikiHow | None | Not yet... |
-| distilroberta-base-abs-sum | arXiv-PubMed | None | Not yet... |
-| roberta-base-abs-sum | arXiv-PubMed | None | Not yet... |
+| longbart-base-4096-abs-sum | arXiv-PubMed | None | Not yet... |
 
 ## Install
 
