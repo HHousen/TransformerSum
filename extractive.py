@@ -425,6 +425,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         then this function will run once, loading the entire dataset into memory to process
         just like the ``convert_to_extractive.py`` script.
         """
+        pytorch_total_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
         datasets = dict()
 
         # loop through all data_splits

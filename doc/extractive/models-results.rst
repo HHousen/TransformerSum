@@ -70,6 +70,8 @@ Test set results on the CNN/DailyMail dataset using ROUGE F\ :sub:`1`\ .
 
 .. note:: Currently, ``distilbert`` beats ``bert-base-uncased`` by 1.0014% (``(42.71/42.78+19.91/19.83+27.52/27.43+39.18/39.18)/4=1.0014197729882865``). Since ``bert-base-uncased`` has more parameters than ``distilbert``, this is unusual and is likely a tuning issue. This suggests that tuning the hyperparameters of ``bert-base-uncased`` can improve its performance. ``distilroberta`` matches 92.7% of the performance of ``roberta-base`` (``(42.87/43.24+20.02/20.36+27.46/27.64+29.31/39.65)/4=0.9268623888753363``).
 
+.. important:: ``mobilebert-uncased-ext-sum`` achieves 96.59% (``(42.01/43.25+19.31/20.24+38.53/39.63)/3``) of the performance of `BertSum <https://arxiv.org/abs/1903.10318>`_ while containing 4.45 times (``109483009/24582401``) fewer parameters. It achieves 94.06% (``(42.01/44.41+19.31/20.86+38.53/40.55)/3``) of the performance of `MatchSum (Zhong et al., 2020) <https://arxiv.org/abs/2004.08795>`_, the current extractive state-of-the-art.
+
 CNN/DM Training Times and Model Sizes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -93,6 +95,8 @@ CNN/DM Training Times and Model Sizes
 | mobilebert-uncased-ext-sum      | 8h 26m 32s  | 295.6MB    |
 +---------------------------------+-------------+------------+
 
+.. important:: ``distilroberta-base-ext-sum`` trains in about 6.5 hours on 1 P100-PCIE-16GB GPU, while `MatchSum <https://arxiv.org/abs/2004.08795>`_, the current state-of-the-art in extractive summarization on CNN/DM, takes 30 hours on 8 Tesla-V100-16G GPUs to train. If a V100 is about 2x as powerful as a P100, then it would take 480 hours (``30*8*2``) to train MatchSum on one P100. This simplistic approximation suggests that it takes about 74x (``480/6.5``) more time to train MatchSum than ``distilroberta-base-ext-sum``.
+
 WikiHow
 -------
 
@@ -110,6 +114,8 @@ WikiHow
 | bert-large-uncased-ext-sum      | None     | Not yet...                                                                                                                                                                    | `WikiHow Bert Uncased <https://drive.google.com/uc?id=1-IO2AgjDsJcbrmsM3R4UIRM2bMHR-Dae>`_ |
 +---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+
 | roberta-large-ext-sum           | None     | Not yet...                                                                                                                                                                    | `WikiHow Roberta <https://drive.google.com/uc?id=1-aQMjCEQlKhEcimMW_WJwQusNScIT2Uf>`_      |
++---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+
+| mobilebert-uncased-ext-sum      | None     | `Model <https://drive.google.com/uc?id=1-H7kuojMW50gVnC5flEjQkbHRp-WQtaF>`__ & `All Checkpoints <https://drive.google.com/drive/folders/1YJ-fO9rdB1sCMvh0EDws0dfvvItWutoN>`__ | `WikiHow Bert Uncased <https://drive.google.com/uc?id=1-IO2AgjDsJcbrmsM3R4UIRM2bMHR-Dae>`_ |
 +---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+
 
 WikiHow ROUGE Scores
@@ -131,6 +137,8 @@ Test set results on the WikiHow dataset using ROUGE F\ :sub:`1`\ .
 | bert-large-uncased-ext-sum      | Not yet... | Not yet... | Not yet... | Not yet...  |
 +---------------------------------+------------+------------+------------+-------------+
 | roberta-large-ext-sum           | Not yet... | Not yet... | Not yet... | Not yet...  |
++---------------------------------+------------+------------+------------+-------------+
+| mobilebert-uncased-ext-sum      | 30.72      | 8.78       | 19.18      | 28.59       |
 +---------------------------------+------------+------------+------------+-------------+
 
 .. note:: These are the results of an extractive model, which means they are fairly good because they come close to abstractive models. The R1/R2/RL-Sum results of a base transformer model from the `PEGASUS paper <https://arxiv.org/abs/1912.08777>`_ are 32.48/10.53/23.86. The net difference from ``distilroberta-base-ext-sum`` is +1.41/+1.57/-5.09. Compared to the **abstractive** SOTA prior to PEGASUS, which was 28.53/9.23/26.54, ``distilroberta-base-ext-sum`` performs +2.54/-0.27/+2.41. However, the base PEGASUS model obtains scores of 36.58/15.64/30.01, which are much better than ``distilroberta-base-ext-sum``, as one would expect.
@@ -154,6 +162,8 @@ WikiHow Training Times and Model Sizes
 +---------------------------------+------------+------------+
 | roberta-large-ext-sum           | Not yet... | Not yet... |
 +---------------------------------+------------+------------+
+| mobilebert-uncased-ext-sum      | 4h 22m 19s | 295.6MB    |
++---------------------------------+------------+------------+
 
 arXiv-PubMed
 ------------
@@ -174,6 +184,8 @@ arXiv-PubMed
 | roberta-large-ext-sum           | None     | Not yet...                                                                                                                                                                    | `arXiv-PubMed Roberta <https://drive.google.com/uc?id=11pVkVO1ivC3okWq-l_xW1qQmagDE5Htt>`_      |
 +---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+
 | longformer-base-4096-ext-sum    | None     | Not yet...                                                                                                                                                                    | `arXiv-PubMed Longformer <https://drive.google.com/uc?id=17IEoiKzs_XO1xo4mQTTcHNGhUsTxbn4G>`_   |
++---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+
+| mobilebert-uncased-ext-sum      | None     | `Model <https://drive.google.com/uc?id=1-KoEYNC2ZiRoP97V4tjXFy-YfltNBape>`__ & `All Checkpoints <https://drive.google.com/drive/folders/1nYlJkns6jnHKoj8_bpJWoJ782CZXjGQX>`__ | `arXiv-PubMed Bert Uncased <https://drive.google.com/uc?id=1-GbxiYkXkK7qcde37JtKtH5U7iIpdrnI>`_ |
 +---------------------------------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+
 
 arXiv-PubMed ROUGE Scores
@@ -196,6 +208,10 @@ Test set results on the arXiv-PubMed dataset using ROUGE F\ :sub:`1`\ .
 +---------------------------------+------------+------------+------------+-------------+
 | roberta-large-ext-sum           | Not yet... | Not yet... | Not yet... | Not yet...  |
 +---------------------------------+------------+------------+------------+-------------+
+| longformer-base-4096-ext-sum    | Not yet... | Not yet... | Not yet... | Not yet...  |
++---------------------------------+------------+------------+------------+-------------+
+| mobilebert-uncased-ext-sum      | 27.52      | 7.26       | 15.53      | 24.37       |
++---------------------------------+------------+------------+------------+-------------+
 
 .. note:: These are the results of an extractive model, which means they are fairly good because they come close to abstractive models. The R1/R2/RL-Sum results of a base transformer model from the `PEGASUS paper <https://arxiv.org/abs/1912.08777>`_ are 34.79/7.69/19.51 (average of 35.63/7.95/20.00 (arXiv) and 33.94/7.43/19.02 (PubMed)). The net difference from ``distilroberta-base-ext-sum`` is +0.09/-4.47/-11.31. Compared to the **abstractive** SOTA prior to PEGASUS, which was 41.09/14.93/23.57 (average of 41.59/14.26/23.55 (arXiv) and 40.59/15.59/23.59 (PubMed)), ``distilroberta-base-ext-sum`` performs -6.39/-2.77/+7.25. However, the base PEGASUS model obtains scores of 37.39/12.66/23.87 (average of 34.81/10.16/22.50 (arXiv) and 39.98/15.15/25.23 (PubMed)). The large model obtains scores of 45.10/18.59/26.75 (average of 44.70/17.27/25.80 (arXiv) and 45.49/19.90/27.69 (PubMed)) which are much better than ``distilroberta-base-ext-sum``, as one would expect.
 
@@ -216,4 +232,8 @@ arXiv-PubMed Training Times and Model Sizes
 | bert-large-uncased-ext-sum      | Not yet... | Not yet... |
 +---------------------------------+------------+------------+
 | roberta-large-ext-sum           | Not yet... | Not yet... |
++---------------------------------+------------+------------+
+| longformer-base-4096-ext-sum    | Not yet... | Not yet... |
++---------------------------------+------------+------------+
+| mobilebert-uncased-ext-sum      | 7h 59m 26s | 295.6MB    |
 +---------------------------------+------------+------------+

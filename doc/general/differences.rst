@@ -21,6 +21,7 @@ Converting a Dataset to Extractive
 * Supports the same :meth:`~convert_to_extractive.greedy_selection` and :meth:`~convert_to_extractive.combination_selection` of ``BertSum``.
 * A more robust CLI that allows for various desired outputs.
 * Built in optional gzip compression.
+* Integration with `huggingface/nlp <https://github.com/huggingface/nlp>`_ means any summarization dataset in the ``nlp`` library can be converted to extractive by only modifying 4 options (specifically ``--dataset``, ``--dataset_version``, ``--data_example_column``, and ``--data_summarized_column``). The ``nlp`` library will handle downloading and pre-processing.
 
 Pooling for Extractive Models
 -----------------------------
@@ -41,7 +42,7 @@ Extractive Model and Training
 
 * **Compatible with every huggingface/transformers transformer encoder model.** ``BertSum`` can only use Bert, whereas this project supports all encoders by only changing two options when training.
 * Easily extendable with new custom models that are saved in the ``huggingface/transformers`` format. In this way, integration with the ``longformer`` was easily accomplished (this integration was since removed since ``huggingface/transformers`` implemented the ``longformer`` directly..
-* The classifier component of ``TransformerSum`` is larger (it contains two linear layers) than `BertSum` (which contains one linear layer). The additional layer was found the greatly improve performance.
+* For the extractive component, ``BertSum`` supports three classifiers: a linear layer, a transformer, and a LSTM network. This project supports four different classifiers: ``linear``, a few linear layers with dropout and an activation function; ``simple_linear``, a single linear layer; ``transformer``, which runs the input through some ``nn.TransformerEncoderLayer`` layers; and ``transformer_linear``, a linear layer combined with a transformer. The classifier is responsible for removing the hidden features from each sentence embedding and converting them to a single number. The `BertSum paper <https://arxiv.org/pdf/1903.10318.pdf>`_ indicates that the difference between these classifiers is not major.
 * The reduction method for the BCE loss function  is different in ``TransformerSum`` than `BertSum`. `BertSum` takes the sum of the losses for each sentence (ignoring padding) even though it `looks like it uses the mean <https://github.com/nlpyang/BertSum/blob/master/src/models/trainer.py#L325>`_. Five different reduction methods were tested (see the :ref:`loss_function_experiments`). There did not appear to a significant difference, but the best was chosen.
 * The batch size parameter of ``BertSum`` is not the real batch size (which is likely caused by the custom ``DataLoader``). In this project batch size is the number of documents processed on the GPU at once.
 * Multiple optimizers are supported "out-of-the-box" in ``TransformerSum`` without any need to modify the code.
@@ -58,4 +59,4 @@ Abstractive Model and Training
 Where ``BertSum`` is Better
 ---------------------------
 
-* For the extractive component, ``BertSum`` supports three classifiers: a linear layer, a transformer, and a LSTM network. This project supports three different classifiers: a few linear layers, a transformer, and a linear layer combined with a transformer. The classifier is responsible for removing the hidden features from each sentence embedding and converting them to a single number. However, the `BertSum paper <https://arxiv.org/pdf/1903.10318.pdf>`_ indicates that the difference between these classifiers is not major. ``BertSum`` has an LSTM classifier, which ``TransformerSum`` does not replicate.
+* ``BertSum`` has an LSTM classifier, which ``TransformerSum`` does not replicate.

@@ -1,3 +1,5 @@
+![TransformerSum Logo](doc/_static/logo.png)
+
 # TransformerSum
 > Models to perform neural summarization (extractive and abstractive) using machine learning transformers and a tool to convert abstractive summarization datasets to the extractive task.
 
@@ -7,20 +9,38 @@
 
 Check out [the documentation](https://transformersum.readthedocs.io/en/latest) for usage details.
 
+## Features
+
+* For extractive summarization, compatible with every [huggingface/transformers](https://github.com/huggingface/transformers) transformer encoder model.
+* For abstractive summarization, compatible with every [huggingface/transformers](https://github.com/huggingface/transformers) EncoderDecoder model.
+* Currently, 10+ pre-trained extractive models available to summarize text trained on 3 datasets (CNN-DM, WikiHow, and ArXiv-PebMed).
+
+* Contains pre-trained models that excel at summarization on resource-limited devices: On CNN-DM, ``mobilebert-uncased-ext-sum`` achieves about 97% of the performance of [BertSum](https://arxiv.org/abs/1903.10318) while containing 4.45 times fewer parameters. It achieves about 94% of the performance of [MatchSum (Zhong et al., 2020)](https://arxiv.org/abs/2004.08795), the current extractive state-of-the-art.
+* Contains code to train models that excel at summarizing long sequences: The [longformer](https://huggingface.co/transformers/model_doc/longformer.html) (extractive) and [longbart](https://github.com/patil-suraj/longbart) (abstractive) can summarize sequences of lengths up to 4,096 tokens by default, but can be trained to summarize sequences of more than 16k.
+
+* Integration with [huggingface/nlp](https://github.com/huggingface/nlp) means any summarization dataset in the `nlp` library can be used for both abstractive and extractive training.
+* "Smart batching" support to not perform unnecessary calculations (speeds up training).
+* Use of `pytorch_lighting` for code readability.
+* Extensive documentation.
+* Two pooling modes (convert word vectors to sentence embeddings): mean of word embeddings or use the CLS token.
+
 ## Pre-trained Models
 
-All pre-trained models (including larger models and other architectures) are located in `the documentation <https://transformersum.readthedocs.io/en/latest>`_. The below is just a small fraction of the available models.
+All pre-trained models (including larger models and other architectures) are located in [the documentation](https://transformersum.readthedocs.io/en/latest). The below is a fraction of the available models.
 
 ### Extractive
 
-| Name | Dataset | Comments | Model Download | Data Download |
-|-|-|-|-|-|
-| distilroberta-base-ext-sum | CNN/DM | None | [Model](https://drive.google.com/uc?id=1-2TZe28K8inHoJr2-WuVivj2qwBn7tFs) | [CNN/DM Roberta](https://drive.google.com/uc?id=1-L7UOYe69dD--OPGCa4sS0QQEnZNb_Vb) |
-| roberta-base-ext-sum | CNN/DM | None | [Model](https://drive.google.com/uc?id=18ZlImBv1P7VmDPUpiQHF9frk-q3AFfD0) | [CNN/DM Roberta](https://drive.google.com/uc?id=1-L7UOYe69dD--OPGCa4sS0QQEnZNb_Vb) |
-| distilroberta-base-ext-sum | WikiHow | None | [Model](https://drive.google.com/uc?id=1-3NV3TdRcTta9JTi9Kh0sWtoNLEdWrY1) | [WikiHow Roberta](https://drive.google.com/uc?id=1-aQMjCEQlKhEcimMW_WJwQusNScIT2Uf) |
-| roberta-base-ext-sum | WikiHow | None | Not yet... | [WikiHow Roberta](https://drive.google.com/uc?id=1-aQMjCEQlKhEcimMW_WJwQusNScIT2Uf) |
-| distilroberta-base-ext-sum | arXiv-PubMed | None | [Model](https://drive.google.com/uc?id=1-8xVR72-jWtIxvl6DYvcND2yVc0gxjGR) | [arXiv-PubMed Roberta](https://drive.google.com/uc?id=11pVkVO1ivC3okWq-l_xW1qQmagDE5Htt) |
-| roberta-base-ext-sum | arXiv-PubMed | None | Not yet... | [arXiv-PubMed Roberta](https://drive.google.com/uc?id=11pVkVO1ivC3okWq-l_xW1qQmagDE5Htt) |
+| Name | Dataset | Comments | R1/R2/RL/RL-Sum | Model Download | Data Download |
+|-|-|-|-|-|-|
+| mobilebert-uncased-ext-sum | CNN/DM | None | 42.01/19.31/26.89/38.53 | [Model](https://drive.google.com/uc?id=1-4MTKOXp1hkPJ_pK6yOCDULC0JVly3SE) | [CNN/DM Bert Uncased](https://drive.google.com/uc?id=100ZE4fVU73EU3K_EGktrYDoMSLJ6EUQW) |
+| distilroberta-base-ext-sum | CNN/DM | None | 42.87/20.02/27.46/39.31 | [Model](https://drive.google.com/uc?id=1-2TZe28K8inHoJr2-WuVivj2qwBn7tFs) | [CNN/DM Roberta](https://drive.google.com/uc?id=1-L7UOYe69dD--OPGCa4sS0QQEnZNb_Vb) |
+| roberta-base-ext-sum | CNN/DM | None | 43.24/20.36/27.64/39.65 | [Model](https://drive.google.com/uc?id=18ZlImBv1P7VmDPUpiQHF9frk-q3AFfD0) | [CNN/DM Roberta](https://drive.google.com/uc?id=1-L7UOYe69dD--OPGCa4sS0QQEnZNb_Vb) |
+| mobilebert-uncased-ext-sum | WikiHow | None | 30.72/8.78/19.18/28.59 | [Model](https://drive.google.com/uc?id=1-H7kuojMW50gVnC5flEjQkbHRp-WQtaF) | [WikiHow Bert Uncased](https://drive.google.com/uc?id=1-IO2AgjDsJcbrmsM3R4UIRM2bMHR-Dae) |
+| distilroberta-base-ext-sum | WikiHow | None | 31.07/8.96/19.34/28.95 | [Model](https://drive.google.com/uc?id=1-3NV3TdRcTta9JTi9Kh0sWtoNLEdWrY1) | [WikiHow Roberta](https://drive.google.com/uc?id=1-aQMjCEQlKhEcimMW_WJwQusNScIT2Uf) |
+| roberta-base-ext-sum | WikiHow | None | Not yet... | Not yet... | [WikiHow Roberta](https://drive.google.com/uc?id=1-aQMjCEQlKhEcimMW_WJwQusNScIT2Uf) |
+| mobilebert-uncased-ext-sum | arXiv-PubMed | None | 27.52/7.26/15.53/24.37 | [Model](https://drive.google.com/uc?id=1-KoEYNC2ZiRoP97V4tjXFy-YfltNBape) | [arXiv-PubMed Bert Uncased](https://drive.google.com/uc?id=1-GbxiYkXkK7qcde37JtKtH5U7iIpdrnI) |
+| distilroberta-base-ext-sum | arXiv-PubMed | None | 34.70/12.16/19.52/30.82 | [Model](https://drive.google.com/uc?id=1-8xVR72-jWtIxvl6DYvcND2yVc0gxjGR) | [arXiv-PubMed Roberta](https://drive.google.com/uc?id=11pVkVO1ivC3okWq-l_xW1qQmagDE5Htt) |
+| roberta-base-ext-sum | arXiv-PubMed | None | Not yet... | Not yet... | [arXiv-PubMed Roberta](https://drive.google.com/uc?id=11pVkVO1ivC3okWq-l_xW1qQmagDE5Htt) |
 
 ### Abstractive
 

@@ -1,6 +1,8 @@
 TransformerSum: Summarization Training and Inference Library
 ============================================================
 
+.. image:: _static/logo.png
+
 .. toctree::
    :maxdepth: 2
    :caption: General:

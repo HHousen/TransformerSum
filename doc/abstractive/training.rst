@@ -1,7 +1,7 @@
 Training an Abstractive Summarization Model
 ===========================================
 
-To use (not train) `BART <https://arxiv.org/abs/1910.13461>`_ or `PreSumm <https://arxiv.org/abs/1908.08345>`_ please visit `HHousen/DocSum <https://github.com/HHousen/DocSum`_. To train a model designed for seq2seq tasks visit the `summarization examples in huggingface/transformers <https://github.com/huggingface/transformers/tree/master/examples/seq2seq>`_.
+To use (not train) `BART <https://arxiv.org/abs/1910.13461>`__ or `PreSumm <https://arxiv.org/abs/1908.08345>`_ please visit `HHousen/DocSum <https://github.com/HHousen/DocSum>`_. To train a model designed for seq2seq tasks visit the `summarization examples in huggingface/transformers <https://github.com/huggingface/transformers/tree/master/examples/seq2seq>`_.
 
 .. _abstractive_command_example:
 
@@ -34,7 +34,7 @@ This command will train and test a bert-to-bert model for abstractive summarizat
 Abstractive Long Summarization
 ------------------------------
 
-This script can perform abstractive summarization on long sequences using the ``longbart`` model (`GitHub repo <https://github.com/patil-suraj/longbart>`__). ``longbart`` is `BART <https://huggingface.co/transformers/model_doc/bart.html>`_ (`paper <https://arxiv.org/abs/1910.13461>`__) but with components from the `longformer <https://huggingface.co/transformers/model_doc/longformer.html>`_ (`paper <https://arxiv.org/abs/2004.05150>`__) that enable it to operate with long sequences.
+This script can perform abstractive summarization on long sequences using the ``longbart`` model (`GitHub repo <https://github.com/patil-suraj/longbart>`__). ``longbart`` is `BART <https://huggingface.co/transformers/model_doc/bart.html>`__ (`paper <https://arxiv.org/abs/1910.13461>`__) but with components from the `longformer <https://huggingface.co/transformers/model_doc/longformer.html>`_ (`paper <https://arxiv.org/abs/2004.05150>`__) that enable it to operate with long sequences.
 
 Install ``longbart`` by running ``pip install git+https://github.com/patil-suraj/longbart.git``. Then generate a long model with the below code:
 
