@@ -1,8 +1,10 @@
 import os
+import sys
 import logging
 import random
 import torch
 import nlp
+import pyarrow
 import itertools
 import spacy
 from spacy.lang.en import English
@@ -172,38 +174,56 @@ class AbstractiveSummarizer(pl.LightningModule):
         downloading, preprocessing, tokenization, and feature extraction.
         """
 
-        # load spacy english small model with the "tagger" and "ner" disabled since
-        # we only need the "tokenizer" and "parser"
-        # more info: https://spacy.io/usage/processing-pipelines
-        if self.hparams.sentencizer:
-            spacy_nlp = English()
-            sentencizer = spacy_nlp.create_pipe("sentencizer")
-            spacy_nlp.add_pipe(sentencizer)
-        else:
-            spacy_nlp = spacy.load("en_core_web_sm", disable=["tagger", "ner"])
-
         def convert_to_features(example_batch):
             max_length = self.tokenizer.max_len
 
             articles = example_batch[self.hparams.data_example_column]
-            articles_encoded = self.tokenizer.batch_encode_plus(
-                articles, pad_to_max_length=True, truncation=True,
-            )
+
+            articles_encoded_step = []
+            for article in articles:
+                article = article.strip()
+                try:
+                    article_encoded = self.tokenizer.encode_plus(
+                        article, pad_to_max_length=True, truncation=True,
+                    )
+                    articles_encoded_step.append(article_encoded)
+                except:
+                    print("Failed to tokenize article: {}".format(article))
+                    with open("test.txt", "a+") as file:
+                        file.write(str(article))
+                    sys.exit(1)
+
+            articles_encoded = {
+                "input_ids": [i["input_ids"] for i in articles_encoded_step],
+                "attention_mask": [i["attention_mask"] for i in articles_encoded_step],
+            }
+
+            # articles_encoded = self.tokenizer.batch_encode_plus(
+            #     articles, pad_to_max_length=True, truncation=True,
+            # )
 
             highlights = example_batch[self.hparams.data_summarized_column]
-            # Tokenize highlights using spacy to split them into sentences
-            highlights_tokenized = tokenize(
-                spacy_nlp, highlights, disable_progress_bar=True
-            )
-            sep_token = self.tokenizer.sep_token
 
+            # Tokenize highlights using spacy to split them into sentences if they were not
+            # already split in the dataset (use `hparams.split_char` to specify the sentence
+            # boundary character)
+            if not self.hparams.split_char:
+                highlights = tokenize(spacy_nlp, highlights, disable_progress_bar=True)
+
+            sep_token = self.tokenizer.sep_token
             highlights_input_ids = []
             highlights_attention_masks = []
+
             # For each ground-truth summary
-            for highlight in highlights_tokenized:
-                # `highlight` is a list of sentences where each sentence is a list of tokens
-                # Combine those tokens to create a list of sentences.
-                sents = [" ".join(list_of_ids) for list_of_ids in highlight]
+            for highlight in highlights:
+                if self.hparams.split_char:
+                    # simply split into sentences if `hparams.split_char` is specified
+                    sents = highlight.split(self.hparams.split_char)
+                else:
+                    # `highlight` is a list of sentences where each sentence is a list of tokens
+                    # Combine those tokens to create a list of sentences.
+                    sents = [" ".join(list_of_ids) for list_of_ids in highlight]
+
                 # Tokenize each sentence and append the `sep_token`
                 sents_tokenized = []
                 for sent in sents:
@@ -260,36 +280,95 @@ class AbstractiveSummarizer(pl.LightningModule):
                 "target_mask": highlights_attention_masks,
             }
 
-        self.dataset = nlp.load_dataset(
-            self.hparams.dataset, self.hparams.dataset_version
-        )
+        def remove_empty(batch_item):
+            article = batch_item[self.hparams.data_example_column]
+            if article and (not article == "\n") and (not article == ""):
+                return True  # keep example
+            else:
+                return False  # remove example
 
-        self.dataset["train"] = self.dataset["train"].map(
-            convert_to_features,
-            batched=True,
-            cache_file_name=os.path.join(
-                self.hparams.cache_file_path, "train_tokenized"
-            ),
-        )
-        self.dataset["validation"] = self.dataset["validation"].map(
-            convert_to_features,
-            batched=True,
-            cache_file_name=os.path.join(
-                self.hparams.cache_file_path, "validation_tokenized"
-            ),
-        )
-        self.dataset["test"] = self.dataset["test"].map(
-            convert_to_features,
-            batched=True,
-            cache_file_name=os.path.join(
-                self.hparams.cache_file_path, "test_tokenized"
-            ),
-        )
+        # Load spacy if the summary column does not contain separated sentences
+        if not self.hparams.split_char:
+            # load spacy english small model with the "tagger" and "ner" disabled since
+            # we only need the "tokenizer" and "parser"
+            # more info: https://spacy.io/usage/processing-pipelines
+            if self.hparams.sentencizer:
+                spacy_nlp = English()
+                sentencizer = spacy_nlp.create_pipe("sentencizer")
+                spacy_nlp.add_pipe(sentencizer)
+            else:
+                spacy_nlp = spacy.load("en_core_web_sm", disable=["tagger", "ner"])
+
+        # Combine the two sections of `scientific_papers` if it is chosen as the dataset
+        if self.hparams.dataset == "scientific_papers":
+            self.hparams.data_example_column = "article"
+            self.hparams.data_summarized_column = "abstract"
+
+            dataset_pubmed = nlp.load_dataset("scientific_papers", "pubmed")
+            dataset_arxiv = nlp.load_dataset("scientific_papers", "arxiv")
+
+            combined_dataset = {}
+            for split in ["train", "validation", "test"]:
+                save_path = os.path.join(
+                    self.hparams.cache_file_path,
+                    ("arxiv_pubmed_combined_" + split + ".arrow"),
+                )
+                # If the file has not been saved to disk then combine arXiv and PubMed
+                # and write to file
+                if not os.path.exists(save_path):
+                    logger.info("Joining split {}".format(split))
+                    new = pyarrow.concat_tables(
+                        [dataset_pubmed[split].data, dataset_arxiv[split].data]
+                    )
+
+                    writer = nlp.arrow_writer.ArrowWriter(path=save_path)
+                    writer.write_table(new)
+
+                # Load combined dataset from file
+                logger.info("Loading split {}".format(save_path))
+                combined_dataset[split] = nlp.Dataset.from_file(save_path)
+
+            self.dataset = combined_dataset
+
+        else:
+            self.dataset = nlp.load_dataset(
+                self.hparams.dataset, self.hparams.dataset_version
+            )
+
+        for split in ["train", "validation", "test"]:
+            logger.info("Removing empty examples from {} dataset".format(split))
+            start_num_examples = len(self.dataset[split])
+            self.dataset[split] = self.dataset[split].filter(
+                remove_empty,
+                cache_file_name=os.path.join(
+                    self.hparams.cache_file_path, (split + "_filtered")
+                ),
+            )
+            end_num_examples = len(self.dataset[split])
+            logger.info(
+                "Removed {} ({}%) examples from the dataset.".format(
+                    start_num_examples - end_num_examples,
+                    (1 - end_num_examples / start_num_examples) * 100,
+                )
+            )
+
+            logger.info("Converting {} dataset to features".format(split))
+            self.dataset[split] = self.dataset[split].map(
+                convert_to_features,
+                batched=True,
+                cache_file_name=os.path.join(
+                    self.hparams.cache_file_path, (split + "_tokenized")
+                ),
+            )
 
         columns = ["source", "target", "source_mask", "target_mask"]
         self.dataset["train"].set_format(type="torch", columns=columns)
         self.dataset["validation"].set_format(type="torch", columns=columns)
         self.dataset["test"].set_format(type="torch", columns=columns)
+
+        # Exit if set to only preprocess the data
+        if self.hparams.only_preprocess:
+            sys.exit(0)
 
     def train_dataloader(self):
         """Create dataloader for training."""
@@ -795,6 +874,11 @@ class AbstractiveSummarizer(pl.LightningModule):
         )
         parser.add_argument("--weight_decay", default=1e-2, type=float)
         parser.add_argument(
+            "--only_preprocess",
+            action="store_true",
+            help="Only preprocess and write the data to disk. Don't train model.",
+        )
+        parser.add_argument(
             "--dataset",
             type=str,
             default="cnn_dailymail",
@@ -823,6 +907,15 @@ class AbstractiveSummarizer(pl.LightningModule):
             type=str,
             default=".",
             help="Path to cache the tokenized dataset.",
+        )
+        parser.add_argument(
+            "--split_char",
+            type=str,
+            default=None,
+            help="""If the `--data_summarized_column` is already split into sentences then use 
+            this option to specify which token marks sentence boundaries. If the summaries are 
+            not split into sentences then spacy will be used to split them. The default is None, 
+            which means to use spacy.""",
         )
         parser.add_argument(
             "--save_percentage",

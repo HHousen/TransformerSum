@@ -63,7 +63,7 @@ This project integrates with `rouge-score <https://pypi.org/project/rouge-score/
 
 You can compute the ROUGE scores between a candidate text file and a ground-truth text file where each file contains one summary per line with the following command:
 
-.. code-block:: 
+.. code-block::
 
     python -c "import helpers; helpers.test_rouge('tmp', 'save_gold.txt', 'save_pred.txt')"
 
@@ -72,5 +72,5 @@ Two flavors of ROUGE-L
 
 In the ROUGE paper, two flavors of ROUGE-L are described:
 
-    sentence-level: Compute longest common subsequence (LCS) between two pieces of text. Newlines are ignored. This is called rougeL in this package.
-    summary-level: Newlines in the text are interpreted as sentence boundaries, and the LCS is computed between each pair of reference and candidate sentences, and something called union-LCS is computed. This is called ``rougeLsum`` in the `rouge-score <https://github.com/google-research/google-research/tree/master/rouge>`_ package.
+    1. sentence-level: Compute longest common subsequence (LCS) between two pieces of text. Newlines are ignored. This is called rougeL in this package.
+    2. summary-level: Newlines in the text are interpreted as sentence boundaries, and the LCS is computed between each pair of reference and candidate sentences, and something called union-LCS is computed. This is called ``rougeLsum`` in the `rouge-score <https://github.com/google-research/google-research/tree/master/rouge>`_ package.
