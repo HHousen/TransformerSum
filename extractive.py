@@ -653,10 +653,6 @@ class ExtractiveSummarizer(pl.LightningModule):
                 k=self.hparams.ranger_k,
                 eps=self.hparams.adam_epsilon,
             )
-        elif self.hparams.optimizer_type == "yellowfin":
-            from optimizers.yellowfin import YFOptimizer
-
-            optimizer = YFOptimizer(self.parameters())
         elif self.hparams.optimizer_type == "qhadam":
             from qhoptim.pyt import QHAdam
 
@@ -1198,7 +1194,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             help="""Which optimizer to use:
             1. `ranger` optimizer (combination of RAdam and LookAhead)
             2. `adamw`
-            3. `yellowfin`""",
+            3. `qhadam`""",
         )
         parser.add_argument(
             "--ranger-k",

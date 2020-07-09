@@ -291,7 +291,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         def remove_empty(batch_item):
             article = batch_item[self.hparams.data_example_column]
             article = article.strip()
-            highlight = example_batch[self.hparams.data_summarized_column]
+            highlight = batch_item[self.hparams.data_summarized_column]
             highlight = highlight.strip()
             # keep_article = article and article != "\n" and article != ""
             # keep_highlight = highlight and highlight != "\n" and highlight != ""
