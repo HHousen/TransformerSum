@@ -1,7 +1,7 @@
 Training an Abstractive Summarization Model
 ===========================================
 
-To use (not train) `BART <https://arxiv.org/abs/1910.13461>`__ or `PreSumm <https://arxiv.org/abs/1908.08345>`_ please visit `HHousen/DocSum <https://github.com/HHousen/DocSum>`_. To train a model designed for seq2seq tasks visit the `summarization examples in huggingface/transformers <https://github.com/huggingface/transformers/tree/master/examples/seq2seq>`_.
+To use (not train) `BART <https://arxiv.org/abs/1910.13461>`__ or `PreSumm <https://arxiv.org/abs/1908.08345>`_ please visit `HHousen/DocSum <https://github.com/HHousen/DocSum>`_ or use a `huggingface/transformers summarization pipeline <https://huggingface.co/transformers/main_classes/pipelines.html#summarizationpipeline>`_. To train a model designed for seq2seq tasks visit the `summarization examples in huggingface/transformers <https://github.com/huggingface/transformers/tree/master/examples/seq2seq>`_.
 
 .. _abstractive_command_example:
 

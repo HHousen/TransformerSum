@@ -224,20 +224,28 @@ class AbstractiveSummarizer(pl.LightningModule):
                     # Combine those tokens to create a list of sentences.
                     sents = [" ".join(list_of_ids) for list_of_ids in highlight]
 
+                assert type(sents) is list
+                assert len(sents) > 0
+
                 # Tokenize each sentence and append the `sep_token`
                 sents_tokenized = []
                 for sent in sents:
+                    assert type(sent) is str
+                    assert len(sent) > 0
                     sent = self.tokenizer.tokenize(sent)
                     sent.append(sep_token)
                     sents_tokenized.append(sent)
 
                 # Delete the last `sep_token` from the last sentence
+                assert type(sents_tokenized[-1][-1]) is str
                 del sents_tokenized[-1][-1]
                 # Flatten `sents_tokenized` (a list of sentences where each sentence is a list
                 # of tokens) to a list of tokens
                 sents_tokenized_flat = list(
                     itertools.chain.from_iterable(sents_tokenized)
                 )
+                assert type(sents_tokenized_flat[0]) is str
+                assert len(sents_tokenized_flat) > 0
 
                 # Convert the tokens to `input_ids`
                 # `max_length` is the max length minus 2 because we need to add the
@@ -282,7 +290,12 @@ class AbstractiveSummarizer(pl.LightningModule):
 
         def remove_empty(batch_item):
             article = batch_item[self.hparams.data_example_column]
-            if article and (not article == "\n") and (not article == ""):
+            article = article.strip()
+            highlight = example_batch[self.hparams.data_summarized_column]
+            highlight = highlight.strip()
+            # keep_article = article and article != "\n" and article != ""
+            # keep_highlight = highlight and highlight != "\n" and highlight != ""
+            if article and highlight:
                 return True  # keep example
             else:
                 return False  # remove example
