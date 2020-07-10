@@ -396,6 +396,12 @@ class SentencesProcessor:
         if max_length is None:
             max_length = tokenizer.max_len
 
+        if max_length > 1_000_000:
+            logger.warn(
+                "Tokenizer maximum length is greater than 1,000,000. This is likely a mistake. Resetting to 512 tokens."
+            )
+            max_length = 512
+
         # adds a '[CLS]' token between each sentence and outputs `input_ids`
         if bert_compatible_cls:
             # If the CLS or SEP tokens exist in the document as part of the dataset, then

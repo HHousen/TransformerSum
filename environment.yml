@@ -18,3 +18,4 @@ dependencies:
       - rouge-score
       - packaging
       - nlp
+      - gradio
