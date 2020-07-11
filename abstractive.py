@@ -24,7 +24,7 @@ from transformers import (
     EncoderDecoderModel,
     BartTokenizer,
 )
-from helpers import lr_lambda_func, pad
+from helpers import lr_lambda_func, pad, LabelSmoothingLoss
 from convert_to_extractive import tokenize
 
 logger = logging.getLogger(__name__)
@@ -124,7 +124,16 @@ class AbstractiveSummarizer(pl.LightningModule):
             }
             self.tokenizer.add_special_tokens(special_tokens_dict)
 
-        self.loss_func = nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_token_id)
+        if self.hparams.label_smoothing > 0:
+            self.loss_func = LabelSmoothingLoss(
+                self.hparams.label_smoothing,
+                self.tokenizer.vocab_size,
+                ignore_index=self.tokenizer.pad_token_id,
+            )
+        else:
+            self.loss_func = nn.CrossEntropyLoss(
+                ignore_index=self.tokenizer.pad_token_id
+            )
 
     def forward(
         self, source=None, target=None, source_mask=None, target_mask=None, labels=None
@@ -964,6 +973,12 @@ class AbstractiveSummarizer(pl.LightningModule):
             type=int,
             default=None,
             help="Maximum sequence length during generation while testing and when using the `predict()` function.",
+        )
+        parser.add_argument(
+            "--label_smoothing",
+            type=float,
+            default=0.1,
+            help="`LabelSmoothingLoss` implementation from OpenNMT (https://bit.ly/2ObgVPP) as stated in the original paper https://arxiv.org/abs/1512.00567.",
         )
 
         return parser

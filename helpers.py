@@ -5,6 +5,8 @@ import json
 import gzip
 import logging
 import pytorch_lightning as pl
+from torch import nn
+import torch.nn.functional as F
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +162,7 @@ def pad_tensors(tensors, pad_id=0, width=None, pad_on_left=False):
         for tensor in tensors
     ]
 
+
 def test_rouge(temp_dir, cand, ref):
     """Compute ROUGE scores using the official ROUGE 1.5.5 package. This function uses the
     ``pyrouge`` python module to interface with the office ROUGE script. There should be a 
@@ -182,14 +185,14 @@ def test_rouge(temp_dir, cand, ref):
     """
     import pyrouge
 
-    candidates = [line.strip() for line in open(cand, encoding='utf-8')]
-    references = [line.strip() for line in open(ref, encoding='utf-8')]
+    candidates = [line.strip() for line in open(cand, encoding="utf-8")]
+    references = [line.strip() for line in open(ref, encoding="utf-8")]
     print(len(candidates))
     print(len(references))
     assert len(candidates) == len(references)
 
     cnt = len(candidates)
-    current_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
+    current_time = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
     os.makedirs(temp_dir, exist_ok=True)
     tmp_dir = os.path.join(temp_dir, "rouge-tmp-{}".format(current_time))
     os.makedirs(tmp_dir, exist_ok=True)
@@ -201,17 +204,19 @@ def test_rouge(temp_dir, cand, ref):
         for i in range(cnt):
             if len(references[i]) < 1:
                 continue
-            with open(tmp_dir + "/candidate/cand.{}.txt".format(i), "w",
-                      encoding="utf-8") as f:
+            with open(
+                tmp_dir + "/candidate/cand.{}.txt".format(i), "w", encoding="utf-8"
+            ) as f:
                 f.write(candidates[i].replace("<q>", "\n"))
-            with open(tmp_dir + "/reference/ref.{}.txt".format(i), "w",
-                      encoding="utf-8") as f:
+            with open(
+                tmp_dir + "/reference/ref.{}.txt".format(i), "w", encoding="utf-8"
+            ) as f:
                 f.write(references[i].replace("<q>", "\n"))
         r = pyrouge.Rouge155()
         r.model_dir = tmp_dir + "/reference/"
         r.system_dir = tmp_dir + "/candidate/"
-        r.model_filename_pattern = 'ref.#ID#.txt'
-        r.system_filename_pattern = r'cand.(\d+).txt'
+        r.model_filename_pattern = "ref.#ID#.txt"
+        r.system_filename_pattern = r"cand.(\d+).txt"
         rouge_results = r.convert_and_evaluate()
         print(rouge_results)
         results_dict = r.output_to_dict(rouge_results)
@@ -220,3 +225,35 @@ def test_rouge(temp_dir, cand, ref):
         if os.path.isdir(tmp_dir):
             shutil.rmtree(tmp_dir)
     return results_dict
+
+
+class LabelSmoothingLoss(nn.Module):
+    """
+    With label smoothing,
+    KL-divergence between q_{smoothed ground truth prob.}(w)
+    and p_{prob. computed by model}(w) is minimized.
+    """
+
+    def __init__(self, label_smoothing, tgt_vocab_size, ignore_index=-100):
+        assert 0.0 < label_smoothing <= 1.0
+        self.ignore_index = ignore_index
+        super(LabelSmoothingLoss, self).__init__()
+
+        smoothing_value = label_smoothing / (tgt_vocab_size - 2)
+        one_hot = torch.full((tgt_vocab_size,), smoothing_value)
+        one_hot[self.ignore_index] = 0
+        self.register_buffer("one_hot", one_hot.unsqueeze(0))
+
+        self.confidence = 1.0 - label_smoothing
+
+    def forward(self, output, target):
+        """
+        output (FloatTensor): batch_size x n_classes
+        target (LongTensor): batch_size
+        """
+        model_prob = self.one_hot.repeat(target.size(0), 1)
+        model_prob.scatter_(1, target.unsqueeze(1), self.confidence)
+        model_prob.masked_fill_((target == self.ignore_index).unsqueeze(1), 0)
+
+        return F.kl_div(output, model_prob, reduction="sum")
+
