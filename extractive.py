@@ -83,26 +83,14 @@ class ExtractiveSummarizer(pl.LightningModule):
         self.hparams = hparams
         self.forward_modify_inputs_callback = None
 
-        # if a custom model type was selected
-        # if hparams.model_type == "longformer":
-        #     from longformer.longformer import Longformer, LongformerConfig
-        #     from longformer.sliding_chunks import pad_to_window_size
-
-        #     config = LongformerConfig.from_pretrained(hparams.model_name_or_path)
-        #     config.attention_mode = "sliding_chunks"
-
-        #     self.word_embedding_model = Longformer.from_pretrained(
-        #         hparams.model_name_or_path, config=config
-        #     )
-        # else:
         if not embedding_model_config:
             embedding_model_config = AutoConfig.from_pretrained(
                 hparams.model_name_or_path,
                 gradient_checkpointing=hparams.gradient_checkpointing,
             )
-        self.word_embedding_model = AutoModel.from_pretrained(
-            hparams.model_name_or_path, config=embedding_model_config
-        )
+
+        self.word_embedding_model = AutoModel.from_config(embedding_model_config)
+
         if (
             "roberta" in hparams.model_name_or_path
             or "distil" in hparams.model_name_or_path
@@ -331,6 +319,22 @@ class ExtractiveSummarizer(pl.LightningModule):
             mean_avg_seq_loss,
             average_loss,
         )
+
+    def setup(self, stage):
+        """Download the `word_embedding_model` if the model will be trained."""
+        # The model is having training resumed if the `hparams` contains `resume_from_checkpoint`
+        # and `resume_from_checkpoint` is True.
+        resuming = (
+            hasattr(self.hparams, "resume_from_checkpoint")
+            and self.hparams.resume_from_checkpoint
+        )
+        # `stage` can be "fit" or "test". Only load the pre-trained weights when
+        # beginning to fit for the first time (when we are not resuming)
+        if stage == "fit" and not resuming:
+            logger.info("Loading `word_embedding_model` pre-trained weights.")
+            self.word_embedding_model = AutoModel.from_pretrained(
+                self.hparams.model_name_or_path, config=self.word_embedding_model.config
+            )
 
     def json_to_dataset(
         self, tokenizer, hparams, inputs=None, num_files=0, processor=None,

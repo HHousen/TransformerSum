@@ -417,7 +417,10 @@ class SentencesProcessor:
                 separation_string = " " + sep_token + " " + cls_token + " "
                 text = separation_string.join(src_txt)
             else:
-                text = src_text[0]
+                try:
+                    text = src_text[0]
+                except:
+                    text = src_text
 
             # tokenize
             src_subtokens = tokenizer.tokenize(text)
