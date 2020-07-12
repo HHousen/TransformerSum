@@ -5,8 +5,10 @@ import json
 import gzip
 import logging
 import pytorch_lightning as pl
+import torch
 from torch import nn
 import torch.nn.functional as F
+from torch.utils.data import Sampler
 
 logger = logging.getLogger(__name__)
 
@@ -257,3 +259,40 @@ class LabelSmoothingLoss(nn.Module):
 
         return F.kl_div(output, model_prob, reduction="sum")
 
+
+# https://github.com/huggingface/transformers/blob/dc31a72f505bc115a2214a68c8ea7c956f98fd1b/examples/seq2seq/utils.py#L158
+class SortishSampler(Sampler):
+    "Go through the text data by order of src length with a bit of randomness. From fastai repo."
+
+    def __init__(self, data, batch_size):
+        self.data, self.bs = data, batch_size
+
+    def key(self, i):
+        return len(self.data[i])
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def __iter__(self):
+        idxs = np.random.permutation(len(self.data))
+        sz = self.bs * 50
+        ck_idx = [idxs[i : i + sz] for i in range(0, len(idxs), sz)]
+        sort_idx = np.concatenate(
+            [sorted(s, key=self.key, reverse=True) for s in ck_idx]
+        )
+        sz = self.bs
+        ck_idx = [sort_idx[i : i + sz] for i in range(0, len(sort_idx), sz)]
+        max_ck = np.argmax(
+            [self.key(ck[0]) for ck in ck_idx]
+        )  # find the chunk with the largest key,
+        ck_idx[0], ck_idx[max_ck] = (
+            ck_idx[max_ck],
+            ck_idx[0],
+        )  # then make sure it goes first.
+        sort_idx = (
+            np.concatenate(np.random.permutation(ck_idx[1:]))
+            if len(ck_idx) > 1
+            else np.array([], dtype=np.int)
+        )
+        sort_idx = np.concatenate((ck_idx[0], sort_idx))
+        return iter(sort_idx)

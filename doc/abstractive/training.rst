@@ -1,7 +1,14 @@
 Training an Abstractive Summarization Model
 ===========================================
 
-To use (not train) `BART <https://arxiv.org/abs/1910.13461>`__ or `PreSumm <https://arxiv.org/abs/1908.08345>`_ please visit `HHousen/DocSum <https://github.com/HHousen/DocSum>`_ or use a `huggingface/transformers summarization pipeline <https://huggingface.co/transformers/main_classes/pipelines.html#summarizationpipeline>`_. To train a model designed for seq2seq tasks visit the `summarization examples in huggingface/transformers <https://github.com/huggingface/transformers/tree/master/examples/seq2seq>`_.
+You can finetune/train abstractive summarization models such as `BART <https://huggingface.co/transformers/model_doc/bart.html>`__ and `T5 <https://huggingface.co/transformers/model_doc/t5.html>`__ with this script. You can also train models consisting of any encoder and decoder combination with an `EncoderDecoderModel <https://huggingface.co/transformers/model_doc/encoderdecoder.html>`_ by specifying the ``--decoder_model_name_or_path`` option (the ``--model_name_or_path`` argument specifies the encoder when using this configuration).
+
+Alternatives:
+
+* While you can use this script to load a pre-trained `BART <https://arxiv.org/abs/1910.13461>`__ or `T5 <https://arxiv.org/abs/1910.10683>`__ model and perform inference, it is recommended to use a `huggingface/transformers summarization pipeline <https://huggingface.co/transformers/main_classes/pipelines.html#summarizationpipeline>`_.
+* To summarize PDF documents efficiently check out `HHousen/DocSum <https://github.com/HHousen/DocSum>`_.
+* To summarize documents and strings of text using `PreSumm <https://arxiv.org/abs/1908.08345>`_ please visit `HHousen/DocSum <https://github.com/HHousen/DocSum>`_.
+* You can also use the `summarization examples in huggingface/transformers <https://github.com/huggingface/transformers/tree/master/examples/seq2seq>`_, which are similar to this script, to train a model for seq2seq tasks. Most notably, the huggingface scripts don't integrate with ``nlp`` for easy and efficient dataset processing or make it easy to train EncoderDecoderModels.
 
 .. _abstractive_command_example:
 
@@ -15,6 +22,7 @@ Example training command:
     python main.py \
     --mode abstractive \
     --model_name_or_path bert-base-uncased \
+    --decoder_model_name_or_path bert-base-uncased \
     --cache_file_path data \
     --max_epochs 4 \
     --do_train --do_test \

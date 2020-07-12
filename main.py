@@ -246,6 +246,11 @@ if __name__ == "__main__":
         help="Which program to use for logging. If `wandb` is chosen then model weights will automatically be uploaded to wandb.ai.",
     )
     parser.add_argument(
+        "--gradient_checkpointing",
+        action="store_true",
+        help="Enable gradient checkpointing (save memory at the expense of a slower backward pass) for the word embedding model. More info: https://github.com/huggingface/transformers/pull/4659#issue-424841871",
+    )
+    parser.add_argument(
         "--do_train", action="store_true", help="Run the training procedure."
     )
     parser.add_argument(

@@ -1290,11 +1290,6 @@ class ExtractiveSummarizer(pl.LightningModule):
             help='The number of layers for the `transformer` classifier. Only has an effect if `--classifier` contains "transformer".',
         )
         parser.add_argument(
-            "--gradient_checkpointing",
-            action="store_true",
-            help="Enable gradient checkpointing (save memory at the expense of a slower backward pass) for the word embedding model. More info: https://github.com/huggingface/transformers/pull/4659#issue-424841871",
-        )
-        parser.add_argument(
             "--train_name",
             type=str,
             default="train",

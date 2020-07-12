@@ -23,8 +23,10 @@ from transformers import (
     AutoTokenizer,
     EncoderDecoderModel,
     BartTokenizer,
+    AutoModelForSeq2SeqLM,
+    LongformerTokenizer,
 )
-from helpers import lr_lambda_func, pad, LabelSmoothingLoss
+from helpers import lr_lambda_func, pad, LabelSmoothingLoss, SortishSampler
 from convert_to_extractive import tokenize
 
 logger = logging.getLogger(__name__)
@@ -67,15 +69,32 @@ class AbstractiveSummarizer(pl.LightningModule):
             self.tokenizer = BartTokenizer.from_pretrained(
                 self.hparams.model_name_or_path
             )
-        else:
-            self.model = EncoderDecoderModel.from_encoder_decoder_pretrained(
-                self.hparams.model_name_or_path,
-                (
-                    self.hparams.decoder_model_name_or_path
-                    if self.hparams.decoder_model_name_or_path
-                    else self.hparams.model_name_or_path
-                ),
+        elif "longformer-encdec" in self.hparams.model_name_or_path.lower():
+            from longformer import LongformerEncoderDecoderForConditionalGeneration
+
+            self.model = LongformerEncoderDecoderForConditionalGeneration.from_pretrained(
+                self.hparams.model_name_or_path, gradient_checkpointing=True
             )
+
+            self.tokenizer = LongformerTokenizer.from_pretrained(
+                self.hparams.model_name_or_path
+            )
+        else:
+            if self.hparams.decoder_model_name_or_path:
+                self.model = EncoderDecoderModel.from_encoder_decoder_pretrained(
+                    self.hparams.model_name_or_path,
+                    (
+                        self.hparams.decoder_model_name_or_path
+                        if self.hparams.decoder_model_name_or_path
+                        else self.hparams.model_name_or_path
+                    ),
+                    gradient_checkpointing=self.hparams.gradient_checkpointing,
+                )
+            else:
+                self.model = AutoModelForSeq2SeqLM.from_pretrained(
+                    self.hparams.model_name_or_path,
+                    gradient_checkpointing=self.hparams.gradient_checkpointing,
+                )
 
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.hparams.model_name_or_path, use_fast=True
@@ -165,17 +184,23 @@ class AbstractiveSummarizer(pl.LightningModule):
             prediction scores, which are the scores for each token in the vocabulary for each
             token in the output.
         """
-        # `self.model.forward()` returns `decoder_outputs + encoder_outputs`
+        # `self.model.forward()` returns `decoder_outputs + encoder_outputs` where
+        # `decoder_outputs` and `encoder_outputs` are dictionaries.
         outputs = self.model.forward(
             input_ids=source,
             attention_mask=source_mask,
             decoder_input_ids=target,
             decoder_attention_mask=target_mask,
-            labels=labels,
+            labels=None,
         )
 
-        cross_entropy_loss, prediction_scores = outputs[:2]
-        return cross_entropy_loss, prediction_scores
+        prediction_scores = outputs[0]
+
+        if labels:
+            loss = self.calculate_loss(prediction_scores, labels)
+            return loss, prediction_scores
+        else:
+            return prediction_scores
 
     def prepare_data(self):
         """
@@ -392,15 +417,48 @@ class AbstractiveSummarizer(pl.LightningModule):
         if self.hparams.only_preprocess:
             sys.exit(0)
 
+    def abs_collate_fn(self, batch):
+        pad_token_id = self.tokenizer.pad_token_id
+
+        source_ids = torch.stack([x["source"] for x in batch])
+        source_mask = torch.stack([x["source_mask"] for x in batch])
+        target_ids = torch.stack([x["target"] for x in batch])
+        target_mask = torch.stack([x["target_mask"] for x in batch])
+
+        source_ids_trimmed, source_mask_trimmed = trim_batch(
+            source_ids, pad_token_id, attention_mask=source_mask
+        )
+        target_ids_trimmed, target_mask_trimmed = trim_batch(
+            target_ids, pad_token_id, attention_mask=target_mask
+        )
+        batch = {
+            "source": source_ids_trimmed,
+            "source_mask": source_mask_trimmed,
+            "target": target_ids_trimmed,
+            "target_mask": target_mask_trimmed,
+        }
+        return batch
+
     def train_dataloader(self):
         """Create dataloader for training."""
         train_dataset = self.dataset["train"]
+
+        sampler = None
+        shuffle = True
+        if self.hparams.sortish_sampler:
+            # https://github.com/huggingface/transformers/blob/dc31a72f505bc115a2214a68c8ea7c956f98fd1b/examples/seq2seq/finetune.py#L206
+            assert self.hparams.gpus <= 1
+            sampler = SortishSampler(train_dataset, self.hparams.batch_size)
+            shuffle = False
 
         train_dataloader = DataLoader(
             train_dataset,
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.dataloader_num_workers,
             pin_memory=True,
+            collate_fn=self.abs_collate_fn,
+            shuffle=shuffle,
+            sampler=sampler,
         )
 
         return train_dataloader
@@ -418,6 +476,7 @@ class AbstractiveSummarizer(pl.LightningModule):
             ),
             num_workers=self.hparams.dataloader_num_workers,
             pin_memory=True,
+            collate_fn=self.abs_collate_fn,
         )
 
         return val_dataloader
@@ -442,6 +501,7 @@ class AbstractiveSummarizer(pl.LightningModule):
             batch_size=self.hparams.test_batch_size,
             num_workers=self.hparams.dataloader_num_workers,
             pin_memory=True,
+            collate_fn=self.abs_collate_fn,
         )
 
         return test_dataloader
@@ -463,7 +523,10 @@ class AbstractiveSummarizer(pl.LightningModule):
             t_total = self.hparams.max_steps * self.hparams.accumulate_grad_batches
         else:
             t_total = int(
-                len(self.train_dataloader_object)
+                (
+                    len(self.train_dataloader_object.dataset)
+                    // (self.hparams.batch_size * max(1, self.hparams.gpus))
+                )
                 * self.hparams.max_epochs
                 // self.hparams.accumulate_grad_batches
             )
@@ -533,6 +596,12 @@ class AbstractiveSummarizer(pl.LightningModule):
         else:
             return optimizer
 
+    def calculate_loss(self, prediction_scores, labels):
+        masked_lm_loss = self.loss_func(
+            prediction_scores.view(-1, self.model.config.vocab_size), labels.view(-1)
+        )
+        return masked_lm_loss
+
     def _step(self, batch):
         """
         Perform a generic step of the model. Pass the batch through the model 
@@ -544,14 +613,13 @@ class AbstractiveSummarizer(pl.LightningModule):
             batch["source_mask"],
             batch["target_mask"],
         )
-        target, target_mask = trim_batch(
-            target, self.tokenizer.pad_token_id, target_mask
-        )
 
         labels = target.clone()
         labels[labels == 0] = -100  # -100 index = padding token
+
         outputs = self.forward(source, target, source_mask, target_mask, labels=labels)
         loss = outputs[0]
+
         return loss
 
     def training_step(self, batch, batch_idx):
@@ -637,7 +705,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         predictions = self.ids_to_clean_text(generated_ids, replace_sep_with_q=True)
         targets = self.ids_to_clean_text(target_ids, replace_sep_with_q=True)
 
-        cross_entropy_loss, prediction_scores = self.forward(**batch)
+        prediction_scores = self.forward(**batch)
 
         rouge_outputs = []
         if self.hparams.test_use_pyrouge:
@@ -979,6 +1047,13 @@ class AbstractiveSummarizer(pl.LightningModule):
             type=float,
             default=0.1,
             help="`LabelSmoothingLoss` implementation from OpenNMT (https://bit.ly/2ObgVPP) as stated in the original paper https://arxiv.org/abs/1512.00567.",
+        )
+        parser.add_argument(
+            "--sortish_sampler",
+            action="store_true",
+            help="""Reorganize the input_ids by length with a bit of randomness. This can help 
+            to avoid memory errors caused by large batches by forcing large batches to be 
+            processed first.""",
         )
 
         return parser
