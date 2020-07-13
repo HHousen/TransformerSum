@@ -26,7 +26,7 @@ from transformers import (
     AutoModelForSeq2SeqLM,
     LongformerTokenizer,
 )
-from helpers import lr_lambda_func, pad, LabelSmoothingLoss, SortishSampler
+from helpers import lr_lambda_func, pad, LabelSmoothingLoss, SortishSampler, pad_tensors
 from convert_to_extractive import tokenize
 
 logger = logging.getLogger(__name__)
@@ -154,8 +154,55 @@ class AbstractiveSummarizer(pl.LightningModule):
                 ignore_index=self.tokenizer.pad_token_id
             )
 
+        if "longformer" in self.hparams.model_name_or_path:
+
+            def longformer_modifier(final_dictionary):
+                """
+                Creates the `global_attention_mask` for the longformer. Tokens with global attention 
+                attend to all other tokens, and all other tokens attend to them. This is important for 
+                task-specific finetuning because it makes the model more flexible at representing the 
+                task. For example, for classification, the `<s>` token should be given global attention. 
+                For QA, all question tokens should also have global attention. For summarization, 
+                global attention is given to all of the `<s>` (RoBERTa 'CLS' equivalent) tokens. Please 
+                refer to the `Longformer paper <https://arxiv.org/abs/2004.05150>`_ for more details. Mask 
+                values selected in ``[0, 1]``: ``0`` for local attention, ``1`` for global attention.
+                """
+                # `batch_size` is the number of attention masks (one mask per input sequence)
+                batch_size = len(final_dictionary["source_mask"])
+                # `sequence_length` is the number of tokens for the first sequence in the batch
+                sequence_length = len(final_dictionary["source_mask"][0])
+                # create `global_attention_mask` using the above details
+                global_attention_mask = torch.tensor(
+                    [[0] * sequence_length] * batch_size
+                )
+                # set the `sent_rep_token_ids` to 1, which is global attention
+                for idx, input_sequence in enumerate(final_dictionary["source"]):
+                    for inner_idx, token_id in enumerate(input_sequence):
+                        if token_id == self.tokenizer.cls_token_id:
+                            global_attention_mask[idx, inner_idx] = 1
+
+                final_dictionary["global_attention_mask"] = global_attention_mask
+
+                for key, item in final_dictionary.items():
+                    final_dictionary[key] = pad_tensors(
+                        item,
+                        nearest_multiple_of=self.model.config.attention_window[0] * 2,
+                    )
+
+                return final_dictionary
+
+            self.collate_fn = partial(self.abs_collate_fn, modifier=longformer_modifier)
+        else:
+            self.collate_fn = self.abs_collate_fn
+
     def forward(
-        self, source=None, target=None, source_mask=None, target_mask=None, labels=None
+        self,
+        source=None,
+        target=None,
+        source_mask=None,
+        target_mask=None,
+        labels=None,
+        **kwargs
     ):
         """Model forward function. See the `60 minute bliz tutorial <https://pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html>`_
         if you are unsure what a forward function is.
@@ -191,12 +238,14 @@ class AbstractiveSummarizer(pl.LightningModule):
             attention_mask=source_mask,
             decoder_input_ids=target,
             decoder_attention_mask=target_mask,
-            labels=None,
+            use_cache=(labels is None),
+            labels=None,  # `labels` is None here so that huggingface/transformers does not calculate loss
+            **kwargs
         )
 
         prediction_scores = outputs[0]
 
-        if labels:
+        if labels is not None:
             loss = self.calculate_loss(prediction_scores, labels)
             return loss, prediction_scores
         else:
@@ -214,11 +263,11 @@ class AbstractiveSummarizer(pl.LightningModule):
             articles = example_batch[self.hparams.data_example_column]
 
             articles_encoded_step = []
-            for article in articles:
+            for idx, article in enumerate(articles):
                 article = article.strip()
                 try:
-                    article_encoded = self.tokenizer.encode_plus(
-                        article, pad_to_max_length=True, truncation=True,
+                    article_encoded = self.tokenizer(
+                        article, padding="max_length", truncation=True,
                     )
                     articles_encoded_step.append(article_encoded)
                 except:
@@ -226,6 +275,15 @@ class AbstractiveSummarizer(pl.LightningModule):
                     with open("test.txt", "a+") as file:
                         file.write(str(article))
                     sys.exit(1)
+
+                if idx != 0:
+                    current_length = len(article_encoded["input_ids"])
+                    first_length = len(articles_encoded_step[0]["input_ids"])
+                    assert (
+                        current_length == first_length
+                    ), "The length of the current input, {}, does not match the length of the first input, {}.".format(
+                        current_length, first_length
+                    )
 
             articles_encoded = {
                 "input_ids": [i["input_ids"] for i in articles_encoded_step],
@@ -403,6 +461,7 @@ class AbstractiveSummarizer(pl.LightningModule):
             self.dataset[split] = self.dataset[split].map(
                 convert_to_features,
                 batched=True,
+                remove_columns=self.dataset[split].data.column_names,
                 cache_file_name=os.path.join(
                     self.hparams.cache_file_path, (split + "_tokenized")
                 ),
@@ -417,7 +476,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         if self.hparams.only_preprocess:
             sys.exit(0)
 
-    def abs_collate_fn(self, batch):
+    def abs_collate_fn(self, batch, modifier=None):
         pad_token_id = self.tokenizer.pad_token_id
 
         source_ids = torch.stack([x["source"] for x in batch])
@@ -437,6 +496,10 @@ class AbstractiveSummarizer(pl.LightningModule):
             "target": target_ids_trimmed,
             "target_mask": target_mask_trimmed,
         }
+
+        if modifier:
+            batch = modifier(batch)
+
         return batch
 
     def train_dataloader(self):
@@ -448,7 +511,11 @@ class AbstractiveSummarizer(pl.LightningModule):
         if self.hparams.sortish_sampler:
             # https://github.com/huggingface/transformers/blob/dc31a72f505bc115a2214a68c8ea7c956f98fd1b/examples/seq2seq/finetune.py#L206
             assert self.hparams.gpus <= 1
-            sampler = SortishSampler(train_dataset, self.hparams.batch_size)
+            sampler = SortishSampler(
+                train_dataset,
+                self.hparams.batch_size,
+                pad_token_id=self.tokenizer.pad_token_id,
+            )
             shuffle = False
 
         train_dataloader = DataLoader(
@@ -456,7 +523,7 @@ class AbstractiveSummarizer(pl.LightningModule):
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.dataloader_num_workers,
             pin_memory=True,
-            collate_fn=self.abs_collate_fn,
+            collate_fn=self.collate_fn,
             shuffle=shuffle,
             sampler=sampler,
         )
@@ -476,7 +543,7 @@ class AbstractiveSummarizer(pl.LightningModule):
             ),
             num_workers=self.hparams.dataloader_num_workers,
             pin_memory=True,
-            collate_fn=self.abs_collate_fn,
+            collate_fn=self.collate_fn,
         )
 
         return val_dataloader
@@ -501,7 +568,7 @@ class AbstractiveSummarizer(pl.LightningModule):
             batch_size=self.hparams.test_batch_size,
             num_workers=self.hparams.dataloader_num_workers,
             pin_memory=True,
-            collate_fn=self.abs_collate_fn,
+            collate_fn=self.collate_fn,
         )
 
         return test_dataloader
@@ -615,7 +682,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         )
 
         labels = target.clone()
-        labels[labels == 0] = -100  # -100 index = padding token
+        # labels[labels == 1] = -100  # -100 index = padding token
 
         outputs = self.forward(source, target, source_mask, target_mask, labels=labels)
         loss = outputs[0]

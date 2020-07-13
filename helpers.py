@@ -1,4 +1,5 @@
 import os
+import math
 import time
 import shutil
 import json
@@ -6,6 +7,7 @@ import gzip
 import logging
 import pytorch_lightning as pl
 import torch
+import numpy as np
 from torch import nn
 import torch.nn.functional as F
 from torch.utils.data import Sampler
@@ -151,18 +153,28 @@ def pad(data, pad_id, width=None, pad_on_left=False):
     return rtn_data
 
 
-def pad_tensors(tensors, pad_id=0, width=None, pad_on_left=False):
+def pad_tensors(
+    tensors, pad_id=0, width=None, pad_on_left=False, nearest_multiple_of=False
+):
     """Pad ``tensors`` with ``pad_id`` to ``width`` on the right by default but if ``pad_on_left`` then left."""
     if not width:
         width = max(len(d) for d in tensors)
+    if nearest_multiple_of:
+        width = math.ceil(width / nearest_multiple_of) * nearest_multiple_of
     if pad_on_left:
-        pad_params = ((width - len(tensor)), 0)
+        return F.pad(
+            tensors,
+            pad=((width - tensors.size()[-1]), 0),
+            mode="constant",
+            value=pad_id,
+        )
     else:
-        pad_params = (0, (width - len(tensor)))
-    return [
-        F.pad(tensor, pad=pad_params, mode="constant", value=pad_id)
-        for tensor in tensors
-    ]
+        return F.pad(
+            tensors,
+            pad=(0, (width - tensors.size()[-1])),
+            mode="constant",
+            value=pad_id,
+        )
 
 
 def test_rouge(temp_dir, cand, ref):
@@ -231,9 +243,10 @@ def test_rouge(temp_dir, cand, ref):
 
 class LabelSmoothingLoss(nn.Module):
     """
-    With label smoothing,
+    CrossEntropyLoss with label smoothing,
     KL-divergence between q_{smoothed ground truth prob.}(w)
     and p_{prob. computed by model}(w) is minimized.
+    From OpenNMT with modifications: https://github.com/OpenNMT/OpenNMT-py/blob/e8622eb5c6117269bb3accd8eb6f66282b5e67d9/onmt/utils/loss.py#L186
     """
 
     def __init__(self, label_smoothing, tgt_vocab_size, ignore_index=-100):
@@ -253,22 +266,28 @@ class LabelSmoothingLoss(nn.Module):
         output (FloatTensor): batch_size x n_classes
         target (LongTensor): batch_size
         """
+        output = output.log_softmax(dim=1)
+
         model_prob = self.one_hot.repeat(target.size(0), 1)
         model_prob.scatter_(1, target.unsqueeze(1), self.confidence)
         model_prob.masked_fill_((target == self.ignore_index).unsqueeze(1), 0)
 
-        return F.kl_div(output, model_prob, reduction="sum")
+        return F.kl_div(output, model_prob, reduction="batchmean")
 
 
 # https://github.com/huggingface/transformers/blob/dc31a72f505bc115a2214a68c8ea7c956f98fd1b/examples/seq2seq/utils.py#L158
 class SortishSampler(Sampler):
-    "Go through the text data by order of src length with a bit of randomness. From fastai repo."
+    """
+    Go through the text data by order of src length with a bit of randomness. 
+    From fastai repo with modifications.
+    """
 
-    def __init__(self, data, batch_size):
-        self.data, self.bs = data, batch_size
+    def __init__(self, data, batch_size, pad_token_id):
+        self.data, self.bs, self.pad_token_id = data, batch_size, pad_token_id
 
     def key(self, i):
-        return len(self.data[i])
+        current_item = self.data[int(i)]["source"]
+        return len(current_item[current_item != self.pad_token_id])
 
     def __len__(self) -> int:
         return len(self.data)
@@ -294,5 +313,5 @@ class SortishSampler(Sampler):
             if len(ck_idx) > 1
             else np.array([], dtype=np.int)
         )
-        sort_idx = np.concatenate((ck_idx[0], sort_idx))
+        sort_idx = np.concatenate((ck_idx[0], sort_idx)).tolist()
         return iter(sort_idx)
