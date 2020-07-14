@@ -289,7 +289,7 @@ if __name__ == "__main__":
         help="""The number of steps between additional checkpoints. By default checkpoints are saved 
         every epoch. Setting this value will save them every epoch and every N steps. This does not 
         use the same callback as `--use_custom_checkpoint_callback` but instead uses a different class 
-        called `StepCheckpointCallback`. You can change the save path by  setting the 
+        called `StepCheckpointCallback`. You can change the save path by setting the 
         `--weights_save_path` option.""",
     )
     parser.add_argument(

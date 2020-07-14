@@ -23,8 +23,8 @@ from transformers import (
     AutoTokenizer,
     EncoderDecoderModel,
     BartTokenizer,
+    BartTokenizerFast,
     AutoModelForSeq2SeqLM,
-    LongformerTokenizer,
 )
 from helpers import lr_lambda_func, pad, LabelSmoothingLoss, SortishSampler, pad_tensors
 from convert_to_extractive import tokenize
@@ -32,10 +32,10 @@ from convert_to_extractive import tokenize
 logger = logging.getLogger(__name__)
 
 try:
-    from longbart import LongBartForConditionalGeneration
+    from longformer import LongformerEncoderDecoderForConditionalGeneration
 except ImportError:
     logger.warn(
-        "Abstractive Only: Could not import `LongBartForConditionalGeneration` from `longbart`, which means the `longbart` model is not available. Install with `pip install git+https://github.com/patil-suraj/longbart.git`."
+        "Abstractive Only: Could not import `LongformerEncoderDecoderForConditionalGeneration` from `longformer`, which means the `LongformerEncoderDecoder` model is not available. Install with `pip install git+https://github.com/allenai/longformer.git@encoderdecoder`."
     )
 
 
@@ -62,22 +62,13 @@ class AbstractiveSummarizer(pl.LightningModule):
 
         self.hparams = hparams
 
-        if "longbart" in self.hparams.model_name_or_path.lower():
-            self.model = LongBartForConditionalGeneration.from_pretrained(
-                self.hparams.model_name_or_path
-            )
-            self.tokenizer = BartTokenizer.from_pretrained(
-                self.hparams.model_name_or_path
-            )
-        elif "longformer-encdec" in self.hparams.model_name_or_path.lower():
-            from longformer import LongformerEncoderDecoderForConditionalGeneration
-
+        if "longformer-encdec" in self.hparams.model_name_or_path.lower():
             self.model = LongformerEncoderDecoderForConditionalGeneration.from_pretrained(
                 self.hparams.model_name_or_path, gradient_checkpointing=True
             )
 
-            self.tokenizer = LongformerTokenizer.from_pretrained(
-                self.hparams.model_name_or_path
+            self.tokenizer = BartTokenizerFast.from_pretrained(
+                self.hparams.model_name_or_path, add_prefix_space=True
             )
         else:
             if self.hparams.decoder_model_name_or_path:
@@ -234,7 +225,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         # `self.model.forward()` returns `decoder_outputs + encoder_outputs` where
         # `decoder_outputs` and `encoder_outputs` are dictionaries.
         outputs = self.model.forward(
-            input_ids=source,
+            input_ids=source.contiguous(),
             attention_mask=source_mask,
             decoder_input_ids=target,
             decoder_attention_mask=target_mask,
@@ -272,8 +263,6 @@ class AbstractiveSummarizer(pl.LightningModule):
                     articles_encoded_step.append(article_encoded)
                 except:
                     print("Failed to tokenize article: {}".format(article))
-                    with open("test.txt", "a+") as file:
-                        file.write(str(article))
                     sys.exit(1)
 
                 if idx != 0:
@@ -418,9 +407,15 @@ class AbstractiveSummarizer(pl.LightningModule):
                     self.hparams.cache_file_path,
                     ("arxiv_pubmed_combined_" + split + ".arrow"),
                 )
+                save_path_final_tokenized = os.path.join(
+                    self.hparams.cache_file_path, (split + "_tokenized")
+                )
                 # If the file has not been saved to disk then combine arXiv and PubMed
-                # and write to file
-                if not os.path.exists(save_path):
+                # and write to file. Don't process if the final tokenized version is
+                # present and can be loaded.
+                if (not os.path.exists(save_path)) and (
+                    not os.path.exists(save_path_final_tokenized)
+                ):
                     logger.info("Joining split {}".format(split))
                     new = pyarrow.concat_tables(
                         [dataset_pubmed[split].data, dataset_arxiv[split].data]
@@ -441,30 +436,35 @@ class AbstractiveSummarizer(pl.LightningModule):
             )
 
         for split in ["train", "validation", "test"]:
-            logger.info("Removing empty examples from {} dataset".format(split))
-            start_num_examples = len(self.dataset[split])
-            self.dataset[split] = self.dataset[split].filter(
-                remove_empty,
-                cache_file_name=os.path.join(
-                    self.hparams.cache_file_path, (split + "_filtered")
-                ),
+            features_cache_file = os.path.join(
+                self.hparams.cache_file_path, (split + "_tokenized")
             )
-            end_num_examples = len(self.dataset[split])
-            logger.info(
-                "Removed {} ({}%) examples from the dataset.".format(
-                    start_num_examples - end_num_examples,
-                    (1 - end_num_examples / start_num_examples) * 100,
+
+            # If the tokenized version has not been created yet, then do the initial
+            # filtering so it can be created
+            if not os.path.isfile(features_cache_file):
+                logger.info("Removing empty examples from {} dataset".format(split))
+                start_num_examples = len(self.dataset[split])
+                self.dataset[split] = self.dataset[split].filter(
+                    remove_empty,
+                    cache_file_name=os.path.join(
+                        self.hparams.cache_file_path, (split + "_filtered")
+                    ),
                 )
-            )
+                end_num_examples = len(self.dataset[split])
+                logger.info(
+                    "Removed {} ({}%) examples from the dataset.".format(
+                        start_num_examples - end_num_examples,
+                        (1 - end_num_examples / start_num_examples) * 100,
+                    )
+                )
 
             logger.info("Converting {} dataset to features".format(split))
             self.dataset[split] = self.dataset[split].map(
                 convert_to_features,
                 batched=True,
                 remove_columns=self.dataset[split].data.column_names,
-                cache_file_name=os.path.join(
-                    self.hparams.cache_file_path, (split + "_tokenized")
-                ),
+                cache_file_name=features_cache_file,
             )
 
         columns = ["source", "target", "source_mask", "target_mask"]
@@ -648,6 +648,15 @@ class AbstractiveSummarizer(pl.LightningModule):
             elif self.hparams.use_scheduler == "onecycle":
                 scheduler = torch.optim.lr_scheduler.OneCycleLR(
                     optimizer, max_lr=self.hparams.learning_rate, total_steps=t_total
+                )
+            elif self.hparams.use_scheduler == "poly":
+                from optimizers.poly_lr_decay import PolynomialLRDecay
+
+                scheduler = PolynomialLRDecay(
+                    optimizer,
+                    end_learning_rate=self.hparams.learning_rate,
+                    max_decay_steps=t_total,
+                    power=3.0,
                 )
             else:
                 logger.error(
