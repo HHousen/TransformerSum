@@ -423,10 +423,27 @@ class AbstractiveSummarizer(pl.LightningModule):
 
                     writer = nlp.arrow_writer.ArrowWriter(path=save_path)
                     writer.write_table(new)
+                else:
+                    logger.info(
+                        "Skipping joining split {} because it already exists".format(
+                            split
+                        )
+                    )
 
-                # Load combined dataset from file
-                logger.info("Loading split {}".format(save_path))
-                combined_dataset[split] = nlp.Dataset.from_file(save_path)
+                if not os.path.exists(save_path_final_tokenized):
+                    # Load combined dataset from file if the final tokenized version
+                    # does not exist.
+                    logger.info("Loading split {}".format(save_path))
+                    combined_dataset[split] = nlp.Dataset.from_file(save_path)
+                else:
+                    # If the tokenzed split already exists then just store the pubmed
+                    # section as a placeholder so `nlp` does not complain.
+                    logger.info(
+                        "NOT loading split {} because the final tokenized version already exists.".format(
+                            save_path
+                        )
+                    )
+                    combined_dataset[split] = dataset_pubmed[split]
 
             self.dataset = combined_dataset
 
@@ -474,6 +491,9 @@ class AbstractiveSummarizer(pl.LightningModule):
 
         # Exit if set to only preprocess the data
         if self.hparams.only_preprocess:
+            logger.info(
+                "Exiting because data has been pre-processed and the `--only_preprocess` option is enabled."
+            )
             sys.exit(0)
 
     def abs_collate_fn(self, batch, modifier=None):
