@@ -6,6 +6,7 @@ import json
 import gzip
 import glob
 import math
+import itertools
 import logging
 import spacy
 import nlp as hf_nlp
@@ -15,7 +16,7 @@ from functools import partial
 from multiprocessing import Pool
 from tqdm import tqdm
 from time import time
-from helpers import load_json, _get_ngrams, _get_word_ngrams
+from helpers import load_json, _get_word_ngrams
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +155,7 @@ def convert_to_extractive_driver(args):
                     # subtract the number of shards already created
                     tot_num_interations -= int(last_shard)
                 else:  # no shards on disk
-                    logger.warn("Tried to resume but no shards found on disk")
+                    logger.warning("Tried to resume but no shards found on disk")
 
             for piece_idx, (source_docs, target_docs) in tqdm(
                 enumerate(
@@ -227,8 +228,8 @@ def convert_to_extractive_process(
     pool = Pool(args.n_process)
     logger.info("Processing " + name)
     t0 = time()
-    for idx, (preprocessed_data, target_doc) in enumerate(
-        pool.map(_example_processor, zip(source_docs_tokenized, target_docs_tokenized),)
+    for (preprocessed_data, target_doc) in pool.map(
+        _example_processor, zip(source_docs_tokenized, target_docs_tokenized),
     ):
         if preprocessed_data is not None:
             # preprocessed_data is (source_doc, labels)
@@ -348,7 +349,6 @@ def seek_files(files, line_num):
     """Seek a set of files to line number ``line_num`` and return the files."""
     rtn_file_objects = []
     for file_object in files:
-        line_offset = []
         offset = 0
         for idx, line in enumerate(file_object):
             if idx >= line_num:
@@ -391,8 +391,8 @@ def tokenize(
     """Tokenize using spacy and split into sentences and tokens."""
     tokenized = []
 
-    for idx, doc in tqdm(
-        enumerate(nlp.pipe(docs, n_process=n_process, batch_size=batch_size,)),
+    for doc in tqdm(
+        nlp.pipe(docs, n_process=n_process, batch_size=batch_size,),
         total=len(docs),
         desc="Tokenizing" + name,
         mininterval=tokenizer_log_interval,
@@ -539,7 +539,7 @@ def greedy_selection(doc_sent_list, abstract_sent_list, summary_size):
     reference_2grams = _get_word_ngrams(2, [abstract])
 
     selected = []
-    for s in range(summary_size):
+    for _ in range(summary_size):
         cur_max_rouge = max_rouge
         cur_id = -1
         for i in range(len(sents)):

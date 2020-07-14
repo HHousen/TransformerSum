@@ -168,17 +168,13 @@ def pad_tensors(
             mode="constant",
             value=pad_id,
         )
-    else:
-        return F.pad(
-            tensors,
-            pad=(0, (width - tensors.size()[-1])),
-            mode="constant",
-            value=pad_id,
-        )
+    return F.pad(
+        tensors, pad=(0, (width - tensors.size()[-1])), mode="constant", value=pad_id,
+    )
 
 
 def test_rouge(temp_dir, cand, ref):
-    """Compute ROUGE scores using the official ROUGE 1.5.5 package. This function uses the
+    r"""Compute ROUGE scores using the official ROUGE 1.5.5 package. This function uses the
     ``pyrouge`` python module to interface with the office ROUGE script. There should be a 
     "<q>" token between each sentence in the ``cand`` and ``ref`` files. ``pyrouge`` splits 
     sentences based on newlines but we cannot store all the summaries easily in a single text 

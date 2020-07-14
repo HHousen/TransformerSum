@@ -30,7 +30,7 @@ class Pooling(nn.Module):
         sent_lengths=None,
         sent_lengths_mask=None,
     ):
-        """Forward pass of the Pooling nn.Module.
+        r"""Forward pass of the Pooling nn.Module.
 
         Args:
             word_vectors (torch.Tensor, optional): Vectors representing words created by 

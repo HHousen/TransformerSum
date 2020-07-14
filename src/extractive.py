@@ -6,8 +6,6 @@ import os
 import sys
 import glob
 import logging
-import json
-import gzip
 import numpy as np
 from functools import partial
 from multiprocessing import Pool
@@ -17,7 +15,7 @@ import pytorch_lightning as pl
 from rouge_score import rouge_scorer, scoring
 import torch
 from torch import nn
-from torch.utils.data import DataLoader, RandomSampler, TensorDataset
+from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import LambdaLR, OneCycleLR
 from spacy.lang.en import English
 from pooling import Pooling
@@ -27,19 +25,9 @@ from classifier import (
     SimpleLinearClassifier,
     TransformerEncoderClassifier,
 )
-from helpers import load_json, lr_lambda_func, block_trigrams
+from helpers import load_json, lr_lambda_func, block_trigrams, test_rouge
 
 logger = logging.getLogger(__name__)
-
-try:
-    from transformers import get_linear_schedule_with_warmup
-
-    NO_LINEAR_SCHEDULE = False
-except ImportError:
-    NO_LINEAR_SCHEDULE = True
-    logger.warn(
-        "Could not import `get_linear_schedule_with_warmup` from `transformers`. The linear scheduler is not available."
-    )
 
 from transformers import (
     AutoConfig,
@@ -55,7 +43,7 @@ try:
 
     MODEL_CLASSES = tuple(m.model_type for m in MODEL_MAPPING)  # + CUSTOM_MODEL_CLASSES
 except ImportError:
-    logger.warn(
+    logger.warning(
         "Could not import `MODEL_MAPPING` from transformers because it is an old version."
     )
 
@@ -95,7 +83,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             "roberta" in hparams.model_name_or_path
             or "distil" in hparams.model_name_or_path
         ) and not hparams.no_use_token_type_ids:
-            logger.warn(
+            logger.warning(
                 (
                     "You are using a "
                     + str(hparams.model_type)
@@ -142,8 +130,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             elif hparams.classifier == "transformer_linear":
                 linear = LinearClassifier(
                     self.word_embedding_model.config.hidden_size,
-                    first_dropout=hparams.classifier_dropout,
-                    last_dropout=hparams.classifier_dropout,
+                    dropout=hparams.classifier_dropout,
                 )
                 self.encoder = TransformerEncoderClassifier(
                     self.word_embedding_model.config.hidden_size,
@@ -192,7 +179,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         sent_lengths_mask=None,
         **kwargs,
     ):
-        """Model forward function. See the `60 minute bliz tutorial <https://pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html>`_
+        r"""Model forward function. See the `60 minute bliz tutorial <https://pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html>`_
         if you are unsure what a forward function is.
 
         Args:
@@ -429,7 +416,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         then this function will run once, loading the entire dataset into memory to process
         just like the ``convert_to_extractive.py`` script.
         """
-        datasets = dict()
+        datasets = {}
 
         # loop through all data_splits
         data_splits = [
@@ -482,7 +469,7 @@ class ExtractiveSummarizer(pl.LightningModule):
                     processor=self.processor,
                 )
 
-                for result in map(
+                for _ in map(
                     json_to_dataset_processor, zip(range(len(json_files)), json_files),
                 ):
                     pass
@@ -505,7 +492,7 @@ class ExtractiveSummarizer(pl.LightningModule):
 
         # if set to only preprocess the data then exit after all loops have been completed
         if self.hparams.only_preprocess:
-            logger.warn(
+            logger.warning(
                 "Exiting since data has been preprocessed and written to disk and `hparams.only_preprocess` is True."
             )
             sys.exit(0)
@@ -558,7 +545,6 @@ class ExtractiveSummarizer(pl.LightningModule):
         self.global_step_tracker = 0
 
         train_dataset = self.datasets[self.hparams.train_name]
-        # train_sampler = RandomSampler(train_dataset)
         train_dataloader = DataLoader(
             train_dataset,
             # sampler=train_sampler,
@@ -572,7 +558,6 @@ class ExtractiveSummarizer(pl.LightningModule):
     def val_dataloader(self):
         """Create dataloader for validation."""
         valid_dataset = self.datasets[self.hparams.val_name]
-        # valid_sampler = RandomSampler(valid_dataset)
         valid_dataloader = DataLoader(
             valid_dataset,
             # sampler=valid_sampler,
@@ -588,7 +573,6 @@ class ExtractiveSummarizer(pl.LightningModule):
             self.rouge_metrics, use_stemmer=True
         )
         test_dataset = self.datasets[self.hparams.test_name]
-        # test_sampler = RandomSampler(test_dataset)
         test_dataloader = DataLoader(
             test_dataset,
             # sampler=test_sampler,
@@ -675,12 +659,6 @@ class ExtractiveSummarizer(pl.LightningModule):
 
         if self.hparams.use_scheduler:
             if self.hparams.use_scheduler == "linear":
-                if NO_LINEAR_SCHEDULE:
-                    logger.error(
-                        "The linear scheduler was not imported (because you are running an older version of hugginface/transformers) but you tried to use it."
-                    )
-                    sys.exit(1)
-
                 # We have to import the function and create a partial because functions cannot be
                 # serialized by python pickle. Therefore, if the normal `get_linear_schedule_with_warmup`
                 # function provided by `transformers` was used, the program would fail to save
@@ -712,8 +690,8 @@ class ExtractiveSummarizer(pl.LightningModule):
             # every batch.
             scheduler_dict = {"scheduler": scheduler, "interval": "step"}
             return ([optimizer], [scheduler_dict])
-        else:
-            return optimizer
+        
+        return optimizer
 
     def training_step(self, batch, batch_idx):
         """Training step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.training_step>`__"""
@@ -910,9 +888,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             for index, value in indexes:
                 # if the index has changed and is not one greater then the previous then
                 # index was skipped because no elements greater than k
-                if (
-                    (previous_index != index) and (previous_index + 1 != index)
-                ) or value == -1:
+                if (index not in (previous_index, previous_index + 1)) or value == -1:
                     # For the first time the above loop runs, `previous_index` is -1 because no
                     # no index has been checked yet. The -1 is necessary to check if the 0th
                     # index is skipped. But, if the 0th index is skipped then the values need to be
@@ -1003,9 +979,9 @@ class ExtractiveSummarizer(pl.LightningModule):
             with open("save_gold.txt", "a+") as save_gold, open(
                 "save_pred.txt", "a+"
             ) as save_pred:
-                for i in range(len(targets)):
+                for i in enumerate(targets):
                     save_gold.write(targets[i].strip() + "\n")
-                for i in range(len(predictions)):
+                for i in enumerate(predictions):
                     save_pred.write(predictions[i].strip() + "\n")
 
         output = OrderedDict(
@@ -1127,21 +1103,21 @@ class ExtractiveSummarizer(pl.LightningModule):
         if raw_scores:
             # key=sentence
             # value=score
-            sent_scores = dict(zip(src_txt, output))
+            sent_scores = dict(zip(src_txt, outputs))
             return sent_scores
-        else:
-            sorted_ids = (
-                torch.argsort(outputs, dim=1, descending=True).detach().cpu().numpy()
-            )
-            logger.debug(f"Sorted sentence ids: {sorted_ids}")
-            selected_ids = sorted_ids[0, :2]
-            logger.debug(f"Selected sentence ids: {selected_ids}")
 
-            selected_sents = []
-            for i in selected_ids:
-                selected_sents.append(src_txt[i])
+        sorted_ids = (
+            torch.argsort(outputs, dim=1, descending=True).detach().cpu().numpy()
+        )
+        logger.debug(f"Sorted sentence ids: {sorted_ids}")
+        selected_ids = sorted_ids[0, :2]
+        logger.debug(f"Selected sentence ids: {selected_ids}")
 
-            return " ".join(selected_sents).strip()
+        selected_sents = []
+        for i in selected_ids:
+            selected_sents.append(src_txt[i])
+
+        return " ".join(selected_sents).strip()
 
     @staticmethod
     def add_model_specific_args(parent_parser):

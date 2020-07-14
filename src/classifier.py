@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 try:
     from transformers.activations import get_activation
 except ImportError:
-    logger.warn(
+    logger.warning(
         "Could not import `get_activation` from `transformers.activations`. Only GELU will be available for use in the classifier."
     )
 
@@ -91,7 +91,7 @@ class SimpleLinearClassifier(nn.Module):
 
 
 class TransformerEncoderClassifier(nn.Module):
-    """
+    r"""
     ``nn.Module`` to classify sentences by running the sentence vectors through some
     ``nn.TransformerEncoder`` layers and then reducing the hidden dimension to 1 with a
     linear layer.

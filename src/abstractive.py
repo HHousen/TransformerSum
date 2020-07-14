@@ -18,15 +18,19 @@ from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import LambdaLR, OneCycleLR
 import pytorch_lightning as pl
 from transformers import (
-    BertForMaskedLM,
-    BertModel,
     AutoTokenizer,
     EncoderDecoderModel,
-    BartTokenizer,
     BartTokenizerFast,
     AutoModelForSeq2SeqLM,
 )
-from helpers import lr_lambda_func, pad, LabelSmoothingLoss, SortishSampler, pad_tensors
+from helpers import (
+    lr_lambda_func,
+    pad,
+    LabelSmoothingLoss,
+    SortishSampler,
+    pad_tensors,
+    test_rouge,
+)
 from convert_to_extractive import tokenize
 
 logger = logging.getLogger(__name__)
@@ -34,7 +38,7 @@ logger = logging.getLogger(__name__)
 try:
     from longformer import LongformerEncoderDecoderForConditionalGeneration
 except ImportError:
-    logger.warn(
+    logger.warning(
         "Abstractive Only: Could not import `LongformerEncoderDecoderForConditionalGeneration` from `longformer`, which means the `LongformerEncoderDecoder` model is not available. Install with `pip install git+https://github.com/allenai/longformer.git@encoderdecoder`."
     )
 
@@ -44,10 +48,11 @@ def trim_batch(
 ):
     """Remove columns that are populated exclusively by ``pad_token_id``."""
     keep_column_mask = input_ids.ne(pad_token_id).any(dim=0)
+    
     if attention_mask is None:
         return input_ids[:, keep_column_mask]
-    else:
-        return (input_ids[:, keep_column_mask], attention_mask[:, keep_column_mask])
+
+    return (input_ids[:, keep_column_mask], attention_mask[:, keep_column_mask])
 
 
 class AbstractiveSummarizer(pl.LightningModule):
@@ -239,8 +244,8 @@ class AbstractiveSummarizer(pl.LightningModule):
         if labels is not None:
             loss = self.calculate_loss(prediction_scores, labels)
             return loss, prediction_scores
-        else:
-            return prediction_scores
+
+        return prediction_scores
 
     def prepare_data(self):
         """
@@ -672,7 +677,7 @@ class AbstractiveSummarizer(pl.LightningModule):
                 scheduler = LambdaLR(optimizer, lr_lambda, -1)
 
             elif self.hparams.use_scheduler == "onecycle":
-                scheduler = torch.optim.lr_scheduler.OneCycleLR(
+                scheduler = OneCycleLR(
                     optimizer, max_lr=self.hparams.learning_rate, total_steps=t_total
                 )
             elif self.hparams.use_scheduler == "poly":
@@ -695,8 +700,8 @@ class AbstractiveSummarizer(pl.LightningModule):
             scheduler_dict = {"scheduler": scheduler, "interval": "step"}
 
             return ([optimizer], [scheduler_dict])
-        else:
-            return optimizer
+
+        return optimizer
 
     def calculate_loss(self, prediction_scores, labels):
         masked_lm_loss = self.loss_func(
@@ -812,9 +817,9 @@ class AbstractiveSummarizer(pl.LightningModule):
             with open("save_gold.txt", "a+") as save_gold, open(
                 "save_pred.txt", "a+"
             ) as save_pred:
-                for i in range(len(targets)):
+                for i, _ in enumerate(targets):
                     save_gold.write(targets[i].strip() + "\n")
-                for i in range(len(predictions)):
+                for i, _ in enumerate(predictions):
                     save_pred.write(predictions[i].strip() + "\n")
         else:
             for target, prediction in zip(targets, predictions):
@@ -987,8 +992,8 @@ class AbstractiveSummarizer(pl.LightningModule):
 
         if len(gen_texts) == 1:
             return gen_texts[0]
-        else:
-            return list(map(str.strip, gen_texts))
+
+        return list(map(str.strip, gen_texts))
 
     @pl.utilities.rank_zero_only
     def on_save_checkpoint(self, checkpoint):

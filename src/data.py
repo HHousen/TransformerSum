@@ -1,29 +1,21 @@
 import os
-import re
 import gc
 import copy
-import csv
 import json
 import random
 import logging
 import torch
-from tqdm import tqdm
-from time import time
 from multiprocessing import Pool
 from functools import partial
 import torch
-import torch.nn.functional as F
-from torch._six import container_abcs
 from torch.utils.data import TensorDataset, IterableDataset
 from helpers import pad
-
-import numpy as np
 
 logger = logging.getLogger(__name__)
 
 
 def pad_batch_collate(batch, modifier=None):
-    """
+    r"""
     Collate function to be passed to ``DataLoaders``. PyTorch Docs:
     `https://pytorch.org/docs/stable/data.html#dataloader-collate-fn <https://pytorch.org/docs/stable/data.html#dataloader-collate-fn>`__
 
@@ -64,7 +56,6 @@ def pad_batch_collate(batch, modifier=None):
     for easy extendability.
     """
     elem = batch[0]
-    elem_type = type(elem)
     final_dictionary = {}
 
     for key in elem:
@@ -129,11 +120,11 @@ def pad_batch_collate(batch, modifier=None):
 
             continue
 
-        elif key == "source" or key == "target":
+        elif key in ("source", "target"):
             final_dictionary[key] = feature_list
             continue
 
-        elif key == "labels" or key == "token_type_ids":
+        elif key in ("labels", "token_type_ids"):
             feature_list = pad(feature_list, 0)
 
         feature_list = torch.tensor(feature_list)
@@ -201,23 +192,23 @@ class FSIterableDataset(IterableDataset):
     def __len__(self):
         if self.num_batches:
             return self.num_batches
-        else:
-            logger.debug(
-                "Calculating length of `IterableDataset` by loading each file, getting the length, and unloading, which is slow."
-            )
-            total_length = 0
-            for data_file in self.files_list:
-                dataset_section = torch.load(data_file)
-                total_length += len(dataset_section)
-            self.total_length = total_length
 
-            # Calculate number of batches because the DataLoader `__len__` function directly
-            # calls the `__len__` function of the dataset if the dataset is of type `IterableDataset`
-            # DataLoader code: https://pytorch.org/docs/stable/_modules/torch/utils/data/dataloader.html#DataLoader
-            remainder_batch = 0 if (total_length % self.batch_size == 0) else 1
-            num_batches = int(total_length / self.batch_size) + remainder_batch
-            self.num_batches = num_batches
-            return num_batches
+        logger.debug(
+            "Calculating length of `IterableDataset` by loading each file, getting the length, and unloading, which is slow."
+        )
+        total_length = 0
+        for data_file in self.files_list:
+            dataset_section = torch.load(data_file)
+            total_length += len(dataset_section)
+        self.total_length = total_length
+
+        # Calculate number of batches because the DataLoader `__len__` function directly
+        # calls the `__len__` function of the dataset if the dataset is of type `IterableDataset`
+        # DataLoader code: https://pytorch.org/docs/stable/_modules/torch/utils/data/dataloader.html#DataLoader
+        remainder_batch = 0 if (total_length % self.batch_size == 0) else 1
+        num_batches = int(total_length / self.batch_size) + remainder_batch
+        self.num_batches = num_batches
+        return num_batches
 
 
 class InputExample(object):
@@ -312,7 +303,7 @@ class InputFeatures(object):
 
 
 class SentencesProcessor:
-    """Create a `SentencesProcessor`
+    r"""Create a `SentencesProcessor`
         
     Arguments:
         name (str, optional): A label for the ``SentencesProcessor`` object, used internally for saving if
@@ -343,40 +334,6 @@ class SentencesProcessor:
         processor.add_examples(texts, labels=labels)
         return processor
 
-    def add_examples_from_csv(
-        self,
-        file_name,
-        split_name="",
-        column_label=0,
-        column_text=1,
-        column_id=None,
-        skip_first_row=False,
-        overwrite_labels=False,
-        overwrite_examples=False,
-    ):
-        lines = self._read_tsv(file_name)
-        if skip_first_row:
-            lines = lines[1:]
-        texts = []
-        labels = []
-        ids = []
-        for (i, line) in enumerate(lines):
-            texts.append(line[column_text])
-            labels.append(line[column_label])
-            if column_id is not None:
-                ids.append(line[column_id])
-            else:
-                guid = "%s-%s" % (split_name, i) if split_name else "%s" % i
-                ids.append(guid)
-
-        return self.add_examples(
-            texts,
-            labels,
-            ids,
-            overwrite_labels=overwrite_labels,
-            overwrite_examples=overwrite_examples,
-        )
-
     @classmethod
     def get_input_ids(
         cls,
@@ -397,7 +354,7 @@ class SentencesProcessor:
             max_length = tokenizer.max_len
 
         if max_length > 1_000_000:
-            logger.warn(
+            logger.warning(
                 "Tokenizer maximum length is greater than 1,000,000. This is likely a mistake. Resetting to 512 tokens."
             )
             max_length = 512
@@ -418,9 +375,9 @@ class SentencesProcessor:
                 text = separation_string.join(src_txt)
             else:
                 try:
-                    text = src_text[0]
+                    text = src_txt[0]
                 except:
-                    text = src_text
+                    text = src_txt
 
             # tokenize
             src_subtokens = tokenizer.tokenize(text)
@@ -450,7 +407,7 @@ class SentencesProcessor:
         overwrite_labels=False,
         overwrite_examples=False,
     ):
-        """Primary method of adding example sets of texts, labels, ids, and targets 
+        r"""Primary method of adding example sets of texts, labels, ids, and targets 
         to the ``SentencesProcessor``
         
         Arguments:
@@ -491,7 +448,7 @@ class SentencesProcessor:
                 labels = [None] * len(texts)
 
         examples = []
-        added_labels = list()
+        added_labels = []
         for idx, (text_set, label_set, guid) in enumerate(zip(texts, labels, ids)):
             if not text_set or not label_set:
                 continue  # input()
@@ -694,7 +651,7 @@ class SentencesProcessor:
         save_to_path=None,
         save_to_name=None,
     ):
-        """Convert the examples stored by the ``SentencesProcessor`` to features that can be used by 
+        r"""Convert the examples stored by the ``SentencesProcessor`` to features that can be used by 
         a model. The following processes can be performed: tokenization, token type ids (to separate 
         sentences), sentence representation token ids (the locations of each sentence representation 
         token), sentence lengths, and the attention mask. Padding can be applied to the tokenized 
@@ -893,9 +850,10 @@ class SentencesProcessor:
         """Attempts to load the dataset from storage. If that fails, will return None."""
         final_load_name = dataset_name if dataset_name else ("dataset_" + self.name)
         dataset_path = os.path.join(load_from_path, (final_load_name + ".pt"),)
+        
         if os.path.exists(dataset_path):
             logger.info("Loading data from file %s", dataset_path)
             dataset = torch.load(dataset_path)
             return dataset
-        else:
-            return None
+        
+        return None
