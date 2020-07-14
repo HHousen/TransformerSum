@@ -23,8 +23,8 @@ from transformers import (
     AutoTokenizer,
     EncoderDecoderModel,
     BartTokenizer,
-    # BartTokenizerFast,
-    # AutoModelForSeq2SeqLM,
+    BartTokenizerFast,
+    AutoModelForSeq2SeqLM,
 )
 from helpers import lr_lambda_func, pad, LabelSmoothingLoss, SortishSampler, pad_tensors
 from convert_to_extractive import tokenize
@@ -67,7 +67,7 @@ class AbstractiveSummarizer(pl.LightningModule):
                 self.hparams.model_name_or_path, gradient_checkpointing=True
             )
 
-            self.tokenizer = BartTokenizer.from_pretrained(
+            self.tokenizer = BartTokenizerFast.from_pretrained(
                 self.hparams.model_name_or_path, add_prefix_space=True
             )
         else:
@@ -257,11 +257,8 @@ class AbstractiveSummarizer(pl.LightningModule):
             for idx, article in enumerate(articles):
                 article = article.strip()
                 try:
-                    article_encoded = self.tokenizer.encode_plus(
-                        article,
-                        pad_to_max_length=True,
-                        truncation=True,
-                        max_length=self.tokenizer.max_len,
+                    article_encoded = self.tokenizer(
+                        article, padding="max_length", truncation=True,
                     )
                     articles_encoded_step.append(article_encoded)
                 except:
@@ -809,8 +806,6 @@ class AbstractiveSummarizer(pl.LightningModule):
 
         predictions = self.ids_to_clean_text(generated_ids, replace_sep_with_q=True)
         targets = self.ids_to_clean_text(target_ids, replace_sep_with_q=True)
-
-        prediction_scores = self.forward(**batch)
 
         rouge_outputs = []
         if self.hparams.test_use_pyrouge:

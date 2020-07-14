@@ -42,6 +42,8 @@ This command will train and test a bert-to-bert model for abstractive summarizat
 Abstractive Long Summarization
 ------------------------------
 
+.. warning:: Abstractive long summarization is a work in progress. Please see `huggingface/transformers #4406 <https://github.com/huggingface/transformers/issues/4406>`_ for more info.
+
 This script can perform abstractive summarization on long sequences using the ``longbart`` model (`GitHub repo <https://github.com/patil-suraj/longbart>`__). ``longbart`` is `BART <https://huggingface.co/transformers/model_doc/bart.html>`__ (`paper <https://arxiv.org/abs/1910.13461>`__) but with components from the `longformer <https://huggingface.co/transformers/model_doc/longformer.html>`_ (`paper <https://arxiv.org/abs/2004.05150>`__) that enable it to operate with long sequences.
 
 Install ``longbart`` by running ``pip install git+https://github.com/patil-suraj/longbart.git``. Then generate a long model with the below code:
