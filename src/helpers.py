@@ -145,7 +145,7 @@ def _get_word_ngrams(n, sentences):
 def pad(data, pad_id, width=None, pad_on_left=False):
     """Pad ``data`` with ``pad_id`` to ``width`` on the right by default but if ``pad_on_left`` then left."""
     if not width:
-        width = max(len(d) for d in data)
+        width = max([len(d) for d in data])
     if pad_on_left:
         rtn_data = [[pad_id] * (width - len(d)) + d for d in data]
     else:
@@ -158,7 +158,7 @@ def pad_tensors(
 ):
     """Pad ``tensors`` with ``pad_id`` to ``width`` on the right by default but if ``pad_on_left`` then left."""
     if not width:
-        width = max(len(d) for d in tensors)
+        width = max([len(d) for d in tensors])
     if nearest_multiple_of:
         width = math.ceil(width / nearest_multiple_of) * nearest_multiple_of
     if pad_on_left:

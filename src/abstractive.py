@@ -48,7 +48,7 @@ def trim_batch(
 ):
     """Remove columns that are populated exclusively by ``pad_token_id``."""
     keep_column_mask = input_ids.ne(pad_token_id).any(dim=0)
-    
+
     if attention_mask is None:
         return input_ids[:, keep_column_mask]
 

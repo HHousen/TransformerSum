@@ -41,7 +41,7 @@ from transformers.data.metrics import acc_and_f1
 try:
     from transformers.modeling_auto import MODEL_MAPPING
 
-    MODEL_CLASSES = tuple(m.model_type for m in MODEL_MAPPING)  # + CUSTOM_MODEL_CLASSES
+    MODEL_CLASSES = tuple([m.model_type for m in MODEL_MAPPING])  # + CUSTOM_MODEL_CLASSES
 except ImportError:
     logger.warning(
         "Could not import `MODEL_MAPPING` from transformers because it is an old version."

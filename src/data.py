@@ -82,7 +82,7 @@ def pad_batch_collate(batch, modifier=None):
             # tokens are attended to.
             attention_mask = [[1] * len(ids) for ids in input_ids]
 
-            input_ids_width = max(len(ids) for ids in input_ids)
+            input_ids_width = max([len(ids) for ids in input_ids])
             input_ids = pad(input_ids, 0, width=input_ids_width)
             input_ids = torch.tensor(input_ids)
             attention_mask = pad(attention_mask, 0)
@@ -91,7 +91,7 @@ def pad_batch_collate(batch, modifier=None):
             if "sent_lengths" in elem:
                 sent_lengths = []
                 sent_lengths_mask = []
-                sent_lengths_width = max(len(d["sent_lengths"]) + 1 for d in batch)
+                sent_lengths_width = max([len(d["sent_lengths"]) + 1 for d in batch])
                 for d in batch:
                     current_sent_lens = d["sent_lengths"]
                     current_sent_lengths_mask = [True] * len(current_sent_lens)
@@ -850,10 +850,10 @@ class SentencesProcessor:
         """Attempts to load the dataset from storage. If that fails, will return None."""
         final_load_name = dataset_name if dataset_name else ("dataset_" + self.name)
         dataset_path = os.path.join(load_from_path, (final_load_name + ".pt"),)
-        
+
         if os.path.exists(dataset_path):
             logger.info("Loading data from file %s", dataset_path)
             dataset = torch.load(dataset_path)
             return dataset
-        
+
         return None

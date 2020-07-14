@@ -111,7 +111,7 @@ def convert_to_extractive_driver(args):
             if args.dataset:
                 target_file_len = len(current_dataset)
             else:
-                target_file_len = sum(1 for line in target_file)
+                target_file_len = sum([1 for line in target_file])
                 # reset pointer back to beginning after getting length
                 target_file.seek(0)
 
