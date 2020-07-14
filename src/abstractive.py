@@ -23,8 +23,8 @@ from transformers import (
     AutoTokenizer,
     EncoderDecoderModel,
     BartTokenizer,
-    BartTokenizerFast,
-    AutoModelForSeq2SeqLM,
+    # BartTokenizerFast,
+    # AutoModelForSeq2SeqLM,
 )
 from helpers import lr_lambda_func, pad, LabelSmoothingLoss, SortishSampler, pad_tensors
 from convert_to_extractive import tokenize
@@ -67,7 +67,7 @@ class AbstractiveSummarizer(pl.LightningModule):
                 self.hparams.model_name_or_path, gradient_checkpointing=True
             )
 
-            self.tokenizer = BartTokenizerFast.from_pretrained(
+            self.tokenizer = BartTokenizer.from_pretrained(
                 self.hparams.model_name_or_path, add_prefix_space=True
             )
         else:
@@ -257,8 +257,11 @@ class AbstractiveSummarizer(pl.LightningModule):
             for idx, article in enumerate(articles):
                 article = article.strip()
                 try:
-                    article_encoded = self.tokenizer(
-                        article, padding="max_length", truncation=True,
+                    article_encoded = self.tokenizer.encode_plus(
+                        article,
+                        pad_to_max_length=True,
+                        truncation=True,
+                        max_length=self.tokenizer.max_len,
                     )
                     articles_encoded_step.append(article_encoded)
                 except:
@@ -376,10 +379,16 @@ class AbstractiveSummarizer(pl.LightningModule):
             highlight = highlight.strip()
             # keep_article = article and article != "\n" and article != ""
             # keep_highlight = highlight and highlight != "\n" and highlight != ""
-            if article and highlight:
-                return True  # keep example
+            if self.hparams.use_percentage_of_data:
+                keep_example = (
+                    article
+                    and highlight
+                    and random.random() < self.hparams.use_percentage_of_data
+                )
             else:
-                return False  # remove example
+                keep_example = article and highlight
+
+            return keep_example
 
         # Load spacy if the summary column does not contain separated sentences
         if not self.hparams.split_char:
@@ -1102,6 +1111,12 @@ class AbstractiveSummarizer(pl.LightningModule):
             this option to specify which token marks sentence boundaries. If the summaries are 
             not split into sentences then spacy will be used to split them. The default is None, 
             which means to use spacy.""",
+        )
+        parser.add_argument(
+            "--use_percentage_of_data",
+            type=float,
+            default=False,
+            help="When filtering the dataset, only save a percentage of the data. This is useful for debugging when you don't want to process the entire dataset.",
         )
         parser.add_argument(
             "--save_percentage",
