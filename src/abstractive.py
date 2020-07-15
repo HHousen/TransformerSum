@@ -151,9 +151,16 @@ class AbstractiveSummarizer(pl.LightningModule):
             )
 
         self.train_dataloader_object = None  # not created yet
-        self.dataset = None
         self.rouge_metrics = None
         self.rouge_scorer = None
+        self.dataset = {}
+
+        self.tokenized_data_file_paths = {}
+        for split in ["train", "validation", "test"]:
+            features_cache_file = os.path.join(
+                self.hparams.cache_file_path, (split + "_tokenized")
+            )
+            self.tokenized_data_file_paths[split] = features_cache_file
 
         if "longformer" in self.hparams.model_name_or_path:
 
@@ -252,11 +259,48 @@ class AbstractiveSummarizer(pl.LightningModule):
 
         return prediction_scores
 
+    def setup(self, stage):
+        """
+        Load the data created by :meth:`~abstractive.AbstractiveSummarizer.prepare_data`.
+        The downloading and loading is broken into two functions since prepare_data is 
+        only called from global_rank=0, and thus is not suitable for state (Self.something) 
+        assignment.
+        """
+        columns = ["source", "target", "source_mask", "target_mask"]
+        if stage == "fit":
+            train = nlp.Dataset.from_file(self.tokenized_data_file_paths["train"])
+            validation = nlp.Dataset.from_file(
+                self.tokenized_data_file_paths["validation"]
+            )
+
+            train.set_format(type="torch", columns=columns)
+            validation.set_format(type="torch", columns=columns)
+            self.dataset["train"] = train
+            self.dataset["validation"] = validation
+
+        if stage == "test":
+            test = nlp.Dataset.from_file(self.tokenized_data_file_paths["test"])
+            test.set_format(type="torch", columns=columns)
+            self.dataset["test"] = test
+
     def prepare_data(self):
         """
         Create the data using the ``huggingface/nlp`` library. This function handles
         downloading, preprocessing, tokenization, and feature extraction.
         """
+        all_tokenized_files_present = all(
+            [os.path.isfile(path) for path in self.tokenized_data_file_paths.values()]
+        )
+        if self.hparams.no_prepare_data or all_tokenized_files_present:
+            logger.info(
+                "Skipping data preparation because `--no_prepare_data` was specified or all the final tokenized data files are present."
+            )
+            if self.hparams.only_preprocess:
+                logger.info(
+                    "Exiting because both `--no_prepare_data` and `--only_preprocess` set."
+                )
+                sys.exit(0)
+            return
 
         def convert_to_features(example_batch):
             max_length = self.tokenizer.max_len
@@ -418,13 +462,13 @@ class AbstractiveSummarizer(pl.LightningModule):
             dataset_arxiv = nlp.load_dataset("scientific_papers", "arxiv")
 
             combined_dataset = {}
-            for split in ["train", "validation", "test"]:
+            for (
+                split,
+                save_path_final_tokenized,
+            ) in self.tokenized_data_file_paths.items():
                 save_path = os.path.join(
                     self.hparams.cache_file_path,
                     ("arxiv_pubmed_combined_" + split + ".arrow"),
-                )
-                save_path_final_tokenized = os.path.join(
-                    self.hparams.cache_file_path, (split + "_tokenized")
                 )
                 # If the file has not been saved to disk then combine arXiv and PubMed
                 # and write to file. Don't process if the final tokenized version is
@@ -465,11 +509,7 @@ class AbstractiveSummarizer(pl.LightningModule):
                 self.hparams.dataset, self.hparams.dataset_version
             )
 
-        for split in ["train", "validation", "test"]:
-            features_cache_file = os.path.join(
-                self.hparams.cache_file_path, (split + "_tokenized")
-            )
-
+        for split, features_cache_file in self.tokenized_data_file_paths.items():
             # If the tokenized version has not been created yet, then do the initial
             # filtering so it can be created
             if not os.path.isfile(features_cache_file):
@@ -495,11 +535,6 @@ class AbstractiveSummarizer(pl.LightningModule):
                 remove_columns=self.dataset[split].data.column_names,
                 cache_file_name=features_cache_file,
             )
-
-        columns = ["source", "target", "source_mask", "target_mask"]
-        self.dataset["train"].set_format(type="torch", columns=columns)
-        self.dataset["validation"].set_format(type="torch", columns=columns)
-        self.dataset["test"].set_format(type="torch", columns=columns)
 
         # Exit if set to only preprocess the data
         if self.hparams.only_preprocess:
@@ -1073,6 +1108,11 @@ class AbstractiveSummarizer(pl.LightningModule):
             "--only_preprocess",
             action="store_true",
             help="Only preprocess and write the data to disk. Don't train model.",
+        )
+        parser.add_argument(
+            "--no_prepare_data",
+            action="store_true",
+            help="Don't download, tokenize, or prepare data. Only load it from files.",
         )
         parser.add_argument(
             "--dataset",
