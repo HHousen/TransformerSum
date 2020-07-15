@@ -6,11 +6,6 @@ Model/Module
 
 .. automodule:: extractive
 
-Helpers
--------
-
-.. automodule:: helpers
-
 Data
 ----
 

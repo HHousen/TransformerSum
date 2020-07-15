@@ -11,6 +11,7 @@ TransformerSum: Summarization Training and Inference Library
    general/getting-started
    general/main-script
    general/differences
+   general/api
 
 .. toctree::
    :maxdepth: 2

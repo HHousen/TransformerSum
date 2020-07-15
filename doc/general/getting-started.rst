@@ -24,7 +24,21 @@ Tutorial
 I just want to summarize some text
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+GUI
+~~~
+
 If all you want to do is summarize a text string using a pre-trained model then follow the below steps:
+
+1. Download a summarization model. Link to :ref:`pre-trained extractive models <pretrained_ext>`. Link to :ref:`pre-trained abstractive models <pretrained_abs>`.
+2. Put the model in a folder named `models` in the project root.
+3. Run `python predictions_website.py` and open the link. 
+4. On the website enter your text, select your downloaded model, and click "SUBMIT".
+
+Programmatically
+~~~~~~~~~~~~~~~~
+
+If you want to summarize text using a pre-trained model from python code then follow the below steps:
+
 
 1. Download a summarization model. Link to :ref:`pre-trained extractive models <pretrained_ext>`. Link to :ref:`pre-trained abstractive models <pretrained_abs>`.
 2. Instantiate the model:
