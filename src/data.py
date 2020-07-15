@@ -8,7 +8,6 @@ import torch
 from multiprocessing import Pool
 from functools import partial
 import torch
-from torch.utils.data import TensorDataset, IterableDataset
 from helpers import pad
 
 logger = logging.getLogger(__name__)
@@ -74,7 +73,7 @@ def pad_batch_collate(batch, modifier=None):
             final_dictionary["sent_rep_token_ids"] = sent_rep_token_ids
             final_dictionary["sent_rep_mask"] = sent_rep_mask
             continue  # go to next key
-        elif key == "input_ids":
+        if key == "input_ids":
             input_ids = feature_list
 
             # Attention
@@ -120,11 +119,11 @@ def pad_batch_collate(batch, modifier=None):
 
             continue
 
-        elif key in ("source", "target"):
+        if key in ("source", "target"):
             final_dictionary[key] = feature_list
             continue
 
-        elif key in ("labels", "token_type_ids"):
+        if key in ("labels", "token_type_ids"):
             feature_list = pad(feature_list, 0)
 
         feature_list = torch.tensor(feature_list)
@@ -136,7 +135,7 @@ def pad_batch_collate(batch, modifier=None):
     return final_dictionary
 
 
-class FSIterableDataset(IterableDataset):
+class FSIterableDataset(torch.utils.data.IterableDataset):
     """
     A dataset to yield examples from a list of files that are saved python
     objects that can be iterated over. These files could be other PyTorch
@@ -178,7 +177,7 @@ class FSIterableDataset(IterableDataset):
     def __iter__(self):
         for data_file in self.files_list:
             if self.verbose:
-                logger.info("Loading examples from " + str(data_file))
+                logger.info("Loading examples from %s", data_file)
             dataset_section = torch.load(data_file)
             for example in dataset_section:
                 yield example
@@ -211,7 +210,7 @@ class FSIterableDataset(IterableDataset):
         return num_batches
 
 
-class InputExample(object):
+class InputExample:
     def __init__(self, text, labels, guid=None, target=None):
         """A single training/test example for simple sequence classification.
         
@@ -242,7 +241,7 @@ class InputExample(object):
         return json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n"
 
 
-class InputFeatures(object):
+class InputFeatures:
     """
     A single set of features of data.
 
@@ -376,7 +375,7 @@ class SentencesProcessor:
             else:
                 try:
                     text = src_txt[0]
-                except:
+                except IndexError:
                     text = src_txt
 
             # tokenize
@@ -503,12 +502,7 @@ class SentencesProcessor:
         """
         ex_index, example, label = input_information
         if ex_index % 1000 == 0:
-            logger.info(
-                "Generating features for example "
-                + str(ex_index)
-                + "/"
-                + str(num_examples)
-            )
+            logger.info("Generating features for example %s/%s", ex_index, num_examples)
         if bert_compatible_cls:
             # convert `example.text` to array of sentences
             src_txt = (" ".join(sent) for sent in example.text)
@@ -591,25 +585,25 @@ class SentencesProcessor:
 
         if ex_index < 5 and self.verbose:
             logger.info("*** Example ***")
-            logger.info("guid: %s" % (example.guid))
-            logger.info("input_ids: %s" % " ".join([str(x) for x in input_ids]))
+            logger.info("guid: %s", example.guid)
+            logger.info("input_ids: %s", " ".join([str(x) for x in input_ids]))
             if segment_ids is not None:
                 logger.info(
-                    "token_type_ids: %s" % " ".join([str(x) for x in segment_ids])
+                    "token_type_ids: %s", " ".join([str(x) for x in segment_ids])
                 )
             if sent_rep_ids is not None:
                 logger.info(
-                    "sent_rep_token_ids: %s" % " ".join([str(x) for x in sent_rep_ids])
+                    "sent_rep_token_ids: %s", " ".join([str(x) for x in sent_rep_ids])
                 )
             if sent_lengths is not None:
                 logger.info(
-                    "sent_lengths: %s" % " ".join([str(x) for x in sent_lengths])
+                    "sent_lengths: %s", " ".join([str(x) for x in sent_lengths])
                 )
             if create_attention_mask:
                 logger.info(
-                    "attention_mask: %s" % " ".join([str(x) for x in attention_mask])
+                    "attention_mask: %s", " ".join([str(x) for x in attention_mask])
                 )
-            logger.info("labels: %s (id = %s)" % (example.labels, label))
+            logger.info("labels: %s (id = %s)", example.labels, label)
 
         # Return features
         # if the attention mask was created then add the mask to the returned features
@@ -822,21 +816,10 @@ class SentencesProcessor:
                     )
                     final_tensors.append(all_sent_lengths)
 
-            dataset = TensorDataset(*final_tensors)
+            dataset = torch.utils.data.TensorDataset(*final_tensors)
 
         elif return_type == "lists":
             dataset = [example.to_dict() for example in features]
-
-            # dataset = {}
-            # dataset["all_input_ids"] = [f.input_ids for f in features]
-            # dataset["all_attention_masks"] = [f.attention_mask for f in features]
-            # dataset["all_labels"] = [f.labels for f in features]
-            # if create_segment_ids:
-            #     dataset["all_token_type_ids"] = [f.token_type_ids for f in features]
-            # if create_sent_rep_token_ids:
-            #     dataset["all_sent_rep_token_ids"] = [
-            #         f.sent_rep_token_ids for f in features
-            #     ]
 
         if save_to_path:
             final_save_name = save_to_name if save_to_name else ("dataset_" + self.name)

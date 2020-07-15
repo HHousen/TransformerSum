@@ -39,9 +39,8 @@ def load_json(json_file):
         documents = json.loads(json_str)  # "loads": the "s" means string
     else:
         logger.error(
-            "File extension "
-            + str(file_extension)
-            + " not recognized. Please use either '.json' or '.gz'."
+            "File extension %s not recognized. Please use either '.json' or '.gz'.",
+            file_extension,
         )
     return documents, file_path
 
@@ -56,18 +55,16 @@ class StepCheckpointCallback(pl.callbacks.base.Callback):
         self.save_path = save_path
         self.num_saves_to_keep = num_saves_to_keep
 
-    def on_batch_end(self, trainer, pl_module):
+    def on_batch_end(self, trainer, pl_module):  # skipcq: PYL-W0613
         # check if `step_interval` has passed and that the `global_step` is not 0
         if (
             trainer.global_step % self.step_interval == 0
             and not trainer.global_step == 0
         ):
             logger.info(
-                "Saving model to "
-                + str(self.save_path)
-                + ".ckpt at step "
-                + str(trainer.global_step)
-                + "."
+                "Saving model to %s.ckpt at step %i.",
+                self.save_path,
+                trainer.global_step,
             )
             final_save_location = os.path.join(
                 self.save_path,

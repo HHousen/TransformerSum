@@ -427,7 +427,7 @@ class AbstractiveSummarizer(pl.LightningModule):
                 if (not os.path.exists(save_path)) and (
                     not os.path.exists(save_path_final_tokenized)
                 ):
-                    logger.info("Joining split {}".format(split))
+                    logger.info("Joining split %s", split)
                     new = pyarrow.concat_tables(
                         [dataset_pubmed[split].data, dataset_arxiv[split].data]
                     )
@@ -436,23 +436,20 @@ class AbstractiveSummarizer(pl.LightningModule):
                     writer.write_table(new)
                 else:
                     logger.info(
-                        "Skipping joining split {} because it already exists".format(
-                            split
-                        )
+                        "Skipping joining split %s because it already exists", split
                     )
 
                 if not os.path.exists(save_path_final_tokenized):
                     # Load combined dataset from file if the final tokenized version
                     # does not exist.
-                    logger.info("Loading split {}".format(save_path))
+                    logger.info("Loading split %s", save_path)
                     combined_dataset[split] = nlp.Dataset.from_file(save_path)
                 else:
                     # If the tokenzed split already exists then just store the pubmed
                     # section as a placeholder so `nlp` does not complain.
                     logger.info(
-                        "NOT loading split {} because the final tokenized version already exists.".format(
-                            save_path
-                        )
+                        "NOT loading split %s because the final tokenized version already exists.",
+                        save_path,
                     )
                     combined_dataset[split] = dataset_pubmed[split]
 
@@ -471,7 +468,7 @@ class AbstractiveSummarizer(pl.LightningModule):
             # If the tokenized version has not been created yet, then do the initial
             # filtering so it can be created
             if not os.path.isfile(features_cache_file):
-                logger.info("Removing empty examples from {} dataset".format(split))
+                logger.info("Removing empty examples from %s dataset", split)
                 start_num_examples = len(self.dataset[split])
                 self.dataset[split] = self.dataset[split].filter(
                     remove_empty,
@@ -481,13 +478,12 @@ class AbstractiveSummarizer(pl.LightningModule):
                 )
                 end_num_examples = len(self.dataset[split])
                 logger.info(
-                    "Removed {} ({}%) examples from the dataset.".format(
-                        start_num_examples - end_num_examples,
-                        (1 - end_num_examples / start_num_examples) * 100,
-                    )
+                    "Removed %i (%.2f%) examples from the dataset.",
+                    start_num_examples - end_num_examples,
+                    (1 - end_num_examples / start_num_examples) * 100,
                 )
 
-            logger.info("Converting {} dataset to features".format(split))
+            logger.info("Converting %s dataset to features", split)
             self.dataset[split] = self.dataset[split].map(
                 convert_to_features,
                 batched=True,
@@ -691,9 +687,8 @@ class AbstractiveSummarizer(pl.LightningModule):
                 )
             else:
                 logger.error(
-                    "The value "
-                    + str(self.hparams.use_scheduler)
-                    + " for `--use_scheduler` is invalid."
+                    "The value %s for `--use_scheduler` is invalid.",
+                    self.hparams.use_scheduler,
                 )
             # the below interval is called "step" but the scheduler is moved forward
             # every batch.
@@ -729,7 +724,7 @@ class AbstractiveSummarizer(pl.LightningModule):
 
         return loss
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch, batch_idx):  # skipcq: PYL-W0613
         """Training step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.training_step>`__"""
         cross_entropy_loss = self._step(batch)
 
@@ -739,7 +734,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         )
         return output
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch, batch_idx):  # skipcq: PYL-W0613
         """Validation step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.validation_step>`__"""
         cross_entropy_loss = self._step(batch)
 
@@ -753,7 +748,8 @@ class AbstractiveSummarizer(pl.LightningModule):
         )
         return output
 
-    def validation_epoch_end(self, outputs):
+    @staticmethod
+    def validation_epoch_end(outputs):
         """
         Called at the end of a validation epoch: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.validation_epoch_end>`__
         Finds the mean of all the metrics logged by :meth:`~abstractive.AbstractiveSummarizer.validation_step`.
@@ -768,7 +764,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         }
         return output
 
-    def test_step(self, batch, batch_idx):
+    def test_step(self, batch, batch_idx):  # skipcq: PYL-W0613
         """
         Test step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.test_step>`__
         Similar to :meth:`~abstractive.AbstractiveSummarizer.validation_step` in that in runs the inputs
@@ -804,7 +800,7 @@ class AbstractiveSummarizer(pl.LightningModule):
             use_cache=True,
         )
         generation_time = time() - t0
-        logger.debug("Generation Time: {}".format(generation_time))
+        logger.debug("Generation Time: %.2f", generation_time)
 
         generated_ids = generated_ids.tolist()
         target_ids = target_ids.tolist()
@@ -952,7 +948,7 @@ class AbstractiveSummarizer(pl.LightningModule):
             use_cache=True,
         )
         generation_time = time() - t0
-        logger.debug("Generation Time: {}".format(generation_time))
+        logger.debug("Generation Time: %.2f", generation_time)
 
         generated_ids = generated_ids.tolist()
         prediction = self.ids_to_clean_text(generated_ids)

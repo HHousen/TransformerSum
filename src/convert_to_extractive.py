@@ -102,7 +102,7 @@ def convert_to_extractive_driver(args):
             target_file_path = os.path.join(
                 args.base_path, (name + "." + args.target_ext)
             )
-            logger.info("Opening source and target " + str(name) + " files")
+            logger.info("Opening source and target %s files", name)
             source_file = open(source_file_path, "r")
             target_file = open(target_file_path, "r")
 
@@ -131,7 +131,7 @@ def convert_to_extractive_driver(args):
 
                 # if lines have been read and shards have been written to disk
                 if num_lines_read:
-                    logger.info("Resuming to line " + str(num_lines_read - 1))
+                    logger.info("Resuming to line %i", num_lines_read - 1)
                     # seek both the source and target to the next line
                     seek_files([source_file, target_file], num_lines_read - 1)
 
@@ -226,7 +226,7 @@ def convert_to_extractive_process(
 
     dataset = []
     pool = Pool(args.n_process)
-    logger.info("Processing " + name)
+    logger.info("Processing %s", name)
     t0 = time()
     for (preprocessed_data, target_doc) in pool.map(
         _example_processor, zip(source_docs_tokenized, target_docs_tokenized),
@@ -250,7 +250,7 @@ def convert_to_extractive_process(
     del target_docs_tokenized
     gc.collect()
 
-    logger.info("Done in " + str(time() - t0) + " seconds")
+    logger.info("Done in %.2f seconds", time() - t0)
 
     if args.shard_interval:
         split_output_path = os.path.join(
@@ -278,7 +278,7 @@ def resume(output_path, split, chunk_size):
     # get the first match because and convert to int so max() operator works
     # more info about the below RegEx: https://stackoverflow.com/a/1454936 (https://web.archive.org/web/20200701145857/https://stackoverflow.com/questions/1454913/regular-expression-to-find-a-string-included-between-two-characters-while-exclud/1454936)
     shard_file_idxs = [
-        int(re.search("(?<=\.)(.*?)(?=\.)", a).group(1)) for a in all_json_in_split
+        int(re.search(r"(?<=\.)(.*?)(?=\.)", a).group(1)) for a in all_json_in_split
     ]
 
     last_shard = int(max(shard_file_idxs)) + 1  # because the file indexes start at 0
@@ -314,9 +314,8 @@ def check_resume_success(nlp, source_file, last_shard, output_path, split, compr
         chunk_json, _ = load_json(chunk_file_path)
     except FileNotFoundError:
         logger.error(
-            "The file at path "
-            + str(chunk_file_path)
-            + " was not found. Make sure `--compression` is set correctly."
+            "The file at path %s was not found. Make sure `--compression` is set correctly.",
+            chunk_file_path,
         )
     last_item_chunk = chunk_json[-1]
     line_chunk = last_item_chunk["src"]
@@ -330,8 +329,8 @@ def check_resume_success(nlp, source_file, last_shard, output_path, split, compr
         logger.debug("`source_file` moved forward one line")
     else:
         logger.info("Resume NOT Successful")
-        logger.info("Last Chunk Line: " + str(line_chunk))
-        logger.info("Previous (to resume line) Source Line: " + str(preprocessed_line))
+        logger.info("Last Chunk Line: %s", line_chunk)
+        logger.info("Previous (to resume line) Source Line: %s", preprocessed_line)
         logger.info(
             (
                 "Common causes of this issue:\n"
@@ -367,16 +366,16 @@ def save(json_to_save, output_path, compression=False):
     specified by ``compression``.
     """
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    logger.info("Saving to " + str(output_path))
+    logger.info("Saving to %s", output_path)
     if compression:
         # https://stackoverflow.com/a/39451012
         json_str = json.dumps(json_to_save)
         json_bytes = json_str.encode("utf-8")
-        with gzip.open((output_path + ".gz"), "w") as save:
-            save.write(json_bytes)
+        with gzip.open((output_path + ".gz"), "w") as save_file:
+            save_file.write(json_bytes)
     else:
-        with open(output_path, "w") as save:
-            save.write(json.dumps(json_to_save))
+        with open(output_path, "w") as save_file:
+            save_file.write(json.dumps(json_to_save))
 
 
 def tokenize(
@@ -412,7 +411,7 @@ def tokenize(
     )
     del doc_sents
 
-    logger.debug("Done in " + str(time() - t0) + " seconds")
+    logger.debug("Done in %.2f seconds", time() - t0)
     # `sents` is an array of documents where each document is an array sentences where each sentence is an array of tokens
     return sents
 
@@ -721,22 +720,22 @@ if __name__ == "__main__":
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level (default: 'Info').",
     )
-    args = parser.parse_args()
+    main_args = parser.parse_args()
 
-    if args.resume and not args.shard_interval:
+    if main_args.resume and not main_args.shard_interval:
         parser.error(
             "Resuming requires both shard mode (--shard_interval) to be enabled and shards to be created. Must use same 'shard_interval' that was used previously to create the files to be resumed from."
         )
 
     # The `nlp` library has specific names for the dataset split names so set them
     # if using a dataset from `nlp`
-    if args.dataset:
-        args.split_names = ["train", "validation", "test"]
+    if main_args.dataset:
+        main_args.split_names = ["train", "validation", "test"]
 
     # Setup logging config
     logging.basicConfig(
         format="%(asctime)s|%(name)s|%(levelname)s> %(message)s",
-        level=logging.getLevelName(args.logLevel),
+        level=logging.getLevelName(main_args.logLevel),
     )
 
-    convert_to_extractive_driver(args)
+    convert_to_extractive_driver(main_args)

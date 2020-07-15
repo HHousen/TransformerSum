@@ -86,7 +86,7 @@ def main(args):
         fig = lr_finder.plot(suggest=True)
         fig.show()
         new_lr = lr_finder.suggestion()
-        logger.info("Recommended Learning Rate: {}".format(new_lr))
+        logger.info("Recommended Learning Rate: %s", new_lr)
 
     # remove `args.callbacks` if it exists so it does not get saved with the model (would result in crash)
     if args.custom_checkpoint_every_n:
@@ -312,7 +312,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--lr_find",
         action="store_true",
-        help="Runs a learning rate finder algorithm (see https://arxiv.org/abs/1506.01186) before any training, to find optimal initial learning rate."
+        help="Runs a learning rate finder algorithm (see https://arxiv.org/abs/1506.01186) before any training, to find optimal initial learning rate.",
     )
     parser.add_argument(
         "-l",
@@ -323,20 +323,20 @@ if __name__ == "__main__":
         help="Set the logging level (default: 'Info').",
     )
 
-    args = parser.parse_known_args()
+    main_args = parser.parse_known_args()
 
-    if args[0].mode == "abstractive":
+    if main_args[0].mode == "abstractive":
         parser = AbstractiveSummarizer.add_model_specific_args(parser)
     else:
         parser = ExtractiveSummarizer.add_model_specific_args(parser)
 
-    args = parser.parse_args()
+    main_args = parser.parse_args()
 
     # Setup logging config
     logging.basicConfig(
         format="%(asctime)s|%(name)s|%(levelname)s> %(message)s",
-        level=logging.getLevelName(args.logLevel),
+        level=logging.getLevelName(main_args.logLevel),
     )
 
     # Train
-    main(args)
+    main(main_args)

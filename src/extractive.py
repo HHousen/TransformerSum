@@ -8,7 +8,6 @@ import glob
 import logging
 import numpy as np
 from functools import partial
-from multiprocessing import Pool
 from collections import OrderedDict
 from argparse import ArgumentParser, Namespace
 import pytorch_lightning as pl
@@ -41,7 +40,9 @@ from transformers.data.metrics import acc_and_f1
 try:
     from transformers.modeling_auto import MODEL_MAPPING
 
-    MODEL_CLASSES = tuple([m.model_type for m in MODEL_MAPPING])  # + CUSTOM_MODEL_CLASSES
+    MODEL_CLASSES = tuple(
+        [m.model_type for m in MODEL_MAPPING]
+    )  # + CUSTOM_MODEL_CLASSES
 except ImportError:
     logger.warning(
         "Could not import `MODEL_MAPPING` from transformers because it is an old version."
@@ -85,11 +86,10 @@ class ExtractiveSummarizer(pl.LightningModule):
         ) and not hparams.no_use_token_type_ids:
             logger.warning(
                 (
-                    "You are using a "
-                    + str(hparams.model_type)
-                    + " model but did not set "
+                    "You are using a %s model but did not set "
                     + "--no_use_token_type_ids. This model does not support `token_type_ids` so "
-                    + "this option has been automatically enabled."
+                    + "this option has been automatically enabled.",
+                    hparams.model_type,
                 )
             )
             self.hparams.no_use_token_type_ids = True
@@ -140,8 +140,8 @@ class ExtractiveSummarizer(pl.LightningModule):
                 )
             else:
                 logger.error(
-                    str(hparams.classifier)
-                    + " is not a valid value for `--classifier`. Exiting..."
+                    "%s is not a valid value for `--classifier`. Exiting...",
+                    hparams.classifier,
                 )
                 sys.exit(1)
 
@@ -271,10 +271,9 @@ class ExtractiveSummarizer(pl.LightningModule):
         except ValueError as e:
             logger.error(e)
             logger.error(
-                "Details about above error:\n1. outputs="
-                + str(outputs)
-                + "\nlabels.float()="
-                + str(labels.float())
+                "Details about above error:\n1. outputs=%s\nlabels.float()=%s",
+                outputs,
+                labels.float(),
             )
         # set all padding values to zero
         loss = loss * mask.float()
@@ -343,15 +342,7 @@ class ExtractiveSummarizer(pl.LightningModule):
                 object to convert the json file to usable features. Defaults to None.
         """
         idx, json_file = inputs
-        logger.info(
-            "Processing "
-            + str(json_file)
-            + " ("
-            + str(idx + 1)  # because starts at 0 but num_files starts at 1
-            + "/"
-            + str(num_files)
-            + ")"
-        )
+        logger.info("Processing %s (%i/%i)", json_file, idx + 1, num_files)
 
         # open current json file (which is a set of documents)
         documents, file_path = load_json(json_file)
@@ -442,7 +433,7 @@ class ExtractiveSummarizer(pl.LightningModule):
                     completed_files = [
                         os.path.splitext(os.path.basename(i))[0] for i in dataset_files
                     ]
-                    logger.info("Not Processing Shards: " + str(completed_files))
+                    logger.info("Not Processing Shards: %s", completed_files)
 
                     def remove_complete(doc):
                         # if compression was enabled (files end in ".gz") then remove the ".gz"
@@ -682,18 +673,17 @@ class ExtractiveSummarizer(pl.LightningModule):
                 )
             else:
                 logger.error(
-                    "The value "
-                    + str(self.hparams.use_scheduler)
-                    + " for `--use_scheduler` is invalid."
+                    "The value %s for `--use_scheduler` is invalid.",
+                    self.hparams.use_scheduler,
                 )
             # the below interval is called "step" but the scheduler is moved forward
             # every batch.
             scheduler_dict = {"scheduler": scheduler, "interval": "step"}
             return ([optimizer], [scheduler_dict])
-        
+
         return optimizer
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch, batch_idx):  # skipcq: PYL-W0613
         """Training step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.training_step>`__"""
         # Get batch information
         labels = batch["labels"]
@@ -741,7 +731,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         )
         return output
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch, batch_idx):  # skipcq: PYL-W0613
         """
         Validation step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.validation_step>`__
         Similar to :meth:`~extractive.ExtractiveSummarizer.training_step` in that in runs the inputs
@@ -911,8 +901,8 @@ class ExtractiveSummarizer(pl.LightningModule):
                 previous_index = index
         else:
             logger.error(
-                str(self.hparams.test_id_method)
-                + " is not a valid option for `--test_id_method`."
+                "%s is not a valid option for `--test_id_method`.",
+                self.hparams.test_id_method,
             )
 
         rouge_outputs = []
@@ -925,13 +915,10 @@ class ExtractiveSummarizer(pl.LightningModule):
             for sent_idx, i in enumerate(source_ids):
                 if i >= len(source):
                     logger.debug(
-                        "Only "
-                        + str(sent_idx + 1)
-                        + " examples selected from document "
-                        + str(idx)
-                        + " in batch "
-                        + str(batch_idx)
-                        + '. This is likely because some sentences received ranks so small they rounded to zero and a padding "sentence" was randomly chosen.'
+                        "Only %i examples selected from document %i in batch %i. This is likely because some sentences received ranks so small they rounded to zero and a padding 'sentence' was randomly chosen.",
+                        sent_idx + 1,
+                        idx,
+                        batch_idx,
                     )
                     continue
 
@@ -1109,9 +1096,9 @@ class ExtractiveSummarizer(pl.LightningModule):
         sorted_ids = (
             torch.argsort(outputs, dim=1, descending=True).detach().cpu().numpy()
         )
-        logger.debug(f"Sorted sentence ids: {sorted_ids}")
+        logger.debug("Sorted sentence ids: %s", sorted_ids)
         selected_ids = sorted_ids[0, :2]
-        logger.debug(f"Selected sentence ids: {selected_ids}")
+        logger.debug("Selected sentence ids: %s", selected_ids)
 
         selected_sents = []
         for i in selected_ids:

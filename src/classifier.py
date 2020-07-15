@@ -120,9 +120,8 @@ class TransformerEncoderClassifier(nn.Module):
 
         if version.parse(torch.__version__) < version.parse("1.5.0"):
             logger.error(
-                "You have PyTorch version "
-                + str(torch.__version__)
-                + " installed, but `TransformerEncoderClassifier` requires at least version 1.5.0."
+                "You have PyTorch version %s installed, but `TransformerEncoderClassifier` requires at least version 1.5.0.",
+                torch.__version__,
             )
             sys.exit(1)
 
