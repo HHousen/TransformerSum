@@ -167,6 +167,11 @@ class ExtractiveSummarizer(pl.LightningModule):
         )
 
         self.train_dataloader_object = None  # not created yet
+        self.datasets = None
+        self.pad_batch_collate = None
+        self.global_step_tracker = None
+        self.rouge_metrics = None
+        self.rouge_scorer = None
 
     def forward(
         self,
@@ -219,7 +224,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             inputs["token_type_ids"] = token_type_ids
 
         if self.forward_modify_inputs_callback:
-            inputs = self.forward_modify_inputs_callback(inputs)
+            inputs = self.forward_modify_inputs_callback(inputs)  # skipcq: PYL-E1102
 
         outputs = self.word_embedding_model(**inputs, **kwargs)
         word_vectors = outputs[0]
@@ -374,9 +379,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             bert_compatible_cls=hparams.processor_no_bert_compatible_cls,
             create_segment_ids=hparams.create_token_type_ids,
             sent_rep_token_id="cls",
-            create_source=(
-                True if all_targets else False
-            ),  # create the source if targets were present
+            create_source=all_targets,  # create the source if targets were present
             n_process=hparams.processing_num_threads,
             max_length=(
                 hparams.max_seq_length

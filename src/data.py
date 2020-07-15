@@ -7,7 +7,6 @@ import logging
 import torch
 from multiprocessing import Pool
 from functools import partial
-import torch
 from helpers import pad
 
 logger = logging.getLogger(__name__)

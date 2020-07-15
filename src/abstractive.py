@@ -150,6 +150,11 @@ class AbstractiveSummarizer(pl.LightningModule):
                 ignore_index=self.tokenizer.pad_token_id
             )
 
+        self.train_dataloader_object = None  # not created yet
+        self.dataset = None
+        self.rouge_metrics = None
+        self.rouge_scorer = None
+
         if "longformer" in self.hparams.model_name_or_path:
 
             def longformer_modifier(final_dictionary):
@@ -266,7 +271,7 @@ class AbstractiveSummarizer(pl.LightningModule):
                         article, padding="max_length", truncation=True,
                     )
                     articles_encoded_step.append(article_encoded)
-                except:
+                except:  # skipcq: FLK-E722
                     print("Failed to tokenize article: {}".format(article))
                     sys.exit(1)
 
@@ -478,7 +483,7 @@ class AbstractiveSummarizer(pl.LightningModule):
                 )
                 end_num_examples = len(self.dataset[split])
                 logger.info(
-                    "Removed %i (%.2f%) examples from the dataset.",
+                    "Removed %i (%.2f%%) examples from the dataset.",
                     start_num_examples - end_num_examples,
                     (1 - end_num_examples / start_num_examples) * 100,
                 )

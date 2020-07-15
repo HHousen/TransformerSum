@@ -139,6 +139,7 @@ def convert_to_extractive_driver(args):
                     # this moves the file pointer in source_file forward 1...
                     resume_success = check_resume_success(
                         nlp,
+                        args,
                         source_file,
                         last_shard,
                         args.base_output_path,
@@ -289,7 +290,9 @@ def resume(output_path, split, chunk_size):
     return num_lines_read, last_shard
 
 
-def check_resume_success(nlp, source_file, last_shard, output_path, split, compression):
+def check_resume_success(
+    nlp, args, source_file, last_shard, output_path, split, compression
+):
     logger.info("Checking if resume was successful...")
     chunk_file_path_str = split + "." + str(last_shard - 1) + ".json"
     if compression:
@@ -331,6 +334,7 @@ def check_resume_success(nlp, source_file, last_shard, output_path, split, compr
         logger.info("Resume NOT Successful")
         logger.info("Last Chunk Line: %s", line_chunk)
         logger.info("Previous (to resume line) Source Line: %s", preprocessed_line)
+        # skipcq: PYL-W1201
         logger.info(
             (
                 "Common causes of this issue:\n"
@@ -416,7 +420,7 @@ def tokenize(
     return sents
 
 
-def example_processor(inputs, args=None, oracle_mode="greedy", no_preprocess=False):
+def example_processor(inputs, args, oracle_mode="greedy", no_preprocess=False):
     """
     Create ``oracle_ids``, convert them to ``labels`` and run 
     :meth:`~convert_to_extractive.preprocess`.
