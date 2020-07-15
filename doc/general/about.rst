@@ -14,14 +14,14 @@ Features
 --------
 
 * For extractive summarization, compatible with every `huggingface/transformers <https://github.com/huggingface/transformers>`_ transformer encoder model.
-* For abstractive summarization, compatible with every `huggingface/transformers <https://github.com/huggingface/transformers>`_ EncoderDecoder model.
+* For abstractive summarization, compatible with every `huggingface/transformers <https://github.com/huggingface/transformers>`_ EncoderDecoder and Seq2Seq model.
 * Currently, 10+ pre-trained extractive models available to summarize text trained on 3 datasets (CNN-DM, WikiHow, and ArXiv-PebMed).
 
 * Contains pre-trained models that excel at summarization on resource-limited devices: On CNN-DM, ``mobilebert-uncased-ext-sum`` achieves about 97% of the performance of `BertSum <https://arxiv.org/abs/1903.10318>`_ while containing 4.45 times fewer parameters. It achieves about 94% of the performance of `MatchSum (Zhong et al., 2020) <https://arxiv.org/abs/2004.08795>`_, the current extractive state-of-the-art.
 * Contains code to train models that excel at summarizing long sequences: The `longformer <https://huggingface.co/transformers/model_doc/longformer.html>`__ (extractive) and `LongformerEncoderDecoder <https://github.com/allenai/longformer/tree/encoderdecoder>`__ (abstractive) can summarize sequences of lengths up to 4,096 tokens by default, but can be trained to summarize sequences of more than 16k.
 
 * Integration with `huggingface/nlp <https://github.com/huggingface/nlp>`_ means any summarization dataset in the ``nlp`` library can be used for both abstractive and extractive training.
-* "Smart batching" support to not perform unnecessary calculations (speeds up training).
+* "Smart batching" (extractive) and trimming (abstractive) support to not perform unnecessary calculations (speeds up training).
 * Use of ``pytorch_lighting`` for code readability.
 * Extensive documentation.
 * Two pooling modes (convert word vectors to sentence embeddings): mean of word embeddings or use the CLS token.
@@ -32,6 +32,15 @@ Significant People
 The project was created by `Hayden Housen <https://haydenhousen.com/>`_ during his sophomore year of highschool as part of the Science Research program. It is actively maintained and updated by him and the community. You can contribute at `HHousen/TransformerSum <https://github.com/HHousen/TransformerSum>`_.
 
 .. _about_rouge_scores:
+
+Extractive vs Abstractive Summarization
+---------------------------------------
+
+Models that perform **extractive summarization** essentially pick the best most representative sentences and copy them into a summary. Models that perform **abstractive summarization** generate new sentences that capture general ideas.
+
+**Extractive summarization** is a **binary classification problem**. Either classify the sentence as "should be in he summary" or "should NOT be in the summary".
+
+**Abstractive summarization** is a **sequence to sequence text generation problem**. This is significantly more difficult than extractive summarization since the machine has to synthesize the information it "reads" into a new form.
 
 ROUGE Scores
 ------------
@@ -74,3 +83,5 @@ In the ROUGE paper, two flavors of ROUGE-L are described:
 
     1. sentence-level: Compute longest common subsequence (LCS) between two pieces of text. Newlines are ignored. This is called rougeL in this package.
     2. summary-level: Newlines in the text are interpreted as sentence boundaries, and the LCS is computed between each pair of reference and candidate sentences, and something called union-LCS is computed. This is called ``rougeLsum`` in the `rouge-score <https://github.com/google-research/google-research/tree/master/rouge>`_ package.
+
+Both ROUGE-L and ROUGE-L-SUM are calculated in this library.

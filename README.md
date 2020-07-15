@@ -12,14 +12,14 @@
 ## Features
 
 * For extractive summarization, compatible with every [huggingface/transformers](https://github.com/huggingface/transformers) transformer encoder model.
-* For abstractive summarization, compatible with every [huggingface/transformers](https://github.com/huggingface/transformers) EncoderDecoder model.
+* For abstractive summarization, compatible with every [huggingface/transformers](https://github.com/huggingface/transformers) EncoderDecoder and Seq2Seq model.
 * Currently, 10+ pre-trained extractive models available to summarize text trained on 3 datasets (CNN-DM, WikiHow, and ArXiv-PebMed).
 
 * Contains pre-trained models that excel at summarization on resource-limited devices: On CNN-DM, ``mobilebert-uncased-ext-sum`` achieves about 97% of the performance of [BertSum](https://arxiv.org/abs/1903.10318) while containing 4.45 times fewer parameters. It achieves about 94% of the performance of [MatchSum (Zhong et al., 2020)](https://arxiv.org/abs/2004.08795), the current extractive state-of-the-art.
 * Contains code to train models that excel at summarizing long sequences: The [longformer](https://huggingface.co/transformers/model_doc/longformer.html) (extractive) and [LongformerEncoderDecoder](https://github.com/allenai/longformer/tree/encoderdecoder) (abstractive) can summarize sequences of lengths up to 4,096 tokens by default, but can be trained to summarize sequences of more than 16k.
 
 * Integration with [huggingface/nlp](https://github.com/huggingface/nlp) means any summarization dataset in the `nlp` library can be used for both abstractive and extractive training.
-* "Smart batching" support to not perform unnecessary calculations (speeds up training).
+* "Smart batching" (extractive) and trimming (abstractive) support to not perform unnecessary calculations (speeds up training).
 * Use of `pytorch_lighting` for code readability.
 * Extensive documentation.
 * Two pooling modes (convert word vectors to sentence embeddings): mean of word embeddings or use the CLS token.

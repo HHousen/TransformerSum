@@ -21,22 +21,45 @@ Output of ``python main.py --help``:
                     [--max_steps MAX_STEPS]
                     [--accumulate_grad_batches ACCUMULATE_GRAD_BATCHES]
                     [--check_val_every_n_epoch CHECK_VAL_EVERY_N_EPOCH] [--gpus GPUS]
-                    [--gradient_clip_val GRADIENT_CLIP_VAL] [--overfit_pct OVERFIT_PCT]
+                    [--gradient_clip_val GRADIENT_CLIP_VAL]
+                    [--overfit_pct OVERFIT_PCT]
                     [--train_percent_check TRAIN_PERCENT_CHECK]
                     [--val_percent_check VAL_PERCENT_CHECK]
                     [--test_percent_check TEST_PERCENT_CHECK] [--amp_level AMP_LEVEL]
                     [--precision PRECISION] [--seed SEED] [--profiler]
                     [--progress_bar_refresh_rate PROGRESS_BAR_REFRESH_RATE]
                     [--num_sanity_val_steps NUM_SANITY_VAL_STEPS]
-                    [--use_logger {tensorboard,wandb}] [--do_train] [--do_test]
-                    [--load_weights LOAD_WEIGHTS]
+                    [--use_logger {tensorboard,wandb}] [--gradient_checkpointing]
+                    [--do_train] [--do_test] [--load_weights LOAD_WEIGHTS]
                     [--load_from_checkpoint LOAD_FROM_CHECKPOINT]
                     [--resume_from_checkpoint RESUME_FROM_CHECKPOINT]
                     [--use_custom_checkpoint_callback]
                     [--custom_checkpoint_every_n CUSTOM_CHECKPOINT_EVERY_N]
                     [--no_wandb_logger_log_model]
-                    [--auto_scale_batch_size AUTO_SCALE_BATCH_SIZE]
+                    [--auto_scale_batch_size AUTO_SCALE_BATCH_SIZE] [--lr_find]
                     [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL}]
+                    [--model_name_or_path MODEL_NAME_OR_PATH]
+                    [--model_type MODEL_TYPE] [--tokenizer_name TOKENIZER_NAME]
+                    [--tokenizer_no_use_fast] [--max_seq_length MAX_SEQ_LENGTH]
+                    [--data_path DATA_PATH] [--num_threads NUM_THREADS]
+                    [--processing_num_threads PROCESSING_NUM_THREADS]
+                    [--weight_decay WEIGHT_DECAY]
+                    [--pooling_mode {sent_rep_tokens,mean_tokens}]
+                    [--adam_epsilon ADAM_EPSILON] [--optimizer_type OPTIMIZER_TYPE]
+                    [--ranger-k RANGER_K] [--warmup_steps WARMUP_STEPS]
+                    [--use_scheduler USE_SCHEDULER]
+                    [--num_frozen_steps NUM_FROZEN_STEPS] [--batch_size BATCH_SIZE]
+                    [--processor_no_bert_compatible_cls] [--only_preprocess]
+                    [--preprocess_resume]
+                    [--create_token_type_ids {binary,sequential}]
+                    [--no_use_token_type_ids]
+                    [--classifier {linear,simple_linear,transformer,transformer_linear}]
+                    [--classifier_dropout CLASSIFIER_DROPOUT]
+                    [--classifier_transformer_num_layers CLASSIFIER_TRANSFORMER_NUM_LAYERS]
+                    [--train_name TRAIN_NAME] [--val_name VAL_NAME]
+                    [--test_name TEST_NAME] [--test_id_method {greater_k,top_k}]
+                    [--test_k TEST_K] [--no_test_block_trigrams] [--test_use_pyrouge]
+                    [--loss_key {loss_total,loss_total_norm_batch,loss_avg_seq_sum,loss_avg_seq_mean,loss_avg}]
 
         optional arguments:
         -h, --help            show this help message and exit
@@ -44,24 +67,25 @@ Output of ``python main.py --help``:
                                 Extractive or abstractive summarization training. Default
                                 is 'extractive'.
         --default_root_dir DEFAULT_ROOT_DIR
-                                Default path for logs and weights. To use this option with
-                                the `wandb` logger specify the
+                                Default path for logs and weights. To use this option
+                                with the `wandb` logger specify the
                                 `--no_wandb_logger_log_model` option.
         --weights_save_path WEIGHTS_SAVE_PATH
                                 Where to save weights if specified. Will override
-                                `--default_root_dir` for checkpoints only. Use this if for
-                                whatever reason you need the checkpoints stored in a
+                                `--default_root_dir` for checkpoints only. Use this if
+                                for whatever reason you need the checkpoints stored in a
                                 different place than the logs written in
                                 `--default_root_dir`. This option will override the save
-                                locations when using a custom checkpoint callback, such as
-                                those created when using `--use_custom_checkpoint_callback
-                                or `--custom_checkpoint_every_n`. If you are using the
+                                locations when using a custom checkpoint callback, such
+                                as those created when using
+                                `--use_custom_checkpoint_callback or
+                                `--custom_checkpoint_every_n`. If you are using the
                                 `wandb` logger, then you must also set
                                 `--no_wandb_logger_log_model` when using this option.
-                                Model weights are saved with the wandb logs to be uploaded
-                                to wandb.ai by default. Setting this option without
-                                setting `--no_wandb_logger_log_model` effectively creates
-                                two save paths, which will crash the script.
+                                Model weights are saved with the wandb logs to be
+                                uploaded to wandb.ai by default. Setting this option
+                                without setting `--no_wandb_logger_log_model` effectively
+                                creates two save paths, which will crash the script.
         --learning_rate LEARNING_RATE
                                 The initial learning rate for the optimizer.
         --min_epochs MIN_EPOCHS
@@ -83,9 +107,9 @@ Output of ``python main.py --help``:
         --gradient_clip_val GRADIENT_CLIP_VAL
                                 Gradient clipping value
         --overfit_pct OVERFIT_PCT
-                                Uses this much data of all datasets (training, validation,
-                                test). Useful for quickly debugging or trying to overfit
-                                on purpose.
+                                Uses this much data of all datasets (training,
+                                validation, test). Useful for quickly debugging or trying
+                                to overfit on purpose.
         --train_percent_check TRAIN_PERCENT_CHECK
                                 How much of training dataset to check. Useful when
                                 debugging or testing something that happens at the end of
@@ -108,17 +132,23 @@ Output of ``python main.py --help``:
                                 identifying bottlenecks.
         --progress_bar_refresh_rate PROGRESS_BAR_REFRESH_RATE
                                 How often to refresh progress bar (in steps). In
-                                notebooks, faster refresh rates (lower number) is known to
-                                crash them because of their screen refresh rates, so raise
-                                it to 50 or more.
+                                notebooks, faster refresh rates (lower number) is known
+                                to crash them because of their screen refresh rates, so
+                                raise it to 50 or more.
         --num_sanity_val_steps NUM_SANITY_VAL_STEPS
                                 Sanity check runs n batches of val before starting the
-                                training routine. This catches any bugs in your validation
-                                without having to wait for the first validation check.
+                                training routine. This catches any bugs in your
+                                validation without having to wait for the first
+                                validation check.
         --use_logger {tensorboard,wandb}
                                 Which program to use for logging. If `wandb` is chosen
                                 then model weights will automatically be uploaded to
                                 wandb.ai.
+        --gradient_checkpointing
+                                Enable gradient checkpointing (save memory at the expense
+                                of a slower backward pass) for the word embedding model.
+                                More info: https://github.com/huggingface/transformers/pu
+                                ll/4659#issue-424841871
         --do_train            Run the training procedure.
         --do_test             Run the testing procedure.
         --load_weights LOAD_WEIGHTS
@@ -154,12 +184,15 @@ Output of ``python main.py --help``:
                                 largest batch size that fits into memory. Larger batch
                                 size often yields better estimates of gradients, but may
                                 also result in longer training time. Currently, this
-                                feature supports two modes 'power' scaling and 'binsearch'
-                                scaling. In 'power' scaling, starting from a batch size of
-                                1 keeps doubling the batch size until an out-of-memory
-                                (OOM) error is encountered. Setting the argument to
-                                'binsearch' continues to finetune the batch size by
-                                performing a binary search. 'binsearch' is the recommended
-                                option.
+                                feature supports two modes 'power' scaling and
+                                'binsearch' scaling. In 'power' scaling, starting from a
+                                batch size of 1 keeps doubling the batch size until an
+                                out-of-memory (OOM) error is encountered. Setting the
+                                argument to 'binsearch' continues to finetune the batch
+                                size by performing a binary search. 'binsearch' is the
+                                recommended option.
+        --lr_find             Runs a learning rate finder algorithm (see
+                                https://arxiv.org/abs/1506.01186) before any training, to
+                                find optimal initial learning rate.
         -l {DEBUG,INFO,WARNING,ERROR,CRITICAL}, --log {DEBUG,INFO,WARNING,ERROR,CRITICAL}
                                 Set the logging level (default: 'Info').
