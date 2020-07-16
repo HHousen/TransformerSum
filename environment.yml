@@ -13,7 +13,7 @@ dependencies:
     - pip:
       - pytorch_lightning
       - transformers
-      - qhoptim
+      - torch_optimizer
       - wandb
       - rouge-score
       - packaging

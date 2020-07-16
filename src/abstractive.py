@@ -15,7 +15,6 @@ from argparse import ArgumentParser
 from torch import nn, optim
 from rouge_score import rouge_scorer, scoring
 from torch.utils.data import DataLoader
-from torch.optim.lr_scheduler import LambdaLR, OneCycleLR
 import pytorch_lightning as pl
 from transformers import (
     AutoTokenizer,
@@ -30,6 +29,7 @@ from helpers import (
     SortishSampler,
     pad_tensors,
     test_rouge,
+    generic_configure_optimizers,
 )
 from convert_to_extractive import tokenize
 
@@ -289,7 +289,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         downloading, preprocessing, tokenization, and feature extraction.
         """
         all_tokenized_files_present = all(
-            [os.path.isfile(path) for path in self.tokenized_data_file_paths.values()]
+            os.path.isfile(path) for path in self.tokenized_data_file_paths.values()
         )
         if self.hparams.no_prepare_data or all_tokenized_files_present:
             logger.info(
@@ -647,96 +647,10 @@ class AbstractiveSummarizer(pl.LightningModule):
         """
         # create the train dataloader so the number of examples can be determined
         self.train_dataloader_object = self.train_dataloader()
-        # check that max_steps is not None and is greater than 0
-        if self.hparams.max_steps and self.hparams.max_steps > 0:
-            # pytorch_lightning steps the scheduler every batch but only updates
-            # the global_step every gradient accumulation cycle. Therefore, the
-            # scheduler needs to have `accumulate_grad_batches` * `max_steps` in
-            # order to reach `max_steps`.
-            # See: https://github.com/PyTorchLightning/pytorch-lightning/blob/f293c9b5f4b4f9fabb2eec0c369f08a66c57ef14/pytorch_lightning/trainer/training_loop.py#L624
-            t_total = self.hparams.max_steps * self.hparams.accumulate_grad_batches
-        else:
-            t_total = int(
-                (
-                    len(self.train_dataloader_object.dataset)
-                    // (self.hparams.batch_size * max(1, self.hparams.gpus))
-                )
-                * self.hparams.max_epochs
-                // self.hparams.accumulate_grad_batches
-            )
-            if self.hparams.overfit_pct > 0.0:
-                t_total = int(t_total * self.hparams.overfit_pct)
 
-        no_decay = ["bias", "LayerNorm.weight"]
-        optimizer_grouped_parameters = [
-            {
-                "params": [
-                    p
-                    for n, p in self.named_parameters()
-                    if not any(nd in n for nd in no_decay)
-                ],
-                "weight_decay": self.hparams.weight_decay,
-            },
-            {
-                "params": [
-                    p
-                    for n, p in self.named_parameters()
-                    if any(nd in n for nd in no_decay)
-                ],
-                "weight_decay": 0.0,
-            },
-        ]
-
-        optimizer = optim.AdamW(
-            optimizer_grouped_parameters,
-            lr=self.hparams.learning_rate,
-            eps=self.hparams.adam_epsilon,
+        return generic_configure_optimizers(
+            self.hparams, self.train_dataloader_object, self.named_parameters()
         )
-
-        if self.hparams.use_scheduler:
-            if self.hparams.use_scheduler == "linear":
-                # We have to import the function and create a partial because functions cannot be
-                # serialized by python pickle. Therefore, if the normal `get_linear_schedule_with_warmup`
-                # function provided by `transformers` was used, the program would fail to save
-                # `self.hparams` because the optimizer would contain a locale function that cannot be
-                # pickled.
-                lr_lambda = partial(
-                    lr_lambda_func,
-                    num_warmup_steps=self.hparams.warmup_steps
-                    * self.hparams.accumulate_grad_batches,
-                    num_training_steps=t_total,
-                )
-                # multiply by `hparams.accumulate_grad_batches` above because pytorch_lightning
-                # steps are for each batch, except for the `trainer.global_step`, which tracks
-                # the actual number of steps
-
-                scheduler = LambdaLR(optimizer, lr_lambda, -1)
-
-            elif self.hparams.use_scheduler == "onecycle":
-                scheduler = OneCycleLR(
-                    optimizer, max_lr=self.hparams.learning_rate, total_steps=t_total
-                )
-            elif self.hparams.use_scheduler == "poly":
-                from optimizers.poly_lr_decay import PolynomialLRDecay
-
-                scheduler = PolynomialLRDecay(
-                    optimizer,
-                    end_learning_rate=self.hparams.learning_rate,
-                    max_decay_steps=t_total,
-                    power=3.0,
-                )
-            else:
-                logger.error(
-                    "The value %s for `--use_scheduler` is invalid.",
-                    self.hparams.use_scheduler,
-                )
-            # the below interval is called "step" but the scheduler is moved forward
-            # every batch.
-            scheduler_dict = {"scheduler": scheduler, "interval": "step"}
-
-            return ([optimizer], [scheduler_dict])
-
-        return optimizer
 
     def calculate_loss(self, prediction_scores, labels):
         masked_lm_loss = self.loss_func(
@@ -1083,27 +997,6 @@ class AbstractiveSummarizer(pl.LightningModule):
             type=int,
             help="The number of workers to use when loading data. A general place to start is to set num_workers equal to the number of CPUs on your machine. More details here: https://pytorch-lightning.readthedocs.io/en/latest/performance.html#num-workers",
         )
-        parser.add_argument(
-            "--adam_epsilon",
-            default=1e-8,
-            type=float,
-            help="Epsilon for Adam optimizer.",
-        )
-        parser.add_argument(
-            "--warmup_steps",
-            default=0,
-            type=int,
-            help="Linear warmup over warmup_steps. Only active if `--use_scheduler` is set.",
-        )
-        parser.add_argument(
-            "--use_scheduler",
-            default=False,
-            help="""Two options:
-            1. `linear`: Use a linear schedule that inceases linearly over `--warmup_steps` to `--learning_rate` then decreases linearly for the rest of the training process.
-            2. `onecycle`: Use the one cycle policy with a maximum learning rate of `--learning_rate`.
-            (default: False, don't use any scheduler)""",
-        )
-        parser.add_argument("--weight_decay", default=1e-2, type=float)
         parser.add_argument(
             "--only_preprocess",
             action="store_true",

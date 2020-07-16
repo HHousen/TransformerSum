@@ -315,6 +315,45 @@ if __name__ == "__main__":
         help="Runs a learning rate finder algorithm (see https://arxiv.org/abs/1506.01186) before any training, to find optimal initial learning rate.",
     )
     parser.add_argument(
+        "--adam_epsilon", default=1e-8, type=float, help="Epsilon for Adam optimizer.",
+    )
+    parser.add_argument(
+        "--optimizer_type",
+        type=str,
+        default="adam",
+        help="""Which optimizer to use: `adamw` (default), `ranger`, `qhadam`, `radam`, or `adabound`.""",
+    )
+    parser.add_argument(
+        "--ranger-k",
+        default=6,
+        type=int,
+        help="""Ranger (LookAhead) optimizer k value (default: 6). LookAhead keeps a single
+        extra copy of the weights, then lets the internalized ‘faster’ optimizer (for Ranger,
+        that’s RAdam) explore for 5 or 6 batches. The batch interval is specified via the k parameter.""",
+    )
+    parser.add_argument(
+        "--warmup_steps",
+        default=0,
+        type=int,
+        help="Linear warmup over warmup_steps. Only active if `--use_scheduler` is set to linear.",
+    )
+    parser.add_argument(
+        "--use_scheduler",
+        default=False,
+        help="""Three options:
+        1. `linear`: Use a linear schedule that inceases linearly over `--warmup_steps` to `--learning_rate` then decreases linearly for the rest of the training process.
+        2. `onecycle`: Use the one cycle policy with a maximum learning rate of `--learning_rate`.
+        (default: False, don't use any scheduler)
+        3. `poly`: polynomial learning rate decay from `--learning_rate` to `--end_learning_rate`""",
+    )
+    parser.add_argument(
+        "--end_learning_rate",
+        default=2e-6,
+        type=float,
+        help="The ending learning rate when `--use_scheduler` is poly.",
+    )
+    parser.add_argument("--weight_decay", default=1e-2, type=float)
+    parser.add_argument(
         "-l",
         "--log",
         dest="logLevel",

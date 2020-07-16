@@ -24,7 +24,13 @@ from classifier import (
     SimpleLinearClassifier,
     TransformerEncoderClassifier,
 )
-from helpers import load_json, lr_lambda_func, block_trigrams, test_rouge
+from helpers import (
+    load_json,
+    lr_lambda_func,
+    block_trigrams,
+    test_rouge,
+    generic_configure_optimizers,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -582,109 +588,10 @@ class ExtractiveSummarizer(pl.LightningModule):
         """
         # create the train dataloader so the number of examples can be determined
         self.train_dataloader_object = self.train_dataloader()
-        # check that max_steps is not None and is greater than 0
-        if self.hparams.max_steps and self.hparams.max_steps > 0:
-            # pytorch_lightning steps the scheduler every batch but only updates
-            # the global_step every gradient accumulation cycle. Therefore, the
-            # scheduler needs to have `accumulate_grad_batches` * `max_steps` in
-            # order to reach `max_steps`.
-            # See: https://github.com/PyTorchLightning/pytorch-lightning/blob/f293c9b5f4b4f9fabb2eec0c369f08a66c57ef14/pytorch_lightning/trainer/training_loop.py#L624
-            t_total = self.hparams.max_steps * self.hparams.accumulate_grad_batches
-        else:
-            t_total = int(
-                len(self.train_dataloader_object)
-                * self.hparams.max_epochs
-                // self.hparams.accumulate_grad_batches
-            )
-            if self.hparams.overfit_pct > 0.0:
-                t_total = int(t_total * self.hparams.overfit_pct)
 
-        # Prepare optimizer and schedule (linear warmup and decay)
-        no_decay = ["bias", "LayerNorm.weight"]
-        optimizer_grouped_parameters = [
-            {
-                "params": [
-                    p
-                    for n, p in self.named_parameters()
-                    if not any(nd in n for nd in no_decay)
-                ],
-                "weight_decay": self.hparams.weight_decay,
-            },
-            {
-                "params": [
-                    p
-                    for n, p in self.named_parameters()
-                    if any(nd in n for nd in no_decay)
-                ],
-                "weight_decay": 0.0,
-            },
-        ]
-        # parameters = [
-        #     {"params": self.encoder.parameters()},
-        #     {
-        #         "params": self.word_embedding_model.parameters(),
-        #         "lr": self.hparams.web_learning_rate,
-        #     },
-        # ]
-        if self.hparams.optimizer_type == "ranger":
-            from optimizers.ranger.ranger import Ranger
-
-            optimizer = Ranger(
-                optimizer_grouped_parameters,
-                lr=self.hparams.learning_rate,
-                k=self.hparams.ranger_k,
-                eps=self.hparams.adam_epsilon,
-            )
-        elif self.hparams.optimizer_type == "qhadam":
-            from qhoptim.pyt import QHAdam
-
-            optimizer = QHAdam(
-                optimizer_grouped_parameters,
-                lr=self.hparams.learning_rate,
-                nus=(0.7, 1.0),
-                betas=(0.995, 0.999),
-            )
-        else:
-            optimizer = torch.optim.AdamW(
-                optimizer_grouped_parameters,
-                lr=self.hparams.learning_rate,
-                eps=self.hparams.adam_epsilon,
-            )
-
-        if self.hparams.use_scheduler:
-            if self.hparams.use_scheduler == "linear":
-                # We have to import the function and create a partial because functions cannot be
-                # serialized by python pickle. Therefore, if the normal `get_linear_schedule_with_warmup`
-                # function provided by `transformers` was used, the program would fail to save
-                # `self.hparams` because the optimizer would contain a local function that cannot be
-                # pickled.
-                lr_lambda = partial(
-                    lr_lambda_func,
-                    num_warmup_steps=self.hparams.warmup_steps
-                    * self.hparams.accumulate_grad_batches,
-                    num_training_steps=t_total,
-                )
-                # multiply by `hparams.accumulate_grad_batches` above because pytorch_lightning
-                # steps are for each batch, except for the `trainer.global_step`, which tracks
-                # the actual number of steps
-
-                scheduler = LambdaLR(optimizer, lr_lambda, -1)
-
-            elif self.hparams.use_scheduler == "onecycle":
-                scheduler = OneCycleLR(
-                    optimizer, max_lr=self.hparams.learning_rate, total_steps=t_total
-                )
-            else:
-                logger.error(
-                    "The value %s for `--use_scheduler` is invalid.",
-                    self.hparams.use_scheduler,
-                )
-            # the below interval is called "step" but the scheduler is moved forward
-            # every batch.
-            scheduler_dict = {"scheduler": scheduler, "interval": "step"}
-            return ([optimizer], [scheduler_dict])
-
-        return optimizer
+        return generic_configure_optimizers(
+            self.hparams, self.train_dataloader_object, self.named_parameters()
+        )
 
     def training_step(self, batch, batch_idx):  # skipcq: PYL-W0613
         """Training step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.training_step>`__"""
@@ -1137,56 +1044,12 @@ class ExtractiveSummarizer(pl.LightningModule):
         )
         parser.add_argument("--num_threads", type=int, default=4)
         parser.add_argument("--processing_num_threads", type=int, default=2)
-        parser.add_argument("--weight_decay", default=1e-2, type=float)
         parser.add_argument(
             "--pooling_mode",
             type=str,
             default="sent_rep_tokens",
             choices=["sent_rep_tokens", "mean_tokens"],
             help="How word vectors should be converted to sentence embeddings.",
-        )
-        # parser.add_argument(
-        #     "--web_learning_rate",
-        #     default=1e-05,
-        #     type=float,
-        #     help="Word embedding model specific learning rate.",
-        # )
-        parser.add_argument(
-            "--adam_epsilon",
-            default=1e-8,
-            type=float,
-            help="Epsilon for Adam optimizer.",
-        )
-        parser.add_argument(
-            "--optimizer_type",
-            type=str,
-            default="adam",
-            help="""Which optimizer to use:
-            1. `ranger` optimizer (combination of RAdam and LookAhead)
-            2. `adamw`
-            3. `qhadam`""",
-        )
-        parser.add_argument(
-            "--ranger-k",
-            default=6,
-            type=int,
-            help="""Ranger (LookAhead) optimizer k value (default: 6). LookAhead keeps a single
-            extra copy of the weights, then lets the internalized ‘faster’ optimizer (for Ranger,
-            that’s RAdam) explore for 5 or 6 batches. The batch interval is specified via the k parameter.""",
-        )
-        parser.add_argument(
-            "--warmup_steps",
-            default=0,
-            type=int,
-            help="Linear warmup over warmup_steps. Only active if `--use_scheduler` is set.",
-        )
-        parser.add_argument(
-            "--use_scheduler",
-            default=False,
-            help="""Two options:
-            1. `linear`: Use a linear schedule that inceases linearly over `--warmup_steps` to `--learning_rate` then decreases linearly for the rest of the training process.
-            2. `onecycle`: Use the one cycle policy with a maximum learning rate of `--learning_rate`.
-            (default: False, don't use any scheduler)""",
         )
         parser.add_argument(
             "--num_frozen_steps",
