@@ -132,7 +132,7 @@ Any summarization dataset from `huggingface/nlp <https://github.com/huggingface/
 
 So, in brief, training an abstractive model is as easy as running one command. Go to :ref:`abstractive_command_example` for an example training command.
 
-**Long Sequences Abstractive - Quick Tutorial:** Create ``longbart`` using the directions at :ref:`abstractive_long_summarization`. Then, use the path to ``longbart`` as the ``--model_name_or_path``. The path to ``longbart`` must contain "longbart". You can now create summaries from sequences up to 4096 tokens (or up to 16,000 tokens Depending on the ``max_pos`` value used).
+**Long Sequences Abstractive - Quick Tutorial:** Create ``LongformerEncoderDecoder`` using the directions at :ref:`abstractive_long_summarization` or download one from :ref:`bart_converted_to_longformerencdec`. Then, use the path to ``LongformerEncoderDecoder`` as the ``--model_name_or_path``. The path to ``LongformerEncoderDecoder`` must contain "longformer-encdec". You can now create summaries from sequences up to 4096 tokens (or up to 16,000 tokens depending on the ``max_pos`` value used).
 
 Long Sequence Summarization
 ---------------------------

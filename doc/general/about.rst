@@ -22,7 +22,7 @@ Features
 
 * Integration with `huggingface/nlp <https://github.com/huggingface/nlp>`_ means any summarization dataset in the ``nlp`` library can be used for both abstractive and extractive training.
 * "Smart batching" (extractive) and trimming (abstractive) support to not perform unnecessary calculations (speeds up training).
-* Use of ``pytorch_lighting`` for code readability.
+* Use of ``pytorch_lightning`` for code readability.
 * Extensive documentation.
 * Two pooling modes (convert word vectors to sentence embeddings): mean of word embeddings or use the CLS token.
 

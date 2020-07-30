@@ -12,7 +12,7 @@ from functools import partial
 from time import time
 from collections import OrderedDict
 from argparse import ArgumentParser
-from torch import nn, optim
+from torch import nn
 from rouge_score import rouge_scorer, scoring
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
@@ -23,7 +23,6 @@ from transformers import (
     AutoModelForSeq2SeqLM,
 )
 from helpers import (
-    lr_lambda_func,
     pad,
     LabelSmoothingLoss,
     SortishSampler,

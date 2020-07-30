@@ -15,7 +15,6 @@ from rouge_score import rouge_scorer, scoring
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
-from torch.optim.lr_scheduler import LambdaLR, OneCycleLR
 from spacy.lang.en import English
 from pooling import Pooling
 from data import SentencesProcessor, FSIterableDataset, pad_batch_collate
@@ -26,7 +25,6 @@ from classifier import (
 )
 from helpers import (
     load_json,
-    lr_lambda_func,
     block_trigrams,
     test_rouge,
     generic_configure_optimizers,

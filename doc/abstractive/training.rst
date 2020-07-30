@@ -44,37 +44,80 @@ Abstractive Long Summarization
 
 .. warning:: Abstractive long summarization is a work in progress. Please see `huggingface/transformers #4406 <https://github.com/huggingface/transformers/issues/4406>`_ for more info.
 
-This script can perform abstractive summarization on long sequences using the ``longbart`` model (`GitHub repo <https://github.com/patil-suraj/longbart>`__). ``longbart`` is `BART <https://huggingface.co/transformers/model_doc/bart.html>`__ (`paper <https://arxiv.org/abs/1910.13461>`__) but with components from the `longformer <https://huggingface.co/transformers/model_doc/longformer.html>`_ (`paper <https://arxiv.org/abs/2004.05150>`__) that enable it to operate with long sequences.
+This script can perform abstractive summarization on long sequences using the ``LongformerEncoderDecoder`` model (`GitHub repo <https://github.com/HHousen/longformer/tree/encoderdecoder>`__). ``LongformerEncoderDecoder`` is `BART <https://huggingface.co/transformers/model_doc/bart.html>`__ (`paper <https://arxiv.org/abs/1910.13461>`__) but with components from the `longformer <https://huggingface.co/transformers/model_doc/longformer.html>`_ (`paper <https://arxiv.org/abs/2004.05150>`__) that enable it to operate with long sequences.
 
-Install ``longbart`` by running ``pip install git+https://github.com/patil-suraj/longbart.git``. Then generate a long model with the below code:
+Install ``LongformerEncoderDecoder`` by running ``pip install git+https://github.com/HHousen/longformer.git@encoderdecoder``. Then generate a long model with the `convert_bart_to_longformerencoderdecoder.py script <https://github.com/HHousen/longformer/blob/encoderdecoder/scripts/convert_bart_to_longformerencoderdecoder.py>`_. You can also download an already generated model from :ref:`bart_converted_to_longformerencdec`.
 
-.. code-block:: python
+For example to create the ``longformer-encdec-distilbart-cnn-12-6-converted`` model, as described on the :ref:`bart_converted_to_longformerencdec` page, run the following command:
 
-    import os
-    from longbart.convert_bart_to_longbart import create_long_model
+.. code-block:: 
 
-    model_path = 'longbart-base-4096'
-    if not os.path.exists(model_path):
-        os.makedirs(model_path)
-
-    model, tokenizer = create_long_model(
-        save_model_to=model_path,
-        base_model='facebook/bart-base',
-        tokenizer_name_or_path='facebook/bart-base',
-        attention_window=512,
-        max_pos=4096
-    )
+    python convert_bart_to_longformerencoderdecoder.py \
+    --base_model sshleifer/distilbart-xsum-12-6 \
+    --save_model_to ./longformer-encdec-distilbart-cnn-12-6-converted \
+    --max_pos 4096 \
+    --attention_window 512
 
 You can change ``max_pos`` to a different value to summarize sequences longer than 4096 tokens.
 
-With the ``longbart`` model generated you can run the training script with the ``--model_name_or_path`` set to ``longbart-base-4096`` (or wherever the configuration and model files are located).
+With the ``LongformerEncoderDecoder`` model generated you can run the training script with the ``--model_name_or_path`` set to ``longformer-encdec-distilbart-cnn-12-6-converted`` (or wherever the configuration and model files are located).
 
-.. warning:: For this script to work correctly with ``longbart`` the ``--model_name_or_path`` must contain the phrase "longbart".
+.. warning:: For this script to work correctly with ``LongformerEncoderDecoder`` the ``--model_name_or_path`` must contain the phrase "longformer-encdec".
 
-GitHub issues that discuss ``longbart``:
+GitHub issues that discuss ``LongformerEncoderDecoder``:
 
 1. `huggingface/transformers #4406 <https://github.com/huggingface/transformers/issues/4406>`_
 2. `allenai/longformer #28 <https://github.com/allenai/longformer/issues/28>`_
+
+Step-by-Step Instructions
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+1. Clone the repository: ``git clone https://github.com/HHousen/TransformerSum.git`` and ``cd TransformerSum/src``
+2. Run: ``conda env create --file environment.yml`` and ``conda activate transformersum``
+3. Install version of ``huggingface/transformers`` with gradient checkpointing in BART: 
+
+    .. code-block:: 
+
+        pip uninstall -y transformers
+        pip install git+https://github.com/HHousen/transformers.git@longformer_encoder_decoder
+
+4. Install ``NVIDIA/apex`` for 16-bit precision:
+
+    .. code-block:: 
+
+        git clone https://github.com/NVIDIA/apex
+        cd apex
+        pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
+        cd ..
+ 
+5. Install ``LongformerEncoderDecoder``: ``pip install git+https://github.com/HHousen/longformer.git@encoderdecoder``
+6. Download long version of BART: ``gdown https://drive.google.com/uc?id=16hsOq7TCnqSGyUm_lSWdEzK6jT9DwVin``
+7. Extract: ``tar -xzvf longformer-encdec-bart-large-8192.tar.gz``
+8. Download dataset (≈2.8GB): ``gdown https://drive.google.com/uc?id=1eROWH-4cbLVIFOAsLcvvhNEfHqD27uvJ``
+9. Extract (≈90GB): ``tar -xzvf longformer-encdec-base-8192.tar.gz``
+10. Training command:
+
+    .. code-block:: 
+
+        python main.py \
+        --mode abstractive \
+        --model_name_or_path longformer-encdec-bart-large-8192 \
+        --max_epochs 4 \
+        --dataset scientific_papers \
+        --do_train \
+        --precision 16 \
+        --amp_level O2 \
+        --sortish_sampler \
+        --batch_size 8 \
+        --gradient_checkpointing \
+        --label_smoothing 0.1 \
+        --accumulate_grad_batches 2 \
+        --use_scheduler linear \
+        --warmup_steps 16000 \
+        --gradient_clip_val 1.0 \
+        --custom_checkpoint_every_n 18000
+
+11. The ``--max_epochs``, ``--batch_size``, ``--accumulate_grad_batches``, ``--warmup_steps``, and ``--custom_checkpoint_every_n`` values will need to be tweaked.
 
 .. _abstractive_script_help:
 
