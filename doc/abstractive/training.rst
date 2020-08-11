@@ -90,7 +90,7 @@ Step-by-Step Instructions
         pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
         cd ..
  
-5. Install ``LongformerEncoderDecoder``: ``pip install git+https://github.com/HHousen/longformer.git@encoderdecoder``
+5. Install ``LongformerEncoderDecoder``: ``pip install git+https://github.com/allenai/longformer.git@encoderdecoder``
 6. Download long version of BART: ``gdown https://drive.google.com/uc?id=16hsOq7TCnqSGyUm_lSWdEzK6jT9DwVin``
 7. Extract: ``tar -xzvf longformer-encdec-bart-large-8192.tar.gz``
 8. Download dataset (≈2.8GB): ``gdown https://drive.google.com/uc?id=1eROWH-4cbLVIFOAsLcvvhNEfHqD27uvJ``
