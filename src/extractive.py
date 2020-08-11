@@ -74,7 +74,9 @@ class ExtractiveSummarizer(pl.LightningModule):
             hparams = Namespace(**hparams)
 
         # Set new parameters to defaults if they do not exist in the `hparams` Namespace
-        hparams.gradient_checkpointing = getattr(hparams, "gradient_checkpointing", False)
+        hparams.gradient_checkpointing = getattr(
+            hparams, "gradient_checkpointing", False
+        )
         hparams.tokenizer_no_use_fast = getattr(hparams, "tokenizer_no_use_fast", False)
 
         self.hparams = hparams
