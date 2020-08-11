@@ -29,8 +29,9 @@ Output of ``python main.py --help``:
                     [--precision PRECISION] [--seed SEED] [--profiler]
                     [--progress_bar_refresh_rate PROGRESS_BAR_REFRESH_RATE]
                     [--num_sanity_val_steps NUM_SANITY_VAL_STEPS]
-                    [--use_logger {tensorboard,wandb}] [--gradient_checkpointing]
-                    [--do_train] [--do_test] [--load_weights LOAD_WEIGHTS]
+                    [--use_logger {tensorboard,wandb}] [--wandb_project WANDB_PROJECT]
+                    [--gradient_checkpointing] [--do_train] [--do_test]
+                    [--load_weights LOAD_WEIGHTS]
                     [--load_from_checkpoint LOAD_FROM_CHECKPOINT]
                     [--resume_from_checkpoint RESUME_FROM_CHECKPOINT]
                     [--use_custom_checkpoint_callback]
@@ -38,28 +39,6 @@ Output of ``python main.py --help``:
                     [--no_wandb_logger_log_model]
                     [--auto_scale_batch_size AUTO_SCALE_BATCH_SIZE] [--lr_find]
                     [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL}]
-                    [--model_name_or_path MODEL_NAME_OR_PATH]
-                    [--model_type MODEL_TYPE] [--tokenizer_name TOKENIZER_NAME]
-                    [--tokenizer_no_use_fast] [--max_seq_length MAX_SEQ_LENGTH]
-                    [--data_path DATA_PATH] [--num_threads NUM_THREADS]
-                    [--processing_num_threads PROCESSING_NUM_THREADS]
-                    [--weight_decay WEIGHT_DECAY]
-                    [--pooling_mode {sent_rep_tokens,mean_tokens}]
-                    [--adam_epsilon ADAM_EPSILON] [--optimizer_type OPTIMIZER_TYPE]
-                    [--ranger-k RANGER_K] [--warmup_steps WARMUP_STEPS]
-                    [--use_scheduler USE_SCHEDULER]
-                    [--num_frozen_steps NUM_FROZEN_STEPS] [--batch_size BATCH_SIZE]
-                    [--processor_no_bert_compatible_cls] [--only_preprocess]
-                    [--preprocess_resume]
-                    [--create_token_type_ids {binary,sequential}]
-                    [--no_use_token_type_ids]
-                    [--classifier {linear,simple_linear,transformer,transformer_linear}]
-                    [--classifier_dropout CLASSIFIER_DROPOUT]
-                    [--classifier_transformer_num_layers CLASSIFIER_TRANSFORMER_NUM_LAYERS]
-                    [--train_name TRAIN_NAME] [--val_name VAL_NAME]
-                    [--test_name TEST_NAME] [--test_id_method {greater_k,top_k}]
-                    [--test_k TEST_K] [--no_test_block_trigrams] [--test_use_pyrouge]
-                    [--loss_key {loss_total,loss_total_norm_batch,loss_avg_seq_sum,loss_avg_seq_mean,loss_avg}]
 
         optional arguments:
         -h, --help            show this help message and exit
@@ -144,6 +123,9 @@ Output of ``python main.py --help``:
                                 Which program to use for logging. If `wandb` is chosen
                                 then model weights will automatically be uploaded to
                                 wandb.ai.
+        --wandb_project WANDB_PROJECT
+                                The wandb project to save training runs to if 
+                                `--use_logger` is set to `wandb`.
         --gradient_checkpointing
                                 Enable gradient checkpointing (save memory at the expense
                                 of a slower backward pass) for the word embedding model.

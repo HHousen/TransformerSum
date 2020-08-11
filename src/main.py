@@ -59,7 +59,7 @@ def main(args):
     args.callbacks = [lr_logger]
 
     if args.use_logger == "wandb":
-        wandb_logger = WandbLogger(project="transformerextsum-private",)
+        wandb_logger = WandbLogger(project=args.wandb_project,)
         args.logger = wandb_logger
         if not args.no_wandb_logger_log_model:
             import wandb
@@ -244,6 +244,12 @@ if __name__ == "__main__":
         type=str,
         choices=["tensorboard", "wandb"],
         help="Which program to use for logging. If `wandb` is chosen then model weights will automatically be uploaded to wandb.ai.",
+    )
+    parser.add_argument(
+        "--wandb_project",
+        default="transformerextsum-private",
+        type=str,
+        help="The wandb project to save training runs to if `--use_logger` is set to `wandb`.",
     )
     parser.add_argument(
         "--gradient_checkpointing",
