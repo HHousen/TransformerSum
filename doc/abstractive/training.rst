@@ -115,6 +115,8 @@ Step-by-Step Instructions
         --use_scheduler linear \
         --warmup_steps 16000 \
         --gradient_clip_val 1.0 \
+        --cache_file_path longformer-encdec-base-8192 \
+        --nlp_cache_dir nlp-cache \
         --custom_checkpoint_every_n 18000
 
 11. The ``--max_epochs``, ``--batch_size``, ``--accumulate_grad_batches``, ``--warmup_steps``, and ``--custom_checkpoint_every_n`` values will need to be tweaked.
@@ -248,3 +250,6 @@ Output of ``python main.py --mode abstractive --help`` (:ref:`generic options <m
                                 randomness. This can help to avoid memory errors caused
                                 by large batches by forcing large batches to be
                                 processed first.
+        --nlp_cache_dir NLP_CACHE_DIR
+                                Directory to cache datasets downloaded using `nlp`. Defaults 
+                                to '~/nlp'.

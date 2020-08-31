@@ -262,7 +262,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         """
         Load the data created by :meth:`~abstractive.AbstractiveSummarizer.prepare_data`.
         The downloading and loading is broken into two functions since prepare_data is 
-        only called from global_rank=0, and thus is not suitable for state (Self.something) 
+        only called from global_rank=0, and thus is not suitable for state (self.something) 
         assignment.
         """
         columns = ["source", "target", "source_mask", "target_mask"]
@@ -457,8 +457,8 @@ class AbstractiveSummarizer(pl.LightningModule):
             self.hparams.data_example_column = "article"
             self.hparams.data_summarized_column = "abstract"
 
-            dataset_pubmed = nlp.load_dataset("scientific_papers", "pubmed")
-            dataset_arxiv = nlp.load_dataset("scientific_papers", "arxiv")
+            dataset_pubmed = nlp.load_dataset("scientific_papers", "pubmed", cache_dir=self.hparams.nlp_cache_dir)
+            dataset_arxiv = nlp.load_dataset("scientific_papers", "arxiv", cache_dir=self.hparams.nlp_cache_dir)
 
             combined_dataset = {}
             for (
@@ -505,7 +505,7 @@ class AbstractiveSummarizer(pl.LightningModule):
 
         else:
             self.dataset = nlp.load_dataset(
-                self.hparams.dataset, self.hparams.dataset_version
+                self.hparams.dataset, self.hparams.dataset_version, cache_dir=self.hparams.nlp_cache_dir
             )
 
         for split, features_cache_file in self.tokenized_data_file_paths.items():
@@ -1098,6 +1098,12 @@ class AbstractiveSummarizer(pl.LightningModule):
             help="""Reorganize the input_ids by length with a bit of randomness. This can help 
             to avoid memory errors caused by large batches by forcing large batches to be 
             processed first.""",
+        )
+        parser.add_argument(
+            "--nlp_cache_dir",
+            type=str,
+            default="~/nlp",
+            help="Directory to cache datasets downloaded using `nlp`. Defaults to '~/nlp'.",
         )
 
         return parser
