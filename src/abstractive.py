@@ -3,7 +3,7 @@ import sys
 import logging
 import random
 import torch
-import nlp
+import datasets as nlp
 import pyarrow
 import itertools
 import spacy

@@ -9,7 +9,7 @@ import math
 import itertools
 import logging
 import spacy
-import nlp as hf_nlp
+import datasets as hf_nlp
 from spacy.lang.en import English
 from argparse import ArgumentParser
 from functools import partial

@@ -17,5 +17,5 @@ dependencies:
       - wandb
       - rouge-score
       - packaging
-      - nlp
+      - datasets
       - gradio
