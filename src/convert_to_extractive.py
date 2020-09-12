@@ -194,7 +194,7 @@ def convert_to_extractive_process(
 ):
     """
     Main process to convert an abstractive summarization dataset to extractive.
-    Tokenizes, gets the ``oracle_ids``, splits into ``source`` and ``labels``, and 
+    Tokenizes, gets the ``oracle_ids``, splits into ``source`` and ``labels``, and
     saves processed data.
     """
     # tokenize the source and target documents
@@ -230,7 +230,8 @@ def convert_to_extractive_process(
     logger.info("Processing %s", name)
     t0 = time()
     for (preprocessed_data, target_doc) in pool.map(
-        _example_processor, zip(source_docs_tokenized, target_docs_tokenized),
+        _example_processor,
+        zip(source_docs_tokenized, target_docs_tokenized),
     ):
         if preprocessed_data is not None:
             # preprocessed_data is (source_doc, labels)
@@ -267,7 +268,7 @@ def convert_to_extractive_process(
 
 def resume(output_path, split, chunk_size):
     """
-    Find the last shard created and return the total number of lines read and last 
+    Find the last shard created and return the total number of lines read and last
     shard number.
     """
     glob_str = os.path.join(output_path, (split + ".*.json*"))
@@ -366,7 +367,7 @@ def seek_files(files, line_num):
 
 def save(json_to_save, output_path, compression=False):
     """
-    Save ``json_to_save`` to ``output_path`` with optional gzip compresssion 
+    Save ``json_to_save`` to ``output_path`` with optional gzip compresssion
     specified by ``compression``.
     """
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -395,7 +396,11 @@ def tokenize(
     tokenized = []
 
     for doc in tqdm(
-        nlp.pipe(docs, n_process=n_process, batch_size=batch_size,),
+        nlp.pipe(
+            docs,
+            n_process=n_process,
+            batch_size=batch_size,
+        ),
         total=len(docs),
         desc="Tokenizing" + name,
         mininterval=tokenizer_log_interval,
@@ -422,7 +427,7 @@ def tokenize(
 
 def example_processor(inputs, args, oracle_mode="greedy", no_preprocess=False):
     """
-    Create ``oracle_ids``, convert them to ``labels`` and run 
+    Create ``oracle_ids``, convert them to ``labels`` and run
     :meth:`~convert_to_extractive.preprocess`.
     """
     source_doc, target_doc = inputs
@@ -650,7 +655,9 @@ if __name__ == "__main__":
         help="use gzip compression when saving data",
     )
     parser.add_argument(
-        "--resume", action="store_true", help="resume from last shard",
+        "--resume",
+        action="store_true",
+        help="resume from last shard",
     )
     parser.add_argument(
         "--tokenizer_log_interval",

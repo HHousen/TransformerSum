@@ -43,7 +43,9 @@ except ImportError:
 
 
 def trim_batch(
-    input_ids, pad_token_id, attention_mask=None,
+    input_ids,
+    pad_token_id,
+    attention_mask=None,
 ):
     """Remove columns that are populated exclusively by ``pad_token_id``."""
     keep_column_mask = input_ids.ne(pad_token_id).any(dim=0)
@@ -67,8 +69,10 @@ class AbstractiveSummarizer(pl.LightningModule):
         self.hparams = hparams
 
         if "longformer-encdec" in self.hparams.model_name_or_path.lower():
-            self.model = LongformerEncoderDecoderForConditionalGeneration.from_pretrained(
-                self.hparams.model_name_or_path, gradient_checkpointing=True
+            self.model = (
+                LongformerEncoderDecoderForConditionalGeneration.from_pretrained(
+                    self.hparams.model_name_or_path, gradient_checkpointing=True
+                )
             )
 
             self.tokenizer = BartTokenizerFast.from_pretrained(
@@ -165,13 +169,13 @@ class AbstractiveSummarizer(pl.LightningModule):
 
             def longformer_modifier(final_dictionary):
                 """
-                Creates the `global_attention_mask` for the longformer. Tokens with global attention 
-                attend to all other tokens, and all other tokens attend to them. This is important for 
-                task-specific finetuning because it makes the model more flexible at representing the 
-                task. For example, for classification, the `<s>` token should be given global attention. 
-                For QA, all question tokens should also have global attention. For summarization, 
-                global attention is given to all of the `<s>` (RoBERTa 'CLS' equivalent) tokens. Please 
-                refer to the `Longformer paper <https://arxiv.org/abs/2004.05150>`_ for more details. Mask 
+                Creates the `global_attention_mask` for the longformer. Tokens with global attention
+                attend to all other tokens, and all other tokens attend to them. This is important for
+                task-specific finetuning because it makes the model more flexible at representing the
+                task. For example, for classification, the `<s>` token should be given global attention.
+                For QA, all question tokens should also have global attention. For summarization,
+                global attention is given to all of the `<s>` (RoBERTa 'CLS' equivalent) tokens. Please
+                refer to the `Longformer paper <https://arxiv.org/abs/2004.05150>`_ for more details. Mask
                 values selected in ``[0, 1]``: ``0`` for local attention, ``1`` for global attention.
                 """
                 # `batch_size` is the number of attention masks (one mask per input sequence)
@@ -215,22 +219,22 @@ class AbstractiveSummarizer(pl.LightningModule):
         if you are unsure what a forward function is.
 
         Args:
-            source (``torch.LongTensor`` of shape ``(batch_size, sequence_length)``, optional): Indices 
-                of input sequence tokens in the vocabulary for the encoder. 
-                `What are input IDs? <https://huggingface.co/transformers/glossary.html#input-ids>`_ 
+            source (``torch.LongTensor`` of shape ``(batch_size, sequence_length)``, optional): Indices
+                of input sequence tokens in the vocabulary for the encoder.
+                `What are input IDs? <https://huggingface.co/transformers/glossary.html#input-ids>`_
                 Defaults to None.
-            target (``torch.LongTensor`` of shape ``(batch_size, target_sequence_length)``, optional): Provide 
+            target (``torch.LongTensor`` of shape ``(batch_size, target_sequence_length)``, optional): Provide
                 for sequence to sequence training to the decoder. Defaults to None.
-            source_mask (``torch.FloatTensor`` of shape ``(batch_size, sequence_length)``, optional): Mask 
-                to avoid performing attention on padding token indices for the encoder. Mask values 
-                selected in ``[0, 1]``: ``1`` for tokens that are NOT MASKED, ``0`` for MASKED tokens. 
+            source_mask (``torch.FloatTensor`` of shape ``(batch_size, sequence_length)``, optional): Mask
+                to avoid performing attention on padding token indices for the encoder. Mask values
+                selected in ``[0, 1]``: ``1`` for tokens that are NOT MASKED, ``0`` for MASKED tokens.
                 Defaults to None.
             target_mask (``torch.BoolTensor`` of shape ``(batch_size, tgt_seq_len)``, optional): ``source_mask``
                 but for the target sequence. Is an attention mask. Defaults to None.
-            labels (``torch.LongTensor`` of shape ``(batch_size, sequence_length)``, optional): Labels 
-                for computing the masked language modeling loss for the decoder. Indices should be in 
-                ``[-100, 0, ..., config.vocab_size]``. Tokens with indices set to ``-100`` are 
-                ignored (masked), the loss is only computed for the tokens with labels in 
+            labels (``torch.LongTensor`` of shape ``(batch_size, sequence_length)``, optional): Labels
+                for computing the masked language modeling loss for the decoder. Indices should be in
+                ``[-100, 0, ..., config.vocab_size]``. Tokens with indices set to ``-100`` are
+                ignored (masked), the loss is only computed for the tokens with labels in
                 ``[0, ..., config.vocab_size]`` Defaults to None.
 
         Returns:
@@ -261,8 +265,8 @@ class AbstractiveSummarizer(pl.LightningModule):
     def setup(self, stage):
         """
         Load the data created by :meth:`~abstractive.AbstractiveSummarizer.prepare_data`.
-        The downloading and loading is broken into two functions since prepare_data is 
-        only called from global_rank=0, and thus is not suitable for state (self.something) 
+        The downloading and loading is broken into two functions since prepare_data is
+        only called from global_rank=0, and thus is not suitable for state (self.something)
         assignment.
         """
         columns = ["source", "target", "source_mask", "target_mask"]
@@ -311,7 +315,9 @@ class AbstractiveSummarizer(pl.LightningModule):
                 article = article.strip()
                 try:
                     article_encoded = self.tokenizer(
-                        article, padding="max_length", truncation=True,
+                        article,
+                        padding="max_length",
+                        truncation=True,
                     )
                     articles_encoded_step.append(article_encoded)
                 except:  # skipcq: FLK-E722
@@ -409,7 +415,9 @@ class AbstractiveSummarizer(pl.LightningModule):
             # The articles have already been padded because they do not need the extra
             # `boseq` and `eoseq` tokens.
             highlights_input_ids = pad(
-                highlights_input_ids, self.tokenizer.pad_token_id, width=max_length,
+                highlights_input_ids,
+                self.tokenizer.pad_token_id,
+                width=max_length,
             )
             highlights_attention_masks = pad(
                 highlights_attention_masks, 0, width=max_length
@@ -665,7 +673,7 @@ class AbstractiveSummarizer(pl.LightningModule):
 
     def _step(self, batch):
         """
-        Perform a generic step of the model. Pass the batch through the model 
+        Perform a generic step of the model. Pass the batch through the model
         and return the loss.
         """
         source, target, source_mask, target_mask = (
@@ -689,7 +697,11 @@ class AbstractiveSummarizer(pl.LightningModule):
 
         tqdm_dict = {"train_loss": cross_entropy_loss}
         output = OrderedDict(
-            {"loss": cross_entropy_loss, "progress_bar": tqdm_dict, "log": tqdm_dict,}
+            {
+                "loss": cross_entropy_loss,
+                "progress_bar": tqdm_dict,
+                "log": tqdm_dict,
+            }
         )
         return output
 
@@ -915,18 +927,18 @@ class AbstractiveSummarizer(pl.LightningModule):
         return prediction
 
     def ids_to_clean_text(self, generated_ids, replace_sep_with_q=False):
-        """Convert IDs generated from ``tokenizer.encode`` to a string using 
+        """Convert IDs generated from ``tokenizer.encode`` to a string using
         ``tokenizer.batch_decode`` and also clean up spacing and special tokens.
 
         Args:
-            generated_ids (list): A list examples where each example is a list of 
+            generated_ids (list): A list examples where each example is a list of
                 IDs generated from ``tokenizer.encode``.
-            replace_sep_with_q (bool, optional): Replace the ``self.tokenizer.sep_token`` 
-                with "<q>". Useful for determineing sentence boundaries and calculating 
+            replace_sep_with_q (bool, optional): Replace the ``self.tokenizer.sep_token``
+                with "<q>". Useful for determineing sentence boundaries and calculating
                 ROUGE scores. Defaults to False.
 
         Returns:
-            list or string: A list of examples where each example is a string or just one 
+            list or string: A list of examples where each example is a string or just one
             string if only one example was passed to this function.
         """
 
@@ -942,7 +954,9 @@ class AbstractiveSummarizer(pl.LightningModule):
             )
 
         gen_texts = self.tokenizer.batch_decode(
-            generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True,
+            generated_ids,
+            skip_special_tokens=True,
+            clean_up_tokenization_spaces=True,
         )
 
         if len(gen_texts) == 1:
