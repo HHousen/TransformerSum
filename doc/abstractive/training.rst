@@ -10,6 +10,13 @@ Alternatives:
 * To summarize documents and strings of text using `PreSumm <https://arxiv.org/abs/1908.08345>`_ please visit `HHousen/DocSum <https://github.com/HHousen/DocSum>`_.
 * You can also use the `summarization examples in huggingface/transformers <https://github.com/huggingface/transformers/tree/master/examples/seq2seq>`_, which are similar to this script, to train a model for seq2seq tasks. Most notably, the huggingface scripts don't integrate with ``nlp`` for easy and efficient dataset processing or make it easy to train EncoderDecoderModels.
 
+.. note:: Version 3.1.0 of huggingface/transformers enhances the encoder-decoder framework to allow for more encoder decoder model combinations such as Bert2GPT2, Roberta2Roberta, and Longformer2Roberta. Patrick von Platen has trained and tested some of these model combinations using custom scripts. His results can be found at `this huggingface/models page <https://huggingface.co/models?search=cnn_dailymail-fp16>`_.
+
+The effectiveness of initializing sequence-to-sequence models with pre-trained checkpoints for sequence generation tasks was shown in `Leveraging Pre-trained Checkpoints for Sequence Generation Tasks <https://arxiv.org/abs/1907.12461>`_ by Sascha Rothe, Shashi Narayan, Aliaksei Severyn. Results for EncoderDecoderModels can be found in this paper. This script should be able to produce similar results to this paper.
+
+.. important:: This script acts like a data preparation, training loop logic, and evaluation wrapper around models from ``huggingface/transformers``. For this reason, you can specify the ``--save_hg_transformer`` option, which will save the ``huggingface/transformers`` model whenever a checkpoint is saved using ``model.save_pretrained(save_path)``. Then, the trained model can be loaded without the ``TransformerSum`` library using just  ``huggingface/transformers`` in the future by running ``AutoModelForSeq2SeqLM.from_pretrained()`` (or ``EncoderDecoderModel.from_pretrained()`` if ``--decoder_model_name_or_path`` was used during training).
+
+
 .. _abstractive_command_example:
 
 Example
@@ -36,6 +43,8 @@ Example training command:
     --custom_checkpoint_every_n 300
 
 This command will train and test a bert-to-bert model for abstractive summarization for 4 epochs with a batch size of 4. The weights are saved to ``model_weights/`` and will not be uploaded to wandb.ai due to the ``--no_wandb_logger_log_model`` option. The CNN/DM dataset (which is the default dataset) will be downloaded (and automatically processed) to ``data/``\ . The gradients will be accumulated every 5 batches and training will be optimized by AdamW with a scheduler that warms up linearly for 8000 then decays. A checkpoint file will be saved every 300 steps.
+
+Importantly, you can specify the ``--tie_encoder_decoder`` option to tie the weights of the encoder and decoder when using an EncoderDecoderModels architecture. Specifying this option is equivalent to the "share" architecture tested in `Leveraging Pre-trained Checkpoints for Sequence Generation Tasks <https://arxiv.org/abs/1907.12461>`_.
 
 .. _abstractive_long_summarization:
 
@@ -147,6 +156,7 @@ Output of ``python main.py --mode abstractive --help`` (:ref:`generic options <m
                     [--save_percentage SAVE_PERCENTAGE] [--save_hg_transformer]
                     [--test_use_pyrouge] [--sentencizer] [--gen_max_len GEN_MAX_LEN]
                     [--label_smoothing LABEL_SMOOTHING] [--sortish_sampler]
+                    [--nlp_cache_dir NLP_CACHE_DIR] [--tie_encoder_decoder]
 
         optional arguments:
         -h, --help            show this help message and exit
@@ -155,10 +165,13 @@ Output of ``python main.py --mode abstractive --help`` (:ref:`generic options <m
                                 shortcut names can be found at https://huggingface.co/t
                                 ransformers/pretrained_models.html. Community-uploaded
                                 models are located at https://huggingface.co/models.
+                                Default is 'bert-base-uncased'.
         --decoder_model_name_or_path DECODER_MODEL_NAME_OR_PATH
                                 Path to pre-trained model or shortcut name to use as
-                                the decoder. Default is the value of
-                                `--model_name_or_path`.
+                                the decoder if an EncoderDecoderModels architecture is
+                                desired. If this option is not specified, the shortcut
+                                name specified by `--model_name_or_path` is loaded using
+                                the Seq2seq AutoModel. Default is 'bert-base-uncased'.
         --batch_size BATCH_SIZE
                                 Batch size per GPU/CPU for training/evaluation/testing.
         --val_batch_size VAL_BATCH_SIZE
@@ -253,3 +266,10 @@ Output of ``python main.py --mode abstractive --help`` (:ref:`generic options <m
         --nlp_cache_dir NLP_CACHE_DIR
                                 Directory to cache datasets downloaded using `nlp`. Defaults 
                                 to '~/nlp'.
+        --tie_encoder_decoder TIE_ENCODER_DECODER
+                                Tie the encoder and decoder weights. Only takes effect when
+                                using an EncoderDecoderModel architecture with the
+                                `--decoder_model_name_or_path` option. Specifying this
+                                option is equivalent to the 'share' architecture tested
+                                in 'Leveraging Pre-trained Checkpoints for Sequence
+                                Generation Tasks' (https://arxiv.org/abs/1907.12461).

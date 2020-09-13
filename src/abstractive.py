@@ -88,6 +88,7 @@ class AbstractiveSummarizer(pl.LightningModule):
                         else self.hparams.model_name_or_path
                     ),
                     gradient_checkpointing=self.hparams.gradient_checkpointing,
+                    tie_encoder_decoder=self.hparams.tie_encoder_decoder,
                 )
             else:
                 self.model = AutoModelForSeq2SeqLM.from_pretrained(
@@ -984,13 +985,13 @@ class AbstractiveSummarizer(pl.LightningModule):
             "--model_name_or_path",
             type=str,
             default="bert-base-uncased",
-            help="Path to pre-trained model or shortcut name. A list of shortcut names can be found at https://huggingface.co/transformers/pretrained_models.html. Community-uploaded models are located at https://huggingface.co/models.",
+            help="Path to pre-trained model or shortcut name. A list of shortcut names can be found at https://huggingface.co/transformers/pretrained_models.html. Community-uploaded models are located at https://huggingface.co/models. Default is 'bert-base-uncased'.",
         )
         parser.add_argument(
             "--decoder_model_name_or_path",
             type=str,
-            default=None,
-            help="Path to pre-trained model or shortcut name to use as the decoder. Default is the value of `--model_name_or_path`.",
+            default="bert-base-uncased",
+            help="Path to pre-trained model or shortcut name to use as the decoder if an EncoderDecoderModel architecture is desired. If this option is not specified, the shortcut name specified by `--model_name_or_path` is loaded using the Seq2seq AutoModel. Default is 'bert-base-uncased'.",
         )
         parser.add_argument(
             "--batch_size",
@@ -1124,6 +1125,11 @@ class AbstractiveSummarizer(pl.LightningModule):
             type=str,
             default="~/nlp",
             help="Directory to cache datasets downloaded using `nlp`. Defaults to '~/nlp'.",
+        )
+        parser.add_argument(
+            "--tie_encoder_decoder",
+            action="store_true",
+            help="Tie the encoder and decoder weights. Only takes effect when using an EncoderDecoderModel architecture with the `--decoder_model_name_or_path` option. Specifying this option is equivalent to the 'share' architecture tested in 'Leveraging Pre-trained Checkpoints for Sequence Generation Tasks' (https://arxiv.org/abs/1907.12461)."
         )
 
         return parser
