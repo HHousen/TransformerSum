@@ -1129,7 +1129,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         parser.add_argument(
             "--tie_encoder_decoder",
             action="store_true",
-            help="Tie the encoder and decoder weights. Only takes effect when using an EncoderDecoderModel architecture with the `--decoder_model_name_or_path` option. Specifying this option is equivalent to the 'share' architecture tested in 'Leveraging Pre-trained Checkpoints for Sequence Generation Tasks' (https://arxiv.org/abs/1907.12461)."
+            help="Tie the encoder and decoder weights. Only takes effect when using an EncoderDecoderModel architecture with the `--decoder_model_name_or_path` option. Specifying this option is equivalent to the 'share' architecture tested in 'Leveraging Pre-trained Checkpoints for Sequence Generation Tasks' (https://arxiv.org/abs/1907.12461).",
         )
 
         return parser
