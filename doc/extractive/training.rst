@@ -56,11 +56,7 @@ Output of ``python main.py --mode extractive --help`` (:ref:`generic options <ma
                     [--tokenizer_no_use_fast] [--max_seq_length MAX_SEQ_LENGTH]
                     [--data_path DATA_PATH] [--num_threads NUM_THREADS]
                     [--processing_num_threads PROCESSING_NUM_THREADS]
-                    [--weight_decay WEIGHT_DECAY]
                     [--pooling_mode {sent_rep_tokens,mean_tokens}]
-                    [--adam_epsilon ADAM_EPSILON] [--optimizer_type OPTIMIZER_TYPE]
-                    [--ranger-k RANGER_K] [--warmup_steps WARMUP_STEPS]
-                    [--use_scheduler USE_SCHEDULER]
                     [--num_frozen_steps NUM_FROZEN_STEPS] [--batch_size BATCH_SIZE]
                     [--processor_no_bert_compatible_cls] [--only_preprocess]
                     [--preprocess_resume]
@@ -79,10 +75,9 @@ Output of ``python main.py --mode extractive --help`` (:ref:`generic options <ma
         -h, --help            show this help message and exit
         --model_name_or_path MODEL_NAME_OR_PATH
                                 Path to pre-trained model or shortcut name. A list of
-                                shortcut names can be found at https://huggingface.co/
-                                transformers/pretrained_models.html. Community-
-                                uploaded models are located at
-                                https://huggingface.co/models.
+                                shortcut names can be found at https://huggingface.co/t
+                                ransformers/pretrained_models.html. Community-uploaded
+                                models are located at https://huggingface.co/models.
         --model_type MODEL_TYPE
                                 Model type selected in the list: retribert, t5,
                                 distilbert, albert, camembert, xlm-roberta, bart,
@@ -92,53 +87,28 @@ Output of ``python main.py --mode extractive --help`` (:ref:`generic options <ma
         --tokenizer_name TOKENIZER_NAME
         --tokenizer_no_use_fast
                                 Don't use the fast version of the tokenizer for the
-                                specified model. More info: https://huggingface.co/tra
-                                nsformers/main_classes/tokenizer.html.
+                                specified model. More info: https://huggingface.co/tran
+                                sformers/main_classes/tokenizer.html.
         --max_seq_length MAX_SEQ_LENGTH
         --data_path DATA_PATH
                                 Directory containing the dataset.
         --num_threads NUM_THREADS
         --processing_num_threads PROCESSING_NUM_THREADS
-        --weight_decay WEIGHT_DECAY
         --pooling_mode {sent_rep_tokens,mean_tokens}
                                 How word vectors should be converted to sentence
                                 embeddings.
-        --adam_epsilon ADAM_EPSILON
-                                Epsilon for Adam optimizer.
-        --optimizer_type OPTIMIZER_TYPE
-                                Which optimizer to use: 1. `ranger` optimizer
-                                (combination of RAdam and LookAhead) 2. `adamw` 3.
-                                `qhadam`
-        --ranger-k RANGER_K   Ranger (LookAhead) optimizer k value (default: 6).
-                                LookAhead keeps a single extra copy of the weights,
-                                then lets the internalized ‘faster’ optimizer (for
-                                Ranger, that’s RAdam) explore for 5 or 6 batches. The
-                                batch interval is specified via the k parameter.
-        --warmup_steps WARMUP_STEPS
-                                Linear warmup over warmup_steps. Only active if
-                                `--use_scheduler` is set.
-        --use_scheduler USE_SCHEDULER
-                                Two options: 1. `linear`: Use a linear schedule that
-                                inceases linearly over `--warmup_steps` to
-                                `--learning_rate` then decreases linearly for the rest
-                                of the training process. 2. `onecycle`: Use the one
-                                cycle policy with a maximum learning rate of
-                                `--learning_rate`. (default: False, don't use any
-                                scheduler)
         --num_frozen_steps NUM_FROZEN_STEPS
                                 Freeze (don't train) the word embedding model for this
                                 many steps.
         --batch_size BATCH_SIZE
-                                Batch size per GPU/CPU for
-                                training/evaluation/testing.
+                                Batch size per GPU/CPU for training/evaluation/testing.
         --processor_no_bert_compatible_cls
-                                If model uses bert compatible [CLS] tokens for
-                                sentence representations.
-        --only_preprocess     Only preprocess and write the data to disk. Don't
-                                train model. This will force data to be preprocessed,
-                                even if it was already computed and is detected on
-                                disk, and any previous processed files will be
-                                overwritten.
+                                If model uses bert compatible [CLS] tokens for sentence
+                                representations.
+        --only_preprocess     Only preprocess and write the data to disk. Don't train
+                                model. This will force data to be preprocessed, even if
+                                it was already computed and is detected on disk, and
+                                any previous processed files will be overwritten.
         --preprocess_resume   Resume preprocessing. `--only_preprocess` must be set
                                 in order to resume. Determines which files to process
                                 by finding the shards that do not have a coresponding
@@ -146,19 +116,19 @@ Output of ``python main.py --mode extractive --help`` (:ref:`generic options <ma
         --create_token_type_ids {binary,sequential}
                                 Create token type ids during preprocessing.
         --no_use_token_type_ids
-                                Set to not train with `token_type_ids` (don't pass
-                                them into the model).
+                                Set to not train with `token_type_ids` (don't pass them
+                                into the model).
         --classifier {linear,simple_linear,transformer,transformer_linear}
                                 Which classifier/encoder to use to reduce the hidden
                                 dimension of the sentence vectors. `linear` - a
-                                `LinearClassifier` with two linear layers, dropout,
-                                and an activation function. `simple_linear` - a
-                                `LinearClassifier` with one linear layer and a
-                                sigmoid. `transformer` - a
-                                `TransformerEncoderClassifier` which runs the sentence
-                                vectors through some `nn.TransformerEncoderLayer`s and
-                                then a simple `nn.Linear` layer. `transformer_linear`
-                                - a `TransformerEncoderClassifier` with a
+                                `LinearClassifier` with two linear layers, dropout, and
+                                an activation function. `simple_linear` - a
+                                `LinearClassifier` with one linear layer and a sigmoid.
+                                `transformer` - a `TransformerEncoderClassifier` which
+                                runs the sentence vectors through some
+                                `nn.TransformerEncoderLayer`s and then a simple
+                                `nn.Linear` layer. `transformer_linear` - a
+                                `TransformerEncoderClassifier` with a
                                 `LinearClassifier` as the `reduction` parameter, which
                                 results in the same thing as the `transformer` option
                                 but with a `LinearClassifier` instead of a `nn.Linear`
@@ -170,8 +140,8 @@ Output of ``python main.py --mode extractive --help`` (:ref:`generic options <ma
                                 Only has an effect if `--classifier` contains
                                 "transformer".
         --train_name TRAIN_NAME
-                                name for set of training files on disk (for loading
-                                and saving)
+                                name for set of training files on disk (for loading and
+                                saving)
         --val_name VAL_NAME   name for set of validation files on disk (for loading
                                 and saving)
         --test_name TEST_NAME
@@ -188,14 +158,14 @@ Output of ``python main.py --mode extractive --help`` (:ref:`generic options <ma
                                 decrease accuracy.
         --test_use_pyrouge    Use `pyrouge`, which is an interface to the official
                                 ROUGE software, instead of the pure-python
-                                implementation provided by `rouge-score`. You must
-                                have the real ROUGE package installed. More details
-                                about ROUGE 1.5.5 here: https://github.com/andersjo/py
-                                rouge/tree/master/tools/ROUGE-1.5.5. It is recommended
-                                to use this option for official scores. The `ROUGE-L`
+                                implementation provided by `rouge-score`. You must have
+                                the real ROUGE package installed. More details about
+                                ROUGE 1.5.5 here: https://github.com/andersjo/pyrouge/t
+                                ree/master/tools/ROUGE-1.5.5. It is recommended to use
+                                this option for official scores. The `ROUGE-L`
                                 measurements from `pyrouge` are equivalent to the
-                                `rougeLsum` measurements from the default `rouge-
-                                score` package.
+                                `rougeLsum` measurements from the default `rouge-score`
+                                package.
         --loss_key {loss_total,loss_total_norm_batch,loss_avg_seq_sum,loss_avg_seq_mean,loss_avg}
                                 Which reduction method to use with BCELoss. See the
                                 `experiments/loss_functions/` folder for info on how
