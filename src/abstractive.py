@@ -72,9 +72,7 @@ def longformer_modifier(final_dictionary):
     # `sequence_length` is the number of tokens for the first sequence in the batch
     sequence_length = len(final_dictionary["source_mask"][0])
     # create `global_attention_mask` using the above details
-    global_attention_mask = torch.tensor(
-        [[0] * sequence_length] * batch_size
-    )
+    global_attention_mask = torch.tensor([[0] * sequence_length] * batch_size)
     # set the `sent_rep_token_ids` to 1, which is global attention
     for idx, input_sequence in enumerate(final_dictionary["source"]):
         for inner_idx, token_id in enumerate(input_sequence):
