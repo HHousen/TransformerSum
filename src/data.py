@@ -146,7 +146,7 @@ class FSIterableDataset(torch.utils.data.IterableDataset):
     if those files were one dataset while only utilizing the ram required
     for one chunk.
 
-    Explanation about ``batch_size`` and ``__len__()``: If the ``len`()`
+    Explanation about ``batch_size`` and ``__len__()``: If the ``len()``
     function is needed to be accurate then the ``batch_size`` must be
     specified when constructing objects of this class. PyTorch
     ``DataLoader`` objects will report accurate lengths by dividing the
@@ -171,7 +171,6 @@ class FSIterableDataset(torch.utils.data.IterableDataset):
         self.batch_size = batch_size
         self.verbose = verbose
         self.total_length = None
-        self.num_batches = None
 
     def __iter__(self):
         for data_file in self.files_list:
@@ -188,8 +187,8 @@ class FSIterableDataset(torch.utils.data.IterableDataset):
             gc.collect()
 
     def __len__(self):
-        if self.num_batches:
-            return self.num_batches
+        if self.total_length:
+            return self.total_length
 
         logger.debug(
             "Calculating length of `IterableDataset` by loading each file, getting the length, and unloading, which is slow."
@@ -200,13 +199,7 @@ class FSIterableDataset(torch.utils.data.IterableDataset):
             total_length += len(dataset_section)
         self.total_length = total_length
 
-        # Calculate number of batches because the DataLoader `__len__` function directly
-        # calls the `__len__` function of the dataset if the dataset is of type `IterableDataset`
-        # DataLoader code: https://pytorch.org/docs/stable/_modules/torch/utils/data/dataloader.html#DataLoader
-        remainder_batch = 0 if (total_length % self.batch_size == 0) else 1
-        num_batches = int(total_length / self.batch_size) + remainder_batch
-        self.num_batches = num_batches
-        return num_batches
+        return total_length
 
 
 class InputExample:
