@@ -205,15 +205,15 @@ class FSIterableDataset(torch.utils.data.IterableDataset):
 class InputExample:
     def __init__(self, text, labels, guid=None, target=None):
         """A single training/test example for simple sequence classification.
-        
+
         Arguments:
             text {list} -- The untokenized (for the appropriate model) text for the example.
                              Should be broken into sentences and tokens.
             labels {list} -- The labels of the example.
-        
+
         Keyword Arguments:
-            guid {int} -- A unique identification code for this example, not used. Default is None. 
-            target {str} -- The ground truth abstractive summary. Default is None. 
+            guid {int} -- A unique identification code for this example, not used. Default is None.
+            target {str} -- The ground truth abstractive summary. Default is None.
         """
         self.guid = guid
         self.text = text
@@ -242,7 +242,7 @@ class InputFeatures:
         attention_mask: Mask to avoid performing attention on padding token indices.
             Mask values selected in `[0, 1]`:
             Usually  `1` for tokens that are NOT MASKED, `0` for MASKED (padded) tokens.
-        token_type_ids: Usually, segment token indices to indicate first and second portions 
+        token_type_ids: Usually, segment token indices to indicate first and second portions
             of the inputs. However, for summarization they are used to indicate different
             sentences. Depending on the size of the token type id vocabulary, these values
             may alternate between ``0`` and ``1`` or they may increase sequentially for each
@@ -295,7 +295,7 @@ class InputFeatures:
 
 class SentencesProcessor:
     r"""Create a `SentencesProcessor`
-        
+
     Arguments:
         name (str, optional): A label for the ``SentencesProcessor`` object, used internally for saving if
             a save name is not specified in :meth:`data.SentencesProcessor.get_features`, Default is None.
@@ -318,7 +318,7 @@ class SentencesProcessor:
     @classmethod
     def create_from_examples(cls, texts, labels=None, **kwargs):
         """
-        Create a SentencesProcessor with ``**kwargs`` and add ``texts`` and `labels`` through 
+        Create a SentencesProcessor with ``**kwargs`` and add ``texts`` and `labels`` through
         :meth:`~data.SentencesProcessor.add_examples`.
         """
         processor = cls(**kwargs)
@@ -336,7 +336,7 @@ class SentencesProcessor:
         max_length=None,
     ):
         """
-        Get ``input_ids`` from ``src_txt`` using ``tokenizer``. See 
+        Get ``input_ids`` from ``src_txt`` using ``tokenizer``. See
         :meth:`~data.SentencesProcessor.get_features` for more info.
         """
         sep_token = str(sep_token)
@@ -398,9 +398,9 @@ class SentencesProcessor:
         overwrite_labels=False,
         overwrite_examples=False,
     ):
-        r"""Primary method of adding example sets of texts, labels, ids, and targets 
+        r"""Primary method of adding example sets of texts, labels, ids, and targets
         to the ``SentencesProcessor``
-        
+
         Arguments:
             texts (list): A list of documents where each document is a list of sentences where each
                             sentence is a list of tokens. This is the output of `convert_to_extractive.py`
@@ -415,7 +415,7 @@ class SentencesProcessor:
             targets (list, optional): A list of the abstractive target for each document. Default is None.
             overwrite_labels (bool, optional): Replace any labels currently stored by the ``SentencesProcessor``. Default is False.
             overwrite_examples (bool, optional): Replace any examples currently stored by the ``SentencesProcessor``. Default is False.
-        
+
         Returns:
             list: The examples as ``InputExample``\ s that have been added.
         """
@@ -488,8 +488,8 @@ class SentencesProcessor:
         pad_ids_and_attention=True,
     ):
         """
-        The process that actually creates the features. :meth:`~data.SentencesProcessor.get_features` 
-        is the driving function, look there for a description of how this function works. This 
+        The process that actually creates the features. :meth:`~data.SentencesProcessor.get_features`
+        is the driving function, look there for a description of how this function works. This
         function only exists so that processing can easily be done in parallel using ``Pool.map``.
         """
         ex_index, example, label = input_information
@@ -637,14 +637,14 @@ class SentencesProcessor:
         save_to_path=None,
         save_to_name=None,
     ):
-        r"""Convert the examples stored by the ``SentencesProcessor`` to features that can be used by 
-        a model. The following processes can be performed: tokenization, token type ids (to separate 
-        sentences), sentence representation token ids (the locations of each sentence representation 
-        token), sentence lengths, and the attention mask. Padding can be applied to the tokenized 
-        examples and the attention masks but it is recommended to instead use the 
-        :meth:`data.pad_batch_collate` function so each batch is padded individually for efficiency 
+        r"""Convert the examples stored by the ``SentencesProcessor`` to features that can be used by
+        a model. The following processes can be performed: tokenization, token type ids (to separate
+        sentences), sentence representation token ids (the locations of each sentence representation
+        token), sentence lengths, and the attention mask. Padding can be applied to the tokenized
+        examples and the attention masks but it is recommended to instead use the
+        :meth:`data.pad_batch_collate` function so each batch is padded individually for efficiency
         (less zeros passed through model).
-        
+
         Arguments:
             tokenizer (transformers.PreTrainedTokenizer): The tokenizer used to tokenize the examples.
             bert_compatible_cls (bool, optional): Adds '[CLS]' tokens in front of each sentence. This is useful
@@ -690,18 +690,18 @@ class SentencesProcessor:
             pad_ids_and_attention (bool, optional): Pad the ``input_ids`` with ``pad_token`` and attention masks
                 with 0s or 1s deneding on ``mask_padding_with_zero``. Pad both to
                 ``max_length``. Default is ``False if return_type == "lists" else True``
-            return_type (str, optional): Either "tensors", "lists", or None. See "Returns" section below. Default is None. 
+            return_type (str, optional): Either "tensors", "lists", or None. See "Returns" section below. Default is None.
             save_to_path (str, optional): The folder/directory to save the data to OR None to not save.
-                Will save the type specified by ``return_type`` to disk. Default is None. 
+                Will save the type specified by ``return_type`` to disk. Default is None.
             save_to_name (str, optional): The name of the file to save. The extension '.pt' is automatically
                 appended. Default is ``'dataset_' + self.name + '.pt'``.
-        
+
         Returns:
-            list or torch.TensorDataset: If ``return_type is None`` return the list of calculated 
-            features. If ``return_type == "tensors"`` return the features converted to tensors 
-            and stacked such that features are grouped together into individual tensors. If 
-            ``return_type == "lists"``, which is the recommended option then exports each 
-            ``InputFeatures`` object in the exported ``features`` list as a dictionary and appends each 
+            list or torch.TensorDataset: If ``return_type is None`` return the list of calculated
+            features. If ``return_type == "tensors"`` return the features converted to tensors
+            and stacked such that features are grouped together into individual tensors. If
+            ``return_type == "lists"``, which is the recommended option then exports each
+            ``InputFeatures`` object in the exported ``features`` list as a dictionary and appends each
             dictionary to a list. Returns that list.
         """
         assert return_type in ["tensors", "lists"] or return_type is None
@@ -815,7 +815,10 @@ class SentencesProcessor:
 
         if save_to_path:
             final_save_name = save_to_name if save_to_name else ("dataset_" + self.name)
-            dataset_path = os.path.join(save_to_path, (final_save_name + ".pt"),)
+            dataset_path = os.path.join(
+                save_to_path,
+                (final_save_name + ".pt"),
+            )
             logger.info("Saving dataset into cached file %s", dataset_path)
             torch.save(dataset, dataset_path)
 
@@ -824,7 +827,10 @@ class SentencesProcessor:
     def load(self, load_from_path, dataset_name=None):
         """Attempts to load the dataset from storage. If that fails, will return None."""
         final_load_name = dataset_name if dataset_name else ("dataset_" + self.name)
-        dataset_path = os.path.join(load_from_path, (final_load_name + ".pt"),)
+        dataset_path = os.path.join(
+            load_from_path,
+            (final_load_name + ".pt"),
+        )
 
         if os.path.exists(dataset_path):
             logger.info("Loading data from file %s", dataset_path)
