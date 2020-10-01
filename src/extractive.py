@@ -110,11 +110,17 @@ class ExtractiveSummarizer(pl.LightningModule):
             self.freeze_web_model()
 
         if hparams.pooling_mode == "sent_rep_tokens":
-            self.pooling_model = Pooling(sent_rep_tokens=True, mean_tokens=False, max_tokens=False)
+            self.pooling_model = Pooling(
+                sent_rep_tokens=True, mean_tokens=False, max_tokens=False
+            )
         elif hparams.pooling_mode == "max_tokens":
-            self.pooling_model = Pooling(sent_rep_tokens=False, mean_tokens=False, max_tokens=True)
+            self.pooling_model = Pooling(
+                sent_rep_tokens=False, mean_tokens=False, max_tokens=True
+            )
         else:
-            self.pooling_model = Pooling(sent_rep_tokens=False, mean_tokens=True, max_tokens=False)
+            self.pooling_model = Pooling(
+                sent_rep_tokens=False, mean_tokens=True, max_tokens=False
+            )
 
         # if a classifier object was passed when creating this model then store that as the `encoder`
         if classifier_obj:
@@ -200,26 +206,26 @@ class ExtractiveSummarizer(pl.LightningModule):
         if you are unsure what a forward function is.
 
         Args:
-            input_ids (torch.Tensor): Indices of input sequence tokens in the vocabulary. 
+            input_ids (torch.Tensor): Indices of input sequence tokens in the vocabulary.
                 `What are input IDs? <https://huggingface.co/transformers/glossary.html#input-ids>`_
-            attention_mask (torch.Tensor): Mask to avoid performing attention on padding token 
-                indices. Mask values selected in ``[0, 1]``: ``1`` for tokens that are NOT 
+            attention_mask (torch.Tensor): Mask to avoid performing attention on padding token
+                indices. Mask values selected in ``[0, 1]``: ``1`` for tokens that are NOT
                 MASKED, ``0`` for MASKED tokens. `What are attention masks? <https://huggingface.co/transformers/glossary.html#attention-mask>`_
-            sent_rep_mask (torch.Tensor, optional): Indicates which numbers in ``sent_rep_token_ids`` 
-                are actually the locations of sentence representation ids and which are padding. 
+            sent_rep_mask (torch.Tensor, optional): Indicates which numbers in ``sent_rep_token_ids``
+                are actually the locations of sentence representation ids and which are padding.
                 Defaults to None.
-            token_type_ids (torch.Tensor, optional): Usually, segment token indices to indicate 
-                first and second portions of the inputs. However, for summarization they are used 
-                to indicate different sentences. Depending on the size of the token type id vocabulary, 
-                these values may alternate between ``0`` and ``1`` or they may increase sequentially 
+            token_type_ids (torch.Tensor, optional): Usually, segment token indices to indicate
+                first and second portions of the inputs. However, for summarization they are used
+                to indicate different sentences. Depending on the size of the token type id vocabulary,
+                these values may alternate between ``0`` and ``1`` or they may increase sequentially
                 for each sentence in the input.. Defaults to None.
-            sent_rep_token_ids (torch.Tensor, optional): The locations of the sentence representation 
+            sent_rep_token_ids (torch.Tensor, optional): The locations of the sentence representation
                 tokens. Defaults to None.
-            sent_lengths (torch.Tensor, optional):  A list of the lengths of each sentence in 
-                ``input_ids``. See :meth:`data.pad_batch_collate` for more info about the 
+            sent_lengths (torch.Tensor, optional):  A list of the lengths of each sentence in
+                ``input_ids``. See :meth:`data.pad_batch_collate` for more info about the
                 generation of thisfeature. Defaults to None.
-            sent_lengths_mask (torch.Tensor, optional): Created on-the-fly by :meth:`data.pad_batch_collate`. 
-                Similar to ``sent_rep_mask``: ``1`` for value and ``0`` for padding. See 
+            sent_lengths_mask (torch.Tensor, optional): Created on-the-fly by :meth:`data.pad_batch_collate`.
+                Similar to ``sent_rep_mask``: ``1`` for value and ``0`` for padding. See
                 :meth:`data.pad_batch_collate` for more info about the generation of this
                 feature. Defaults to None.
 
@@ -267,15 +273,15 @@ class ExtractiveSummarizer(pl.LightningModule):
 
         Args:
             outputs (torch.Tensor): Output sentence scores obtained from :meth:`~extractive.ExtractiveSummarizer.forward`
-            labels (torch.Tensor): Ground-truth labels (``1`` for sentences that should be in 
-                the summary, ``0`` otherwise) from the batch generated during the data 
+            labels (torch.Tensor): Ground-truth labels (``1`` for sentences that should be in
+                the summary, ``0`` otherwise) from the batch generated during the data
                 preprocessing stage.
             mask (torch.Tensor): Mask returned by :meth:`~extractive.ExtractiveSummarizer.forward`,
                 either ``sent_rep_mask`` or ``sent_lengths_mask`` depending on the pooling mode used
                 during model initialization.
 
         Returns:
-            [tuple]: Losses: (total_loss, total_norm_batch_loss, sum_avg_seq_loss, mean_avg_seq_loss, 
+            [tuple]: Losses: (total_loss, total_norm_batch_loss, sum_avg_seq_loss, mean_avg_seq_loss,
                 average_loss)
         """
         # self.loss_func() is nn.BCELoss(reduction="none")
@@ -340,10 +346,15 @@ class ExtractiveSummarizer(pl.LightningModule):
             )
 
     def json_to_dataset(
-        self, tokenizer, hparams, inputs=None, num_files=0, processor=None,
+        self,
+        tokenizer,
+        hparams,
+        inputs=None,
+        num_files=0,
+        processor=None,
     ):
         """Convert json output from ``convert_to_extractive.py`` to a ".pt" file containing
-        lists or tensors using a :class:`data.SentencesProcessor`. This function is run by 
+        lists or tensors using a :class:`data.SentencesProcessor`. This function is run by
         :meth:`~extractive.ExtractiveSummarizer.prepare_data` in parallel.
 
         Args:
@@ -351,7 +362,7 @@ class ExtractiveSummarizer(pl.LightningModule):
                 to input_ids. Usually is ``self.tokenizer``.
             hparams (argparse.Namespace): Hyper-parameters used to create the model. Usually
                 is ``self.hparams``.
-            inputs (tuple, optional): (idx, json_file) Current loop index and path to json 
+            inputs (tuple, optional): (idx, json_file) Current loop index and path to json
                 file. Defaults to None.
             num_files (int, optional): The total number of files to process. Used to display
                 a nice progress indicator. Defaults to 0.
@@ -409,7 +420,7 @@ class ExtractiveSummarizer(pl.LightningModule):
 
     def prepare_data(self):
         """
-        Runs :meth:`~extractive.ExtractiveSummarizer.json_to_dataset` in parallel. 
+        Runs :meth:`~extractive.ExtractiveSummarizer.json_to_dataset` in parallel.
         :meth:`~extractive.ExtractiveSummarizer.json_to_dataset` is the function that actually
         loads and processes the examples as described below.
         Algorithm: For each json file outputted by the ``convert_to_extractive.py`` script:
@@ -417,7 +428,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         1. Load json file.
         2. Add each document in json file to ``SentencesProcessor`` defined in ``self.processor``, overwriting any previous data in the processor.
         3. Run :meth:`data.SentencesProcessor.get_features` to save the extracted features to disk as a ``.pt`` file containing a pickled python list of dictionaries, which each dictionary contains the extracted features.
-        
+
         Memory Usage Note: If sharding was turned off during the ``convert_to_extractive`` process
         then this function will run once, loading the entire dataset into memory to process
         just like the ``convert_to_extractive.py`` script.
@@ -476,7 +487,8 @@ class ExtractiveSummarizer(pl.LightningModule):
                 )
 
                 for _ in map(
-                    json_to_dataset_processor, zip(range(len(json_files)), json_files),
+                    json_to_dataset_processor,
+                    zip(range(len(json_files)), json_files),
                 ):
                     pass
                 # pool.close()
@@ -511,13 +523,13 @@ class ExtractiveSummarizer(pl.LightningModule):
 
             def longformer_modifier(final_dictionary):
                 """
-                Creates the `global_attention_mask` for the longformer. Tokens with global attention 
-                attend to all other tokens, and all other tokens attend to them. This is important for 
-                task-specific finetuning because it makes the model more flexible at representing the 
-                task. For example, for classification, the `<s>` token should be given global attention. 
-                For QA, all question tokens should also have global attention. For summarization, 
-                global attention is given to all of the `<s>` (RoBERTa 'CLS' equivalent) tokens. Please 
-                refer to the `Longformer paper <https://arxiv.org/abs/2004.05150>`_ for more details. Mask 
+                Creates the `global_attention_mask` for the longformer. Tokens with global attention
+                attend to all other tokens, and all other tokens attend to them. This is important for
+                task-specific finetuning because it makes the model more flexible at representing the
+                task. For example, for classification, the `<s>` token should be given global attention.
+                For QA, all question tokens should also have global attention. For summarization,
+                global attention is given to all of the `<s>` (RoBERTa 'CLS' equivalent) tokens. Please
+                refer to the `Longformer paper <https://arxiv.org/abs/2004.05150>`_ for more details. Mask
                 values selected in ``[0, 1]``: ``0`` for local attention, ``1`` for global attention.
                 """
                 # `batch_size` is the number of attention masks (one mask per input sequence)
