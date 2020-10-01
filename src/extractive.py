@@ -110,9 +110,11 @@ class ExtractiveSummarizer(pl.LightningModule):
             self.freeze_web_model()
 
         if hparams.pooling_mode == "sent_rep_tokens":
-            self.pooling_model = Pooling(sent_rep_tokens=True, mean_tokens=False)
+            self.pooling_model = Pooling(sent_rep_tokens=True, mean_tokens=False, max_tokens=False)
+        elif hparams.pooling_mode == "max_tokens":
+            self.pooling_model = Pooling(sent_rep_tokens=False, mean_tokens=False, max_tokens=True)
         else:
-            self.pooling_model = Pooling(sent_rep_tokens=False, mean_tokens=True)
+            self.pooling_model = Pooling(sent_rep_tokens=False, mean_tokens=True, max_tokens=False)
 
         # if a classifier object was passed when creating this model then store that as the `encoder`
         if classifier_obj:
@@ -1052,7 +1054,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             "--pooling_mode",
             type=str,
             default="sent_rep_tokens",
-            choices=["sent_rep_tokens", "mean_tokens"],
+            choices=["sent_rep_tokens", "mean_tokens", "max_tokens"],
             help="How word vectors should be converted to sentence embeddings.",
         )
         parser.add_argument(

@@ -13,11 +13,12 @@ class Pooling(nn.Module):
         each sentence. Default is False.
     """
 
-    def __init__(self, sent_rep_tokens=True, mean_tokens=False):
+    def __init__(self, sent_rep_tokens=True, mean_tokens=False, max_tokens=False):
         super(Pooling, self).__init__()
 
         self.sent_rep_tokens = sent_rep_tokens
         self.mean_tokens = mean_tokens
+        self.max_tokens = max_tokens
 
         # pooling_mode_multiplier = sum([sent_rep_tokens, mean_tokens])
         # self.pooling_output_dimension = (pooling_mode_multiplier * word_embedding_dimension)
@@ -60,7 +61,7 @@ class Pooling(nn.Module):
             output_vectors.append(sents_vec)
             output_masks.append(sent_rep_mask)
 
-        if self.mean_tokens:
+        if self.mean_tokens or self.max_tokens:
             batch_sequences = [
                 torch.split(word_vectors[idx], seg)
                 for idx, seg in enumerate(sent_lengths)
@@ -69,7 +70,10 @@ class Pooling(nn.Module):
                 torch.stack(
                     [
                         # the mean with padding ignored
-                        (sequence.sum(dim=0) / (sequence != 0).sum(dim=0))
+                        ((sequence.sum(dim=0) / (sequence != 0).sum(dim=0))
+                        if self.mean_tokens
+                        else torch.max(sequence, 0)[0]
+                        )
                         # if the sequence contains values that are not zero
                         if ((sequence != 0).sum() != 0)
                         # any tensor with 2 dimensions (one being the hidden size) that has already been created (will be set to zero from padding)
