@@ -173,7 +173,7 @@ class TransformerEncoderClassifier(nn.Module):
         # x is still shape (source sequence length, batch size, feature number)
         x = x.transpose(0, 1).squeeze()
         # x is shape (batch size, source sequence length, feature number)
-        x = self.reduction(x, mask)
+        x = self.reduction(x)
         # x is shape (batch size, source sequence length, 1)
         # mask is shape (batch size, source sequence length)
         sent_scores = x.squeeze(-1) * mask.float()
