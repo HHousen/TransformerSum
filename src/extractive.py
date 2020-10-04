@@ -154,7 +154,7 @@ class ExtractiveSummarizer(pl.LightningModule):
                     self.word_embedding_model.config.hidden_size,
                     dropout=hparams.classifier_dropout,
                     num_layers=hparams.classifier_transformer_num_layers,
-                    reduction=linear,
+                    custom_reduction=linear,
                 )
             else:
                 logger.error(

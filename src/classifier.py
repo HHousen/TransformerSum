@@ -114,7 +114,7 @@ class TransformerEncoderClassifier(nn.Module):
         dim_feedforward=2048,
         dropout=0.1,
         num_layers=2,
-        reduction=None,
+        custom_reduction=None,
     ):
         super(TransformerEncoderClassifier, self).__init__()
 
@@ -126,6 +126,7 @@ class TransformerEncoderClassifier(nn.Module):
             sys.exit(1)
 
         self.nhead = nhead
+        self.custom_reduction = custom_reduction
 
         encoder_layer = nn.TransformerEncoderLayer(
             d_model, nhead, dim_feedforward=dim_feedforward, dropout=dropout
@@ -133,8 +134,8 @@ class TransformerEncoderClassifier(nn.Module):
         layer_norm = nn.LayerNorm(d_model)
         self.encoder = nn.TransformerEncoder(encoder_layer, num_layers, norm=layer_norm)
 
-        if reduction:
-            self.reduction = reduction
+        if custom_reduction:
+            self.reduction = custom_reduction
         else:
             linear = nn.Linear(d_model, 1)
             sigmoid = nn.Sigmoid()
@@ -173,7 +174,10 @@ class TransformerEncoderClassifier(nn.Module):
         # x is still shape (source sequence length, batch size, feature number)
         x = x.transpose(0, 1).squeeze()
         # x is shape (batch size, source sequence length, feature number)
-        x = self.reduction(x)
+        if self.custom_reduction:
+            x = self.reduction(x, mask)
+        else:
+            x = self.reduction(x)
         # x is shape (batch size, source sequence length, 1)
         # mask is shape (batch size, source sequence length)
         sent_scores = x.squeeze(-1) * mask.float()
