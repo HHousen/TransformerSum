@@ -12,7 +12,7 @@ dependencies:
     - pip
     - pip:
       - pytorch_lightning
-      - transformers
+      - transformers==3.0.2
       - torch_optimizer
       - wandb
       - rouge-score
