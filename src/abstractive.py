@@ -43,9 +43,7 @@ except ImportError:
 
 
 def trim_batch(
-    input_ids,
-    pad_token_id,
-    attention_mask=None,
+    input_ids, pad_token_id, attention_mask=None,
 ):
     """Remove columns that are populated exclusively by ``pad_token_id``."""
     keep_column_mask = input_ids.ne(pad_token_id).any(dim=0)
@@ -56,7 +54,7 @@ def trim_batch(
     return (input_ids[:, keep_column_mask], attention_mask[:, keep_column_mask])
 
 
-def longformer_modifier(final_dictionary):
+def longformer_modifier(final_dictionary, tokenizer, attention_window):
     """
     Creates the `global_attention_mask` for the longformer. Tokens with global attention
     attend to all other tokens, and all other tokens attend to them. This is important for
@@ -76,15 +74,14 @@ def longformer_modifier(final_dictionary):
     # set the `sent_rep_token_ids` to 1, which is global attention
     for idx, input_sequence in enumerate(final_dictionary["source"]):
         for inner_idx, token_id in enumerate(input_sequence):
-            if token_id == self.tokenizer.cls_token_id:
+            if token_id == tokenizer.cls_token_id:
                 global_attention_mask[idx, inner_idx] = 1
 
     final_dictionary["global_attention_mask"] = global_attention_mask
 
     for key, item in final_dictionary.items():
         final_dictionary[key] = pad_tensors(
-            item,
-            nearest_multiple_of=self.model.config.attention_window[0] * 2,
+            item, nearest_multiple_of=attention_window[0] * 2,
         )
 
     return final_dictionary
@@ -103,10 +100,8 @@ class AbstractiveSummarizer(pl.LightningModule):
         self.hparams = hparams
 
         if "longformer-encdec" in self.hparams.model_name_or_path.lower():
-            self.model = (
-                LongformerEncoderDecoderForConditionalGeneration.from_pretrained(
-                    self.hparams.model_name_or_path, gradient_checkpointing=True
-                )
+            self.model = LongformerEncoderDecoderForConditionalGeneration.from_pretrained(
+                self.hparams.model_name_or_path, gradient_checkpointing=True
             )
 
             self.tokenizer = BartTokenizerFast.from_pretrained(
@@ -201,7 +196,14 @@ class AbstractiveSummarizer(pl.LightningModule):
             self.tokenized_data_file_paths[split] = features_cache_file
 
         if "longformer" in self.hparams.model_name_or_path:
-            self.collate_fn = partial(self.abs_collate_fn, modifier=longformer_modifier)
+            longformer_modifier_ = partial(
+                longformer_modifier,
+                tokenizer=self.tokenizer,
+                attention_window=self.model.config.attention_window,
+            )
+            self.collate_fn = partial(
+                self.abs_collate_fn, modifier=longformer_modifier_
+            )
         else:
             self.collate_fn = self.abs_collate_fn
 
@@ -314,9 +316,7 @@ class AbstractiveSummarizer(pl.LightningModule):
                 article = article.strip()
                 try:
                     article_encoded = self.tokenizer(
-                        article,
-                        padding="max_length",
-                        truncation=True,
+                        article, padding="max_length", truncation=True,
                     )
                     articles_encoded_step.append(article_encoded)
                 except:  # skipcq: FLK-E722
@@ -414,9 +414,7 @@ class AbstractiveSummarizer(pl.LightningModule):
             # The articles have already been padded because they do not need the extra
             # `boseq` and `eoseq` tokens.
             highlights_input_ids = pad(
-                highlights_input_ids,
-                self.tokenizer.pad_token_id,
-                width=max_length,
+                highlights_input_ids, self.tokenizer.pad_token_id, width=max_length,
             )
             highlights_attention_masks = pad(
                 highlights_attention_masks, 0, width=max_length
@@ -696,11 +694,7 @@ class AbstractiveSummarizer(pl.LightningModule):
 
         tqdm_dict = {"train_loss": cross_entropy_loss}
         output = OrderedDict(
-            {
-                "loss": cross_entropy_loss,
-                "progress_bar": tqdm_dict,
-                "log": tqdm_dict,
-            }
+            {"loss": cross_entropy_loss, "progress_bar": tqdm_dict, "log": tqdm_dict,}
         )
         return output
 
@@ -741,7 +735,12 @@ class AbstractiveSummarizer(pl.LightningModule):
         through the model. However, this method also calculates the ROUGE scores for each example-summary
         pair.
         """
-        source_ids, target_ids, source_mask, _ = batch.values()
+        source_ids, target_ids, source_mask, _ = (
+            batch["source"],
+            batch["target"],
+            batch["source_mask"],
+            batch["target_mask"],
+        )
 
         source_ids, source_mask = trim_batch(
             source_ids, self.tokenizer.pad_token_id, attention_mask=source_mask
@@ -757,10 +756,10 @@ class AbstractiveSummarizer(pl.LightningModule):
             input_ids=source_ids,
             attention_mask=source_mask,
             num_beams=5,
-            decoder_start_token_id=self.target_boseq_token_id,
-            bos_token_id=self.target_boseq_token_id,
-            eos_token_id=self.target_eoseq_token_id,
-            pad_token_id=self.target_eoseq_token_id,
+            # decoder_start_token_id=self.target_boseq_token_id,
+            # bos_token_id=self.target_boseq_token_id,
+            # eos_token_id=self.target_eoseq_token_id,
+            # pad_token_id=self.target_eoseq_token_id,
             max_length=(
                 self.hparams.gen_max_len
                 if self.hparams.gen_max_len
@@ -953,9 +952,7 @@ class AbstractiveSummarizer(pl.LightningModule):
             )
 
         gen_texts = self.tokenizer.batch_decode(
-            generated_ids,
-            skip_special_tokens=True,
-            clean_up_tokenization_spaces=True,
+            generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True,
         )
 
         if len(gen_texts) == 1:
