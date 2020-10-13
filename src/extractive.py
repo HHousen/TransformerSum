@@ -172,7 +172,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         # BCELoss: https://pytorch.org/docs/stable/nn.html#bceloss
         # `reduction` is "none" so the mean can be computed with padding ignored.
         # See `compute_loss()` for more info.
-        self.loss_func = nn.BCELoss(reduction="none")
+        self.loss_func = nn.BCEWithLogitsLoss(reduction="none")
 
         # Data
         self.processor = SentencesProcessor(name="main_processor")

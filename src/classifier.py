@@ -39,7 +39,7 @@ class LinearClassifier(nn.Module):
         self.dropout1 = nn.Dropout(dropout) if dropout else nn.Identity()
         self.linear1 = nn.Linear(web_hidden_size, linear_hidden)
         self.linear2 = nn.Linear(linear_hidden, 1)
-        self.sigmoid = nn.Sigmoid()
+        # self.sigmoid = nn.Sigmoid()
 
         # support older versions of huggingface/transformers
         if activation_string == "gelu":
@@ -60,8 +60,9 @@ class LinearClassifier(nn.Module):
         x = self.activation(x)
         x = self.dropout1(x)
         x = self.linear2(x)
-        x = self.sigmoid(x)
+        # x = self.sigmoid(x)
         sent_scores = x.squeeze(-1) * mask.float()
+        sent_scores[sent_scores==0] = -9e9
         return sent_scores
 
 
@@ -77,7 +78,7 @@ class SimpleLinearClassifier(nn.Module):
     def __init__(self, web_hidden_size):
         super(SimpleLinearClassifier, self).__init__()
         self.linear = nn.Linear(web_hidden_size, 1)
-        self.sigmoid = nn.Sigmoid()
+        # self.sigmoid = nn.Sigmoid()
 
     def forward(self, x, mask):
         """
@@ -85,8 +86,9 @@ class SimpleLinearClassifier(nn.Module):
         on padded values. Returns ``sent_scores``.
         """
         x = self.linear(x).squeeze(-1)
-        x = self.sigmoid(x)
+        # x = self.sigmoid(x)
         sent_scores = x * mask.float()
+        sent_scores[sent_scores==0] = -9e9
         return sent_scores
 
 
@@ -138,8 +140,8 @@ class TransformerEncoderClassifier(nn.Module):
             self.reduction = custom_reduction
         else:
             linear = nn.Linear(d_model, 1)
-            sigmoid = nn.Sigmoid()
-            self.reduction = nn.Sequential(linear, sigmoid)
+            # sigmoid = nn.Sigmoid()
+            self.reduction = linear #nn.Sequential(linear, sigmoid)
 
     def forward(self, x, mask):
         """
@@ -181,4 +183,5 @@ class TransformerEncoderClassifier(nn.Module):
         # x is shape (batch size, source sequence length, 1)
         # mask is shape (batch size, source sequence length)
         sent_scores = x.squeeze(-1) * mask.float()
+        sent_scores[sent_scores==0] = -9e9
         return sent_scores
