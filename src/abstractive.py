@@ -518,7 +518,9 @@ class AbstractiveSummarizer(pl.LightningModule):
 
         else:
             if type(self.hparams.dataset) is list and "/" in self.hparams.dataset[0]:
-                for (split, _), dataset_path in zip(self.tokenized_data_file_paths.items(), self.hparams.dataset):
+                for (split, _), dataset_path in zip(
+                    self.tokenized_data_file_paths.items(), self.hparams.dataset
+                ):
                     self.dataset[split] = nlp.Dataset.from_file(dataset_path)
             else:
                 self.dataset = nlp.load_dataset(
@@ -828,9 +830,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         Called at the end of a testing epoch: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.test_epoch_end>`__
         Finds the mean of all the metrics logged by :meth:`~abstractive.AbstractiveSummarizer.test_step`.
         """
-        avg_generation_time = np.array(
-            [x["generation_time"] for x in outputs]
-        ).mean()
+        avg_generation_time = np.array([x["generation_time"] for x in outputs]).mean()
 
         rouge_scores_log = {}
 
@@ -863,18 +863,16 @@ class AbstractiveSummarizer(pl.LightningModule):
                 x["prediction"] for x in outputs if x["prediction"] is not None
             ]
             targets = [x["target"] for x in outputs if x["target"] is not None]
-            
+
             if self.hparams.default_root_dir is None:
                 save_dir = "."
             else:
                 save_dir = self.hparams.default_root_dir
-            
+
             output_test_predictions_file = os.path.join(
                 save_dir, "test_predictions.txt"
             )
-            output_test_targets_file = os.path.join(
-                save_dir, "test_targets.txt"
-            )
+            output_test_targets_file = os.path.join(save_dir, "test_targets.txt")
             with open(output_test_predictions_file, "w+") as p_writer, open(
                 output_test_targets_file, "w+"
             ) as t_writer:

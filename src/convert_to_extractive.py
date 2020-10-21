@@ -230,8 +230,7 @@ def convert_to_extractive_process(
     logger.info("Processing %s", name)
     t0 = time()
     for (preprocessed_data, target_doc) in pool.map(
-        _example_processor,
-        zip(source_docs_tokenized, target_docs_tokenized),
+        _example_processor, zip(source_docs_tokenized, target_docs_tokenized),
     ):
         if preprocessed_data is not None:
             # preprocessed_data is (source_doc, labels)
@@ -396,11 +395,7 @@ def tokenize(
     tokenized = []
 
     for doc in tqdm(
-        nlp.pipe(
-            docs,
-            n_process=n_process,
-            batch_size=batch_size,
-        ),
+        nlp.pipe(docs, n_process=n_process, batch_size=batch_size,),
         total=len(docs),
         desc="Tokenizing" + name,
         mininterval=tokenizer_log_interval,
@@ -655,9 +650,7 @@ if __name__ == "__main__":
         help="use gzip compression when saving data",
     )
     parser.add_argument(
-        "--resume",
-        action="store_true",
-        help="resume from last shard",
+        "--resume", action="store_true", help="resume from last shard",
     )
     parser.add_argument(
         "--tokenizer_log_interval",

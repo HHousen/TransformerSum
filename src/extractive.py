@@ -346,12 +346,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             )
 
     def json_to_dataset(
-        self,
-        tokenizer,
-        hparams,
-        inputs=None,
-        num_files=0,
-        processor=None,
+        self, tokenizer, hparams, inputs=None, num_files=0, processor=None,
     ):
         """Convert json output from ``convert_to_extractive.py`` to a ".pt" file containing
         lists or tensors using a :class:`data.SentencesProcessor`. This function is run by
@@ -487,8 +482,7 @@ class ExtractiveSummarizer(pl.LightningModule):
                 )
 
                 for _ in map(
-                    json_to_dataset_processor,
-                    zip(range(len(json_files)), json_files),
+                    json_to_dataset_processor, zip(range(len(json_files)), json_files),
                 ):
                     pass
                 # pool.close()
