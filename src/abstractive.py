@@ -44,7 +44,9 @@ except ImportError:
 
 
 def trim_batch(
-    input_ids, pad_token_id, attention_mask=None,
+    input_ids,
+    pad_token_id,
+    attention_mask=None,
 ):
     """Remove columns that are populated exclusively by ``pad_token_id``."""
     keep_column_mask = input_ids.ne(pad_token_id).any(dim=0)
@@ -82,7 +84,8 @@ def longformer_modifier(final_dictionary, tokenizer, attention_window):
 
     for key, item in final_dictionary.items():
         final_dictionary[key] = pad_tensors(
-            item, nearest_multiple_of=attention_window[0] * 2,
+            item,
+            nearest_multiple_of=attention_window[0] * 2,
         )
 
     return final_dictionary
@@ -104,8 +107,10 @@ class AbstractiveSummarizer(pl.LightningModule):
             self.hparams.dataset = self.hparams.dataset[0]
 
         if "longformer-encdec" in self.hparams.model_name_or_path.lower():
-            self.model = LongformerEncoderDecoderForConditionalGeneration.from_pretrained(
-                self.hparams.model_name_or_path, gradient_checkpointing=True
+            self.model = (
+                LongformerEncoderDecoderForConditionalGeneration.from_pretrained(
+                    self.hparams.model_name_or_path, gradient_checkpointing=True
+                )
             )
 
             self.tokenizer = BartTokenizerFast.from_pretrained(
@@ -320,7 +325,9 @@ class AbstractiveSummarizer(pl.LightningModule):
                 article = article.strip()
                 try:
                     article_encoded = self.tokenizer(
-                        article, padding="max_length", truncation=True,
+                        article,
+                        padding="max_length",
+                        truncation=True,
                     )
                     articles_encoded_step.append(article_encoded)
                 except:  # skipcq: FLK-E722
@@ -418,7 +425,9 @@ class AbstractiveSummarizer(pl.LightningModule):
             # The articles have already been padded because they do not need the extra
             # `boseq` and `eoseq` tokens.
             highlights_input_ids = pad(
-                highlights_input_ids, self.tokenizer.pad_token_id, width=max_length,
+                highlights_input_ids,
+                self.tokenizer.pad_token_id,
+                width=max_length,
             )
             highlights_attention_masks = pad(
                 highlights_attention_masks, 0, width=max_length
@@ -704,7 +713,11 @@ class AbstractiveSummarizer(pl.LightningModule):
 
         tqdm_dict = {"train_loss": cross_entropy_loss}
         output = OrderedDict(
-            {"loss": cross_entropy_loss, "progress_bar": tqdm_dict, "log": tqdm_dict,}
+            {
+                "loss": cross_entropy_loss,
+                "progress_bar": tqdm_dict,
+                "log": tqdm_dict,
+            }
         )
         return output
 
@@ -964,7 +977,9 @@ class AbstractiveSummarizer(pl.LightningModule):
             )
 
         gen_texts = self.tokenizer.batch_decode(
-            generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True,
+            generated_ids,
+            skip_special_tokens=True,
+            clean_up_tokenization_spaces=True,
         )
 
         if len(gen_texts) == 1:

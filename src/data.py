@@ -815,7 +815,10 @@ class SentencesProcessor:
 
         if save_to_path:
             final_save_name = save_to_name if save_to_name else ("dataset_" + self.name)
-            dataset_path = os.path.join(save_to_path, (final_save_name + ".pt"),)
+            dataset_path = os.path.join(
+                save_to_path,
+                (final_save_name + ".pt"),
+            )
             logger.info("Saving dataset into cached file %s", dataset_path)
             torch.save(dataset, dataset_path)
 
@@ -824,7 +827,10 @@ class SentencesProcessor:
     def load(self, load_from_path, dataset_name=None):
         """Attempts to load the dataset from storage. If that fails, will return None."""
         final_load_name = dataset_name if dataset_name else ("dataset_" + self.name)
-        dataset_path = os.path.join(load_from_path, (final_load_name + ".pt"),)
+        dataset_path = os.path.join(
+            load_from_path,
+            (final_load_name + ".pt"),
+        )
 
         if os.path.exists(dataset_path):
             logger.info("Loading data from file %s", dataset_path)

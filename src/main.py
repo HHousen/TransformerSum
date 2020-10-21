@@ -60,7 +60,9 @@ def main(args):
     args.callbacks = [lr_logger]
 
     if args.use_logger == "wandb":
-        wandb_logger = WandbLogger(project=args.wandb_project,)
+        wandb_logger = WandbLogger(
+            project=args.wandb_project,
+        )
         args.logger = wandb_logger
         if not args.no_wandb_logger_log_model:
             import wandb
@@ -71,7 +73,10 @@ def main(args):
 
     if args.use_custom_checkpoint_callback:
         args.checkpoint_callback = ModelCheckpoint(
-            filepath=args.weights_save_path, save_top_k=-1, period=1, verbose=True,
+            filepath=args.weights_save_path,
+            save_top_k=-1,
+            period=1,
+            verbose=True,
         )
     if args.custom_checkpoint_every_n:
         custom_checkpoint_callback = StepCheckpointCallback(
@@ -322,7 +327,10 @@ if __name__ == "__main__":
         help="Runs a learning rate finder algorithm (see https://arxiv.org/abs/1506.01186) before any training, to find optimal initial learning rate.",
     )
     parser.add_argument(
-        "--adam_epsilon", default=1e-8, type=float, help="Epsilon for Adam optimizer.",
+        "--adam_epsilon",
+        default=1e-8,
+        type=float,
+        help="Epsilon for Adam optimizer.",
     )
     parser.add_argument(
         "--optimizer_type",
