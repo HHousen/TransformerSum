@@ -10,7 +10,7 @@ def convert_to_arrow(
     converted_tables = []
 
     if len(file_paths) == 1:
-        mmap = pa.memory_map(file)
+        mmap = pa.memory_map(file_paths[0])
         json_input = json.read_json(mmap)
         writer = nlp.arrow_writer.ArrowWriter(path=save_path)
         writer.write_table(json_input)
