@@ -21,6 +21,8 @@ Classifier
 
 .. automodule:: classifier
 
+.. _convert_to_extractive_api:
+
 Convert To Extractive
 ---------------------
 

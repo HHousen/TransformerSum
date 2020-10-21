@@ -7,6 +7,7 @@ import datasets as nlp
 import pyarrow
 import itertools
 import spacy
+import numpy as np
 from spacy.lang.en import English
 from functools import partial
 from time import time
@@ -98,6 +99,9 @@ class AbstractiveSummarizer(pl.LightningModule):
         super(AbstractiveSummarizer, self).__init__()
 
         self.hparams = hparams
+
+        if len(self.hparams.dataset) <= 1:
+            self.hparams.dataset = self.hparams.dataset[0]
 
         if "longformer-encdec" in self.hparams.model_name_or_path.lower():
             self.model = LongformerEncoderDecoderForConditionalGeneration.from_pretrained(
@@ -441,7 +445,7 @@ class AbstractiveSummarizer(pl.LightningModule):
                     and random.random() < self.hparams.use_percentage_of_data
                 )
             else:
-                keep_example = article and highlight
+                keep_example = bool(article and highlight)
 
             return keep_example
 
@@ -513,11 +517,15 @@ class AbstractiveSummarizer(pl.LightningModule):
             self.dataset = combined_dataset
 
         else:
-            self.dataset = nlp.load_dataset(
-                self.hparams.dataset,
-                self.hparams.dataset_version,
-                cache_dir=self.hparams.nlp_cache_dir,
-            )
+            if type(self.hparams.dataset) is list and "/" in self.hparams.dataset[0]:
+                for (split, _), dataset_path in zip(self.tokenized_data_file_paths.items(), self.hparams.dataset):
+                    self.dataset[split] = nlp.Dataset.from_file(dataset_path)
+            else:
+                self.dataset = nlp.load_dataset(
+                    self.hparams.dataset,
+                    self.hparams.dataset_version,
+                    cache_dir=self.hparams.nlp_cache_dir,
+                )
 
         for split, features_cache_file in self.tokenized_data_file_paths.items():
             # If the tokenized version has not been created yet, then do the initial
@@ -820,7 +828,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         Called at the end of a testing epoch: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.test_epoch_end>`__
         Finds the mean of all the metrics logged by :meth:`~abstractive.AbstractiveSummarizer.test_step`.
         """
-        avg_generation_time = torch.stack(
+        avg_generation_time = np.array(
             [x["generation_time"] for x in outputs]
         ).mean()
 
@@ -855,11 +863,17 @@ class AbstractiveSummarizer(pl.LightningModule):
                 x["prediction"] for x in outputs if x["prediction"] is not None
             ]
             targets = [x["target"] for x in outputs if x["target"] is not None]
+            
+            if self.hparams.default_root_dir is None:
+                save_dir = "."
+            else:
+                save_dir = self.hparams.default_root_dir
+            
             output_test_predictions_file = os.path.join(
-                self.hparams.default_root_dir, "test_predictions.txt"
+                save_dir, "test_predictions.txt"
             )
             output_test_targets_file = os.path.join(
-                self.hparams.default_root_dir, "test_targets.txt"
+                save_dir, "test_targets.txt"
             )
             with open(output_test_predictions_file, "w+") as p_writer, open(
                 output_test_targets_file, "w+"
@@ -1024,9 +1038,9 @@ class AbstractiveSummarizer(pl.LightningModule):
         )
         parser.add_argument(
             "--dataset",
-            type=str,
+            nargs="+",
             default="cnn_dailymail",
-            help="The dataset name from the `nlp` library to use for training/evaluation/testing. Default is `cnn_dailymail`.",
+            help="The dataset name from the `nlp` library or a list of paths to Apache Arrow files (that can be loaded with `nlp`) in the order train, validation, test to use for training/evaluation/testing. Paths must contain a '/' to be interpreted correctly. Default is `cnn_dailymail`.",
         )
         parser.add_argument(
             "--dataset_version",

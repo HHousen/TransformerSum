@@ -140,136 +140,107 @@ Output of ``python main.py --mode abstractive --help`` (:ref:`generic options <m
 .. code-block::
 
     usage: main.py [-h]
-                    [--model_name_or_path MODEL_NAME_OR_PATH]
-                    [--decoder_model_name_or_path DECODER_MODEL_NAME_OR_PATH]
-                    [--batch_size BATCH_SIZE] [--val_batch_size VAL_BATCH_SIZE]
-                    [--test_batch_size TEST_BATCH_SIZE]
-                    [--dataloader_num_workers DATALOADER_NUM_WORKERS]
-                    [--adam_epsilon ADAM_EPSILON] [--warmup_steps WARMUP_STEPS]
-                    [--use_scheduler USE_SCHEDULER] [--weight_decay WEIGHT_DECAY]
-                    [--only_preprocess] [--dataset DATASET]
-                    [--dataset_version DATASET_VERSION]
-                    [--data_example_column DATA_EXAMPLE_COLUMN]
-                    [--data_summarized_column DATA_SUMMARIZED_COLUMN]
-                    [--cache_file_path CACHE_FILE_PATH] [--split_char SPLIT_CHAR]
-                    [--use_percentage_of_data USE_PERCENTAGE_OF_DATA]
-                    [--save_percentage SAVE_PERCENTAGE] [--save_hg_transformer]
-                    [--test_use_pyrouge] [--sentencizer] [--gen_max_len GEN_MAX_LEN]
-                    [--label_smoothing LABEL_SMOOTHING] [--sortish_sampler]
-                    [--nlp_cache_dir NLP_CACHE_DIR] [--tie_encoder_decoder]
+                [--model_name_or_path MODEL_NAME_OR_PATH]
+                [--decoder_model_name_or_path DECODER_MODEL_NAME_OR_PATH]
+                [--batch_size BATCH_SIZE] [--val_batch_size VAL_BATCH_SIZE]
+                [--test_batch_size TEST_BATCH_SIZE]
+                [--dataloader_num_workers DATALOADER_NUM_WORKERS] [--only_preprocess]
+                [--no_prepare_data] [--dataset DATASET [DATASET ...]]
+                [--dataset_version DATASET_VERSION] [--data_example_column DATA_EXAMPLE_COLUMN]
+                [--data_summarized_column DATA_SUMMARIZED_COLUMN]
+                [--cache_file_path CACHE_FILE_PATH] [--split_char SPLIT_CHAR]
+                [--use_percentage_of_data USE_PERCENTAGE_OF_DATA]
+                [--save_percentage SAVE_PERCENTAGE] [--save_hg_transformer] [--test_use_pyrouge]
+                [--sentencizer] [--gen_max_len GEN_MAX_LEN] [--label_smoothing LABEL_SMOOTHING]
+                [--sortish_sampler] [--nlp_cache_dir NLP_CACHE_DIR] [--tie_encoder_decoder]
 
-        optional arguments:
-        -h, --help            show this help message and exit
-        --model_name_or_path MODEL_NAME_OR_PATH
-                                Path to pre-trained model or shortcut name. A list of
-                                shortcut names can be found at https://huggingface.co/t
-                                ransformers/pretrained_models.html. Community-uploaded
-                                models are located at https://huggingface.co/models.
-                                Default is 'bert-base-uncased'.
-        --decoder_model_name_or_path DECODER_MODEL_NAME_OR_PATH
-                                Path to pre-trained model or shortcut name to use as
-                                the decoder if an EncoderDecoderModels architecture is
-                                desired. If this option is not specified, the shortcut
-                                name specified by `--model_name_or_path` is loaded using
-                                the Seq2seq AutoModel. Default is 'bert-base-uncased'.
-        --batch_size BATCH_SIZE
-                                Batch size per GPU/CPU for training/evaluation/testing.
-        --val_batch_size VAL_BATCH_SIZE
-                                Batch size per GPU/CPU for evaluation. This option
-                                overwrites `--batch_size` for evaluation only.
-        --test_batch_size TEST_BATCH_SIZE
-                                Batch size per GPU/CPU for testing. This option
-                                overwrites `--batch_size` for testing only.
-        --dataloader_num_workers DATALOADER_NUM_WORKERS
-                                The number of workers to use when loading data. A
-                                general place to start is to set num_workers equal to
-                                the number of CPUs on your machine. More details here:
-                                https://pytorch-lightning.readthedocs.io/en/latest/perf
-                                ormance.html#num-workers
-        --adam_epsilon ADAM_EPSILON
-                                Epsilon for Adam optimizer.
-        --warmup_steps WARMUP_STEPS
-                                Linear warmup over warmup_steps. Only active if
-                                `--use_scheduler` is set.
-        --use_scheduler USE_SCHEDULER
-                                Two options: 1. `linear`: Use a linear schedule that
-                                inceases linearly over `--warmup_steps` to
-                                `--learning_rate` then decreases linearly for the rest
-                                of the training process. 2. `onecycle`: Use the one
-                                cycle policy with a maximum learning rate of
-                                `--learning_rate`. (default: False, don't use any
-                                scheduler)
-        --weight_decay WEIGHT_DECAY
-        --only_preprocess     Only preprocess and write the data to disk. Don't train
-                                model.
-        --dataset DATASET     The dataset name from the `nlp` library to use for
-                                training/evaluation/testing. Default is
-                                `cnn_dailymail`.
-        --dataset_version DATASET_VERSION
-                                The version of the dataset specified by `--dataset`.
-        --data_example_column DATA_EXAMPLE_COLUMN
-                                The column of the `nlp` dataset that contains the text
-                                to be summarized. Default value is for the
-                                `cnn_dailymail` dataset.
-        --data_summarized_column DATA_SUMMARIZED_COLUMN
-                                The column of the `nlp` dataset that contains the
-                                summarized text. Default value is for the
-                                `cnn_dailymail` dataset.
-        --cache_file_path CACHE_FILE_PATH
-                                Path to cache the tokenized dataset.
-        --split_char SPLIT_CHAR
-                                If the `--data_summarized_column` is already split into
-                                sentences then use this option to specify which token
-                                marks sentence boundaries. If the summaries are not
-                                split into sentences then spacy will be used to split
-                                them. The default is None, which means to use spacy.
-        --use_percentage_of_data USE_PERCENTAGE_OF_DATA
-                                When filtering the dataset, only save a percentage of
-                                the data. This is useful for debugging when you don't
-                                want to process the entire dataset.
-        --save_percentage SAVE_PERCENTAGE
-                                Percentage (divided by batch_size) between 0 and 1 of
-                                the predicted and target summaries from the test set to
-                                save to disk during testing. This depends on batch
-                                size: one item from each batch is saved
-                                `--save_percentage` percent of the time. Thus, you can
-                                expect `len(dataset)*save_percentage/batch_size`
-                                summaries to be saved.
-        --save_hg_transformer
-                                Save the `huggingface/transformers` model whenever a
-                                checkpoint is saved.
-        --test_use_pyrouge    Use `pyrouge`, which is an interface to the official
-                                ROUGE software, instead of the pure-python
-                                implementation provided by `rouge-score`. You must have
-                                the real ROUGE package installed. More details about
-                                ROUGE 1.5.5 here: https://github.com/andersjo/pyrouge/t
-                                ree/master/tools/ROUGE-1.5.5. It is recommended to use
-                                this option for official scores. The `ROUGE-L`
-                                measurements from `pyrouge` are equivalent to the
-                                `rougeLsum` measurements from the default `rouge-score`
-                                package.
-        --sentencizer         Use a spacy sentencizer instead of a statistical model
-                                for sentence detection (much faster but less accurate)
-                                during data preprocessing; see
-                                https://spacy.io/api/sentencizer.
-        --gen_max_len GEN_MAX_LEN
-                                Maximum sequence length during generation while testing
-                                and when using the `predict()` function.
-        --label_smoothing LABEL_SMOOTHING
-                                `LabelSmoothingLoss` implementation from OpenNMT
-                                (https://bit.ly/2ObgVPP) as stated in the original
-                                paper https://arxiv.org/abs/1512.00567.
-        --sortish_sampler     Reorganize the input_ids by length with a bit of
-                                randomness. This can help to avoid memory errors caused
-                                by large batches by forcing large batches to be
-                                processed first.
-        --nlp_cache_dir NLP_CACHE_DIR
-                                Directory to cache datasets downloaded using `nlp`. Defaults 
-                                to '~/nlp'.
-        --tie_encoder_decoder TIE_ENCODER_DECODER
-                                Tie the encoder and decoder weights. Only takes effect when
-                                using an EncoderDecoderModel architecture with the
-                                `--decoder_model_name_or_path` option. Specifying this
-                                option is equivalent to the 'share' architecture tested
-                                in 'Leveraging Pre-trained Checkpoints for Sequence
-                                Generation Tasks' (https://arxiv.org/abs/1907.12461).
+    optional arguments:
+    --model_name_or_path MODEL_NAME_OR_PATH
+                            Path to pre-trained model or shortcut name. A list of shortcut names
+                            can be found at
+                            https://huggingface.co/transformers/pretrained_models.html. Community-
+                            uploaded models are located at https://huggingface.co/models. Default
+                            is 'bert-base-uncased'.
+    --decoder_model_name_or_path DECODER_MODEL_NAME_OR_PATH
+                            Path to pre-trained model or shortcut name to use as the decoder if an
+                            EncoderDecoderModel architecture is desired. If this option is not
+                            specified, the shortcut name specified by `--model_name_or_path` is
+                            loaded using the Seq2seq AutoModel. Default is 'bert-base-uncased'.
+    --batch_size BATCH_SIZE
+                            Batch size per GPU/CPU for training/evaluation/testing.
+    --val_batch_size VAL_BATCH_SIZE
+                            Batch size per GPU/CPU for evaluation. This option overwrites
+                            `--batch_size` for evaluation only.
+    --test_batch_size TEST_BATCH_SIZE
+                            Batch size per GPU/CPU for testing. This option overwrites
+                            `--batch_size` for testing only.
+    --dataloader_num_workers DATALOADER_NUM_WORKERS
+                            The number of workers to use when loading data. A general place to
+                            start is to set num_workers equal to the number of CPUs on your
+                            machine. More details here: https://pytorch-
+                            lightning.readthedocs.io/en/latest/performance.html#num-workers
+    --only_preprocess     Only preprocess and write the data to disk. Don't train model.
+    --no_prepare_data     Don't download, tokenize, or prepare data. Only load it from files.
+    --dataset DATASET [DATASET ...]
+                            The dataset name from the `nlp` library or a list of paths to Apache
+                            Arrow files (that can be loaded with `nlp`) in the order train,
+                            validation, test to use for training/evaluation/testing. Paths must
+                            contain a '/' to be interpreted correctly. Default is `cnn_dailymail`.
+    --dataset_version DATASET_VERSION
+                            The version of the dataset specified by `--dataset`.
+    --data_example_column DATA_EXAMPLE_COLUMN
+                            The column of the `nlp` dataset that contains the text to be
+                            summarized. Default value is for the `cnn_dailymail` dataset.
+    --data_summarized_column DATA_SUMMARIZED_COLUMN
+                            The column of the `nlp` dataset that contains the summarized text.
+                            Default value is for the `cnn_dailymail` dataset.
+    --cache_file_path CACHE_FILE_PATH
+                            Path to cache the tokenized dataset.
+    --split_char SPLIT_CHAR
+                            If the `--data_summarized_column` is already split into sentences then
+                            use this option to specify which token marks sentence boundaries. If
+                            the summaries are not split into sentences then spacy will be used to
+                            split them. The default is None, which means to use spacy.
+    --use_percentage_of_data USE_PERCENTAGE_OF_DATA
+                            When filtering the dataset, only save a percentage of the data. This is
+                            useful for debugging when you don't want to process the entire dataset.
+    --save_percentage SAVE_PERCENTAGE
+                            Percentage (divided by batch_size) between 0 and 1 of the predicted and
+                            target summaries from the test set to save to disk during testing. This
+                            depends on batch size: one item from each batch is saved
+                            `--save_percentage` percent of the time. Thus, you can expect
+                            `len(dataset)*save_percentage/batch_size` summaries to be saved.
+    --save_hg_transformer
+                            Save the `huggingface/transformers` model whenever a checkpoint is
+                            saved.
+    --test_use_pyrouge    Use `pyrouge`, which is an interface to the official ROUGE software,
+                            instead of the pure-python implementation provided by `rouge-score`.
+                            You must have the real ROUGE package installed. More details about
+                            ROUGE 1.5.5 here:
+                            https://github.com/andersjo/pyrouge/tree/master/tools/ROUGE-1.5.5. It
+                            is recommended to use this option for official scores. The `ROUGE-L`
+                            measurements from `pyrouge` are equivalent to the `rougeLsum`
+                            measurements from the default `rouge-score` package.
+    --sentencizer         Use a spacy sentencizer instead of a statistical model for sentence
+                            detection (much faster but less accurate) during data preprocessing;
+                            see https://spacy.io/api/sentencizer.
+    --gen_max_len GEN_MAX_LEN
+                            Maximum sequence length during generation while testing and when using
+                            the `predict()` function.
+    --label_smoothing LABEL_SMOOTHING
+                            `LabelSmoothingLoss` implementation from OpenNMT
+                            (https://bit.ly/2ObgVPP) as stated in the original paper
+                            https://arxiv.org/abs/1512.00567.
+    --sortish_sampler     Reorganize the input_ids by length with a bit of randomness. This can
+                            help to avoid memory errors caused by large batches by forcing large
+                            batches to be processed first.
+    --nlp_cache_dir NLP_CACHE_DIR
+                            Directory to cache datasets downloaded using `nlp`. Defaults to
+                            '~/nlp'.
+    --tie_encoder_decoder
+                            Tie the encoder and decoder weights. Only takes effect when using an
+                            EncoderDecoderModel architecture with the
+                            `--decoder_model_name_or_path` option. Specifying this option is
+                            equivalent to the 'share' architecture tested in 'Leveraging Pre-
+                            trained Checkpoints for Sequence Generation Tasks'
+                            (https://arxiv.org/abs/1907.12461).

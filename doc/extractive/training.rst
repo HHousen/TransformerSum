@@ -33,13 +33,14 @@ Pooling Modes
 
 The pooling model determines how word vectors should be converted to sentence embeddings. The implementation can be found in `pooling.py`. The ``--pooling_mode`` argument can be set to either ``sent_rep_tokens`` or ``mean_tokens``. While the pooling ``nn.Module`` allows multiple methods to be used at once (it will concatenate and return the results), the training script does not.
 
-* ``sent_rep_tokens``: Use the sentence representation token vectors as sentence embeddings.
-* ``mean_tokens``: Take the mean of all the token vectors in each sentence.
+* ``sent_rep_tokens``: Uses the sentence representation token (commonly called the classification token; ``[CLS]`` in BERT and ``<s>`` in RoBERTa) vectors as sentence embeddings.
+* ``mean_tokens``: Uses the average of the token vectors for each sentence in the input as sentence embeddings.
+* ``max_tokens``: Uses the maximum of the token vectors for each sentence in the input as sentence embeddings.
 
 Custom Models
 -------------
 
-You can use any transformer model for the word embedding model as long as it was saved in the ``huggingface/transformers`` format with the ``--model_name_or_path`` CLI argument. Any model that is loaded with this option by specifying a path is considered "custom" in this project. Currently, there are no "custom" models that are "officially" supported. The `longformer` used to be a custom model, but it was since added to the `huggingface/transformers` repository, and thus can be used in this project just like any other model.
+You can use any `autoencoding transformer model <https://huggingface.co/transformers/model_summary.html#autoencoding-models>`_ for the word embedding model (by setting the ``--model_name_or_path`` CLI argument) as long as it was saved in the ``huggingface/transformers`` format. Any model that is loaded with this option by specifying a path is considered "custom" in this project. Currently, there are no "custom" models that are "officially" supported. The `longformer` used to be a custom model, but it was since added to the `huggingface/transformers` repository, and thus can be used in this project just like any other model.
 
 .. _extractive_script_help:
 

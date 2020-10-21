@@ -3,6 +3,7 @@ import logging
 import torch
 import numpy as np
 import random
+import datasets as nlp
 from pytorch_lightning import Trainer
 from extractive import ExtractiveSummarizer
 from abstractive import AbstractiveSummarizer
@@ -10,7 +11,7 @@ from helpers import StepCheckpointCallback
 from argparse import ArgumentParser
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
-from pytorch_lightning.callbacks import LearningRateLogger
+from pytorch_lightning.callbacks import LearningRateMonitor
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,7 @@ def main(args):
         model = summarizer(hparams=args)
 
     # Create learning rate logger
-    lr_logger = LearningRateLogger()
+    lr_logger = LearningRateMonitor()
     args.callbacks = [lr_logger]
 
     if args.use_logger == "wandb":
@@ -382,6 +383,11 @@ if __name__ == "__main__":
         format="%(asctime)s|%(name)s|%(levelname)s> %(message)s",
         level=logging.getLevelName(main_args.logLevel),
     )
+
+    # Set the `nlp` logging verbosity since its default is not INFO.
+    # If the verbosity is not set back to the default for the library, an abundance
+    # of output will be printed. See https://huggingface.co/docs/datasets/package_reference/logging_methods.html.
+    nlp.logging.set_verbosity(nlp.logging.WARNING)
 
     # Train
     main(main_args)

@@ -3,10 +3,14 @@
 Convert Abstractive to Extractive Dataset
 =========================================
 
+.. _convert_to_extractive_overview:
+
 Overview
 --------
 
-This script will reformat an abstractive summarization dataset to be used for extractive summarization by determining the best extractive summary that maximizes ROUGE scores. It can be used on a dataset composed of the following file structure: ``train.source``, ``train.target``, ``val.source``, ``val.target``, and ``test.source`` and ``test.target`` where each file contains one example per line and the lines of every ``.train`` correspond to the lines in the respective ``.target``. All the datasets on the :ref:`extractive_supported_datasets` page will be processed to this format. You can also process any dataset contained in the `huggingface/nlp <https://github.com/huggingface/nlp>`_ library. If you use a dataset this way, the downloading and pre-processing will happen automatically.
+This script will reformat an abstractive summarization dataset to be used for extractive summarization by determining the best extractive summary that maximizes ROUGE scores. It can be used on a dataset composed of the following file structure: ``train.source``, ``train.target``, ``val.source``, ``val.target``, ``test.source``, and ``test.target`` where each file contains one example per line and the lines of every ``.train`` file correspond to the lines in the respective ``.target``. All the datasets on the :ref:`extractive_supported_datasets` page will be processed to this format. You can also process any dataset contained in the `huggingface/nlp <https://github.com/huggingface/nlp>`_ library. If you use a dataset this way, the downloading and pre-processing will happen automatically.
+
+.. _convert_to_extractive_option_1:
 
 Option 1: Manual Data Download
 ------------------------------
@@ -51,6 +55,11 @@ Convert To Extractive Tips
 **Large Dataset? Need to Resume?:** The ``--resume`` option will read the output directory and determine on which document the script left off based on the shard_file names. If ``--shard_interval`` was ``None`` then resuming is not possible. Resuming is guaranteed to produce the same output as if ``--resume`` was not used because of :meth:`convert_to_extractive.check_resume_success()`, which checks to make sure the last line in the shard file is the same as the line directly before the line to resume with.
 
 **Speed: Running Slowly?** There is a ``--sentencizer`` option to detect sentence boundaries without parsing dependencies. Instead of loading a statistical model using ``spacy``, this option will initialize the ``English`` `Language <https://spacy.io/api/language#init>`_ object and add a ``sentencizer`` to the `pipeline <https://spacy.io/api/language#create_pipe>`_. This is much faster than a `DependencyParser <https://spacy.io/api/dependencyparser>`_ but is also less accurate since the ``sentencizer`` uses a simpler, rule-based strategy.
+
+Custom Datasets
+---------------
+
+Any dataset in the format described in the :ref:`convert_to_extractive_overview` can be used with this script. Once converted, training should be the same as if using CNN/DM  from :ref:`Option 1 <convert_to_extractive_option_1>` because the :ref:`convert_to_extractive_api` script outputs a consistent format.
 
 Script Help
 -----------

@@ -11,7 +11,7 @@ All training arguments can be found in the `pytorch_lightning trainer documentat
 
 Output of ``python main.py --help``:
 
-.. code-block:: bash
+.. code-block::
 
     usage: main.py [-h] [--mode {extractive,abstractive}]
                     [--default_root_dir DEFAULT_ROOT_DIR]
