@@ -16,15 +16,15 @@ except ImportError:
 
 class LinearClassifier(nn.Module):
     """``nn.Module`` to classify sentences by reducing the hidden dimension to 1.
-    
+
     Arguments:
         web_hidden_size (int): The output hidden size from the word embedding model. Used as
             the input to the first linear layer in this nn.Module.
-        linear_hidden (int, optional): The number of hidden parameters for this Classifier. 
+        linear_hidden (int, optional): The number of hidden parameters for this Classifier.
             Default is 1536.
         dropout (float, optional): The value for dropout applied before the 2nd linear layer.
             Default is 0.1.
-        activation_string (str, optional): A string representing an activation function 
+        activation_string (str, optional): A string representing an activation function
             in ``get_activation()`` Default is "gelu".
     """
 
@@ -69,7 +69,7 @@ class LinearClassifier(nn.Module):
 class SimpleLinearClassifier(nn.Module):
     """``nn.Module`` to classify sentences by reducing the hidden dimension to 1. This module
     contains a single linear layer and a sigmoid.
-    
+
     Arguments:
         web_hidden_size (int): The output hidden size from the word embedding model. Used as
             the input to the first linear layer in this nn.Module.
