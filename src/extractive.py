@@ -956,13 +956,16 @@ class ExtractiveSummarizer(pl.LightningModule):
         result = {"progress_bar": tqdm_dict, "log": log}
         return result
 
-    def predict(self, input_text, raw_scores=False):
+    def predict(self, input_text, raw_scores=False, num_summary_sentences=3):
         """Summaries ``input_text`` using the model.
 
         Args:
             input_text (str): The text to be summarized.
             raw_scores (bool, optional): Return a dictionary containing each sentence
                 and its corespoding score instead of the summary. Defaults to False.
+            num_summary_sentences (int, optional): The number of sentences in the
+                output summary. This value specifies the number of top sentences to
+                select as the summary. Defaults to 3.
 
         Returns:
             str: The summary text. If ``raw_scores`` is set then returns a dictionary
@@ -1018,7 +1021,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             torch.argsort(outputs, dim=1, descending=True).detach().cpu().numpy()
         )
         logger.debug("Sorted sentence ids: %s", sorted_ids)
-        selected_ids = sorted_ids[0, :2]
+        selected_ids = sorted_ids[0, :num_summary_sentences]
         logger.debug("Selected sentence ids: %s", selected_ids)
 
         selected_sents = []

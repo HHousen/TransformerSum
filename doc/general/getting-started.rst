@@ -39,7 +39,6 @@ Programmatically
 
 If you want to summarize text using a pre-trained model from python code then follow the below steps:
 
-
 1. Download a summarization model. Link to :ref:`pre-trained extractive models <pretrained_ext>`. Link to :ref:`pre-trained abstractive models <pretrained_abs>`.
 2. Instantiate the model:
 
@@ -64,6 +63,8 @@ If you want to summarize text using a pre-trained model from python code then fo
         text_to_summarize = "Something Awesome"
         summary = model.predict(text_to_summarize)
 
+.. note:: If you are using an :class:`~extractive.ExtractiveSummarizer`, then you can pass ``num_summary_sentences`` to specify the number of sentences in the output summary. For instance, ``summary = model.predict(text_to_summarize, num_summary_sentences=5)``. The default is 3 sentences. More info at :meth:`extractive.ExtractiveSummarizer.predict`.
+
 Extractive Summarization
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -74,7 +75,7 @@ Outline:
 3. Train the model using the :ref:`training script <train_extractive_model>`
 4. Test the model using the :ref:`training script <train_extractive_model>`
 
-Lets train a model that performs extractive summarization. In this tutorial we will be using BERT, but you can easily use any autoencoding model from `huggingface/transformers <https://github.com/huggingface/transformers>`__.
+Lets train a model that performs extractive summarization. In this tutorial we will be using BERT, but you can easily use any `autoencoding model <https://huggingface.co/transformers/summary.html#autoencoding-models>`__ from `huggingface/transformers <https://github.com/huggingface/transformers>`__.
 
 .. note:: Autoencoding models are pretrained by corrupting the input tokens in some way and trying to reconstruct the original sentence. They correspond to the encoder of the original transformer model in the sense that they get access to the full inputs without any mask. Those models usually build a bidirectional representation of the whole sentence. They can be fine-tuned and achieve great results on many tasks such as text generation, but their most natural application is sentence classification or token classification. A typical example of such models is BERT. For more information about the different type of transformer models go to the `Huggingface "Summary of the models" page <https://huggingface.co/transformers/summary.html>`_.
 

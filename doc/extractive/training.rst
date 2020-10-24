@@ -26,6 +26,8 @@ If the extractive dataset json files are compressed using gzip, then they will b
 
 By default, the model weights are saved after every epoch to the ``--default_root_dir``. The logs are also saved to this folder. You can change the weight save path (separate folder for logs and weights) with the ``--weights_save_path`` option.
 
+The length of output summaries during testing is 3 by default. You can change this by setting the ``--test_k`` option to the number of sentences desired in generated summaries. This assumes ``--test_id_method`` is set to ``top_k``, which is the default. ``top_k`` selects the top ``k`` sentences and the other option, ``greater_k``, selects those sentences with a rank above ``k``. ``k`` is specified by the ``--test_k`` argument.
+
 .. _extractive_pooling_modes:
 
 Pooling Modes
