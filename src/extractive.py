@@ -1,7 +1,3 @@
-# 1. Compute regular embeddings
-# 2. Compute sentence embeddings
-# 3. Run through linear layer
-
 import os
 import sys
 import glob
@@ -196,7 +192,14 @@ class ExtractiveSummarizer(pl.LightningModule):
 
         # BCELoss: https://pytorch.org/docs/stable/nn.html#bceloss
         # `reduction` is "none" so the mean can be computed with padding ignored.
-        # See `compute_loss()` for more info.
+        # `nn.BCEWithLogitsLoss` (which combines a sigmoid layer and the BCELoss
+        # in one single class) is used because it takes advantage of the log-sum-exp
+        # trick for numerical stability. Padding values are 0 and if 0 is the input
+        # to the sigmoid function the output will be 0.5. This will cause issues when
+        # inputs with more padding will have higher loss values. To solve this, all
+        # padding values are set to -9e9 as the last step of each encoder. The sigmoid
+        # function transforms -9e9 to nearly 0, thus preserving the proper loss
+        # calculation. See `compute_loss()` for more info.
         self.loss_func = nn.BCEWithLogitsLoss(reduction="none")
 
         # Data
@@ -309,11 +312,6 @@ class ExtractiveSummarizer(pl.LightningModule):
             [tuple]: Losses: (total_loss, total_norm_batch_loss, sum_avg_seq_loss, mean_avg_seq_loss,
                 average_loss)
         """
-        # self.loss_func() is nn.BCELoss(reduction="none")
-        # The nn.BCEWithLogitsLoss (which combines a Sigmoid layer and the BCELoss in one single class
-        # and takes advantage of the log-sum-exp trick for numerical stability) was not used because
-        # the output of the Sigmoid needs to have the padded values removed. For example, with padding
-        # values of zero a sigmoid will output 0.5 for each of them, thus offsetting the loss calculation.
         try:
             loss = self.loss_func(outputs, labels.float())
         except ValueError as e:
@@ -679,7 +677,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         ) = self.compute_loss(outputs, labels, mask)
 
         # Compute accuracy metrics
-        y_hat = outputs
+        y_hat = torch.sigmoid(outputs)
         y_hat[y_hat > 0.5] = 1
         y_hat[y_hat <= 0.5] = 0
         y_hat = torch.flatten(y_hat)
@@ -763,6 +761,7 @@ class ExtractiveSummarizer(pl.LightningModule):
 
         # Compute model forward
         outputs, _ = self.forward(**batch)
+        outputs = torch.sigmoid(outputs)
 
         # Compute accuracy metrics
         y_hat = outputs.clone().detach()
@@ -1010,6 +1009,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             sent_rep_mask=sent_rep_mask,
             sent_rep_token_ids=sent_rep_token_ids,
         )
+        outputs = torch.sigmoid(outputs)
 
         if raw_scores:
             # key=sentence
