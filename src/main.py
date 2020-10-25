@@ -181,10 +181,15 @@ if __name__ == "__main__":
         "--gradient_clip_val", default=1.0, type=float, help="Gradient clipping value"
     )
     parser.add_argument(
-        "--overfit_pct",
+        "--overfit_batches",
         default=0.0,
         type=float,
         help="Uses this much data of all datasets (training, validation, test). Useful for quickly debugging or trying to overfit on purpose.",
+    )
+    parser.add_argument(
+        "--fast_dev_run",
+        action="store_true",
+        help="Runs 1 batch of train, test and val to find any bugs (ie: a sort of unit test).",
     )
     parser.add_argument(
         "--train_percent_check",

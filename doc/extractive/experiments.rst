@@ -5,7 +5,7 @@ Interactive charts, graphs, raw data, run commands, hyperparameter choices, and 
 
 Important notes when running experiments:
 
-* If you are using ``--overfit_pct``, then ``overfit_pct`` percent of the testing data is being used as well as ``overfit_pct`` percent of the training data. Due to the way ``pytorch_lightning`` was written, it is necessary to use the same ``batch_size`` when using ``overfit_pct`` in order to get the exact same results. I currently am not sure why this is the case but removing ``overfit_pct`` and using different ``batch_size``\ s produces identical results. Open an `issue <https://github.com/HHousen/TransformerSum/issues/new>`__ or submit a pull request if you know why.
+* If you are using ``--overfit_batches``, then ``overfit_batches`` percent of the testing data is being used as well as ``overfit_batches`` percent of the training data. Due to the way ``pytorch_lightning`` was written, it is necessary to use the same ``batch_size`` when using ``overfit_batches`` in order to get the exact same results. I currently am not sure why this is the case but removing ``overfit_batches`` and using different ``batch_size``\ s produces identical results. Open an `issue <https://github.com/HHousen/TransformerSum/issues/new>`__ or submit a pull request if you know why.
 * Have another note that should be stated here? Open an `issue <https://github.com/HHousen/TransformerSum/issues/new>`__. All contributions are very helpful.
 
 The :ref:`older_experiments` were conducted on a previous version of ``TransformerSum`` that contained bugs. Thus, the scores and graphs of the older experiments don't represent model performance but their results relative to each other should still be accurate. The :ref:`newer_experiments` were conducted on a new version without bugs and thus should be easily reproducible.
@@ -50,7 +50,7 @@ Full command used to run the tests:
    --max_epochs 3 \
    --accumulate_grad_batches 2 \
    --warmup_steps 1800 \
-   --overfit_pct 0.6 \
+   --overfit_batches 0.6 \
    --gradient_clip_val 1.0 \
    --optimizer_type adamw \
    --use_scheduler linear \
@@ -147,7 +147,7 @@ Full command used to run the tests:
    --max_epochs 3 \
    --accumulate_grad_batches 2 \
    --warmup_steps 1800 \
-   --overfit_pct 0.6 \
+   --overfit_batches 0.6 \
    --gradient_clip_val 1.0 \
    --optimizer_type adamw \
    --use_scheduler linear \
@@ -373,7 +373,7 @@ Full command used to run the tests:
    --max_epochs 3 \
    --accumulate_grad_batches 2 \
    --warmup_steps 1800 \
-   --overfit_pct 0.6 \
+   --overfit_batches 0.6 \
    --gradient_clip_val 1.0 \
    --optimizer_type adamw \
    --use_scheduler linear \

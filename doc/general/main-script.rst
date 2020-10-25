@@ -20,7 +20,7 @@ Output of ``python main.py --help``:
                     [--min_steps MIN_STEPS] [--max_steps MAX_STEPS]
                     [--accumulate_grad_batches ACCUMULATE_GRAD_BATCHES]
                     [--check_val_every_n_epoch CHECK_VAL_EVERY_N_EPOCH] [--gpus GPUS]
-                    [--gradient_clip_val GRADIENT_CLIP_VAL] [--overfit_pct OVERFIT_PCT]
+                    [--gradient_clip_val GRADIENT_CLIP_VAL] [--overfit_batches OVERFIT_BATCHES]
                     [--train_percent_check TRAIN_PERCENT_CHECK]
                     [--val_percent_check VAL_PERCENT_CHECK]
                     [--test_percent_check TEST_PERCENT_CHECK] [--amp_level AMP_LEVEL]
@@ -83,7 +83,7 @@ Output of ``python main.py --help``:
                                 -1 (all gpus))
         --gradient_clip_val GRADIENT_CLIP_VAL
                                 Gradient clipping value
-        --overfit_pct OVERFIT_PCT
+        --overfit_batches OVERFIT_BATCHES
                                 Uses this much data of all datasets (training, validation, test).
                                 Useful for quickly debugging or trying to overfit on purpose.
         --train_percent_check TRAIN_PERCENT_CHECK

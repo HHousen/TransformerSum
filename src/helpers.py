@@ -378,8 +378,8 @@ def generic_configure_optimizers(hparams, train_dataloader, params_to_update):
             * hparams.max_epochs
             // hparams.accumulate_grad_batches
         )
-        if hparams.overfit_pct > 0.0:
-            t_total = int(t_total * hparams.overfit_pct)
+        if hparams.overfit_batches > 0.0:
+            t_total = int(t_total * hparams.overfit_batches)
 
     no_decay = ["bias", "LayerNorm.weight"]
     optimizer_grouped_parameters = [
