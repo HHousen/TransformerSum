@@ -192,19 +192,19 @@ if __name__ == "__main__":
         help="Runs 1 batch of train, test and val to find any bugs (ie: a sort of unit test).",
     )
     parser.add_argument(
-        "--train_percent_check",
+        "--limit_train_batches",
         default=1.0,
         type=float,
         help="How much of training dataset to check. Useful when debugging or testing something that happens at the end of an epoch.",
     )
     parser.add_argument(
-        "--val_percent_check",
+        "--limit_val_batches",
         default=1.0,
         type=float,
         help="How much of validation dataset to check. Useful when debugging or testing something that happens at the end of an epoch.",
     )
     parser.add_argument(
-        "--test_percent_check",
+        "--limit_test_batches",
         default=1.0,
         type=float,
         help="How much of test dataset to check.",
@@ -240,9 +240,14 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--num_sanity_val_steps",
-        default=5,
+        default=2,
         type=int,
         help="Sanity check runs n batches of val before starting the training routine. This catches any bugs in your validation without having to wait for the first validation check.",
+    )
+    parser.add_argument(
+        "--val_check_interval",
+        default=1.0,
+        help="How often within one training epoch to check the validation set. Can specify as float or int. Use float to check within a training epoch. Use int to check every n steps (batches)."
     )
     parser.add_argument(
         "--use_logger",
