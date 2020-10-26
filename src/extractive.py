@@ -1003,6 +1003,8 @@ class ExtractiveSummarizer(pl.LightningModule):
         attention_mask.unsqueeze_(0)
         sent_rep_mask.unsqueeze_(0)
 
+        self.eval()
+
         with torch.no_grad():
             outputs, _ = self.forward(
                 input_ids,
