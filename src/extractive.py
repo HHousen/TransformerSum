@@ -1017,7 +1017,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         if raw_scores:
             # key=sentence
             # value=score
-            sent_scores = OrderedDict(zip(src_txt, outputs.tolist()[0]))
+            sent_scores = dict(zip(src_txt, outputs.tolist()[0]))
             return sent_scores
 
         sorted_ids = (
