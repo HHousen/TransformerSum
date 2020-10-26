@@ -1003,13 +1003,14 @@ class ExtractiveSummarizer(pl.LightningModule):
         attention_mask.unsqueeze_(0)
         sent_rep_mask.unsqueeze_(0)
 
-        outputs, _ = self.forward(
-            input_ids,
-            attention_mask,
-            sent_rep_mask=sent_rep_mask,
-            sent_rep_token_ids=sent_rep_token_ids,
-        )
-        outputs = torch.sigmoid(outputs)
+        with torch.no_grad():
+            outputs, _ = self.forward(
+                input_ids,
+                attention_mask,
+                sent_rep_mask=sent_rep_mask,
+                sent_rep_token_ids=sent_rep_token_ids,
+            )
+            outputs = torch.sigmoid(outputs)
 
         if raw_scores:
             # key=sentence
