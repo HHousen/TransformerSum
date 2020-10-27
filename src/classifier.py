@@ -62,7 +62,7 @@ class LinearClassifier(nn.Module):
         x = self.linear2(x)
         # x = self.sigmoid(x)
         sent_scores = x.squeeze(-1) * mask.float()
-        sent_scores[sent_scores == 0] = -9e9
+        sent_scores[sent_scores == 0] = -9e3
         return sent_scores
 
 
@@ -88,7 +88,7 @@ class SimpleLinearClassifier(nn.Module):
         x = self.linear(x).squeeze(-1)
         # x = self.sigmoid(x)
         sent_scores = x * mask.float()
-        sent_scores[sent_scores == 0] = -9e9
+        sent_scores[sent_scores == 0] = -9e3
         return sent_scores
 
 
@@ -183,5 +183,5 @@ class TransformerEncoderClassifier(nn.Module):
         # x is shape (batch size, source sequence length, 1)
         # mask is shape (batch size, source sequence length)
         sent_scores = x.squeeze(-1) * mask.float()
-        sent_scores[sent_scores == 0] = -9e9
+        sent_scores[sent_scores == 0] = -9e3
         return sent_scores

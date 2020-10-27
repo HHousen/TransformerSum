@@ -197,8 +197,8 @@ class ExtractiveSummarizer(pl.LightningModule):
         # trick for numerical stability. Padding values are 0 and if 0 is the input
         # to the sigmoid function the output will be 0.5. This will cause issues when
         # inputs with more padding will have higher loss values. To solve this, all
-        # padding values are set to -9e9 as the last step of each encoder. The sigmoid
-        # function transforms -9e9 to nearly 0, thus preserving the proper loss
+        # padding values are set to -9e3 as the last step of each encoder. The sigmoid
+        # function transforms -9e3 to nearly 0, thus preserving the proper loss
         # calculation. See `compute_loss()` for more info.
         self.loss_func = nn.BCEWithLogitsLoss(reduction="none")
 
