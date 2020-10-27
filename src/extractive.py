@@ -1003,18 +1003,21 @@ class ExtractiveSummarizer(pl.LightningModule):
         attention_mask.unsqueeze_(0)
         sent_rep_mask.unsqueeze_(0)
 
-        outputs, _ = self.forward(
-            input_ids,
-            attention_mask,
-            sent_rep_mask=sent_rep_mask,
-            sent_rep_token_ids=sent_rep_token_ids,
-        )
-        outputs = torch.sigmoid(outputs)
+        self.eval()
+
+        with torch.no_grad():
+            outputs, _ = self.forward(
+                input_ids,
+                attention_mask,
+                sent_rep_mask=sent_rep_mask,
+                sent_rep_token_ids=sent_rep_token_ids,
+            )
+            outputs = torch.sigmoid(outputs)
 
         if raw_scores:
             # key=sentence
             # value=score
-            sent_scores = dict(zip(src_txt, outputs))
+            sent_scores = dict(zip(src_txt, outputs.tolist()[0]))
             return sent_scores
 
         sorted_ids = (
@@ -1085,8 +1088,8 @@ class ExtractiveSummarizer(pl.LightningModule):
         parser.add_argument(
             "--only_preprocess",
             action="store_true",
-            help="""Only preprocess and write the data to disk. Don't train model. 
-            This will force data to be preprocessed, even if it was already computed and 
+            help="""Only preprocess and write the data to disk. Don't train model.
+            This will force data to be preprocessed, even if it was already computed and
             is detected on disk, and any previous processed files will be overwritten.""",
         )
         parser.add_argument(
@@ -1114,10 +1117,10 @@ class ExtractiveSummarizer(pl.LightningModule):
             help="""Which classifier/encoder to use to reduce the hidden dimension of the sentence vectors.
                     `linear` - a `LinearClassifier` with two linear layers, dropout, and an activation function.
                     `simple_linear` - a `LinearClassifier` with one linear layer and a sigmoid.
-                    `transformer` - a `TransformerEncoderClassifier` which runs the sentence vectors through some 
+                    `transformer` - a `TransformerEncoderClassifier` which runs the sentence vectors through some
                                     `nn.TransformerEncoderLayer`s and then a simple `nn.Linear` layer.
-                    `transformer_linear` - a `TransformerEncoderClassifier` with a `LinearClassifier` as the 
-                                           `reduction` parameter, which results in the same thing as the `transformer` option but with a 
+                    `transformer_linear` - a `TransformerEncoderClassifier` with a `LinearClassifier` as the
+                                           `reduction` parameter, which results in the same thing as the `transformer` option but with a
                                            `LinearClassifier` instead of a `nn.Linear` layer.""",
         )
         parser.add_argument(
@@ -1171,11 +1174,11 @@ class ExtractiveSummarizer(pl.LightningModule):
         parser.add_argument(
             "--test_use_pyrouge",
             action="store_true",
-            help="""Use `pyrouge`, which is an interface to the official ROUGE software, instead of 
-            the pure-python implementation provided by `rouge-score`. You must have the real ROUGE 
-            package installed. More details about ROUGE 1.5.5 here: https://github.com/andersjo/pyrouge/tree/master/tools/ROUGE-1.5.5. 
+            help="""Use `pyrouge`, which is an interface to the official ROUGE software, instead of
+            the pure-python implementation provided by `rouge-score`. You must have the real ROUGE
+            package installed. More details about ROUGE 1.5.5 here: https://github.com/andersjo/pyrouge/tree/master/tools/ROUGE-1.5.5.
             It is recommended to use this option for official scores. The `ROUGE-L` measurements
-            from `pyrouge` are equivalent to the `rougeLsum` measurements from the default 
+            from `pyrouge` are equivalent to the `rougeLsum` measurements from the default
             `rouge-score` package.""",
         )
         parser.add_argument(
