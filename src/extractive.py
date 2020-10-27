@@ -2,6 +2,7 @@ import os
 import sys
 import glob
 import logging
+import types
 from typing import List, Union
 import numpy as np
 from functools import partial
@@ -13,7 +14,6 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from spacy.lang.en import English
-from spacy.tokens import doc as spacy_doc
 from pooling import Pooling
 from data import SentencesProcessor, FSIterableDataset, pad_batch_collate
 from classifier import (
@@ -956,11 +956,11 @@ class ExtractiveSummarizer(pl.LightningModule):
             self.log(name, value, prog_bar=False)
 
     def predict_sentences(
-        self, input_sentences: Union[List[str], spacy_doc.Doc], raw_scores=False, num_summary_sentences=3, tokenized=False
+        self, input_sentences: Union[List[str], types.GeneratorType], raw_scores=False, num_summary_sentences=3, tokenized=False
     ):
         # Create source text.
         # Don't add periods when joining because that creates a space before the period.
-        if tokenized or type(input_sentences) is spacy_doc.Doc:
+        if tokenized:
             src_txt = [
                 " ".join([token.text for token in sentence if str(token) != "."]) + "."
                 for sentence in input_sentences
