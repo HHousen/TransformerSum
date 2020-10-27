@@ -2,7 +2,7 @@ import os
 import sys
 import glob
 import logging
-from typing import List
+from typing import List, Union
 import numpy as np
 from functools import partial
 from collections import OrderedDict
@@ -13,6 +13,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from spacy.lang.en import English
+from spacy.tokens import doc
 from pooling import Pooling
 from data import SentencesProcessor, FSIterableDataset, pad_batch_collate
 from classifier import (
@@ -955,15 +956,24 @@ class ExtractiveSummarizer(pl.LightningModule):
             self.log(name, value, prog_bar=False)
 
     def predict_sentences(
-        self, input_sentences: List[str], raw_scores=False, num_summary_sentences=3
+        self, input_sentences: Union[List[str], doc.Doc], raw_scores=False, num_summary_sentences=3, tokenized=False
     ):
-        nlp = English()
         # Create source text.
         # Don't add periods when joining because that creates a space before the period.
-        src_txt = [
-            " ".join([token.text for token in nlp(sentence) if str(token) != "."]) + "."
-            for sentence in input_sentences
-        ]
+        if tokenized or type(input_sentences) is doc.Doc:
+            src_txt = [
+                " ".join([token.text for token in sentence if str(token) != "."]) + "."
+                for sentence in input_sentences
+            ]
+        else:
+            nlp = English()
+            sentencizer = nlp.create_pipe("sentencizer")
+            nlp.add_pipe(sentencizer)
+            
+            src_txt = [
+                " ".join([token.text for token in nlp(sentence) if str(token) != "."]) + "."
+                for sentence in input_sentences
+            ]
 
         input_ids = SentencesProcessor.get_input_ids(
             self.tokenizer,
@@ -1037,9 +1047,10 @@ class ExtractiveSummarizer(pl.LightningModule):
         doc = nlp(input_text)
 
         return self.predict_sentences(
-            input_sentences=[sent.text for sent in doc.sents],
+            input_sentences=doc.sents,
             raw_scores=raw_scores,
             num_summary_sentences=num_summary_sentences,
+            tokenized=True,
         )
 
     @staticmethod
