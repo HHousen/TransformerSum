@@ -953,31 +953,15 @@ class ExtractiveSummarizer(pl.LightningModule):
         for name, value in rouge_scores_log.items():
             self.log(name, value, prog_bar=False)
 
-    def predict(self, input_text, raw_scores=False, num_summary_sentences=3):
-        """Summaries ``input_text`` using the model.
-
-        Args:
-            input_text (str): The text to be summarized.
-            raw_scores (bool, optional): Return a dictionary containing each sentence
-                and its corespoding score instead of the summary. Defaults to False.
-            num_summary_sentences (int, optional): The number of sentences in the
-                output summary. This value specifies the number of top sentences to
-                select as the summary. Defaults to 3.
-
-        Returns:
-            str: The summary text. If ``raw_scores`` is set then returns a dictionary
-            of input sentences and their corespoding scores.
-        """
+    def predict_sentences(
+        self, input_sentences: List[str], raw_scores=False, num_summary_sentences=3
+    ):
         nlp = English()
-        sentencizer = nlp.create_pipe("sentencizer")
-        nlp.add_pipe(sentencizer)
-        doc = nlp(input_text)
-
         # Create source text.
         # Don't add periods when joining because that creates a space before the period.
         src_txt = [
-            " ".join([token.text for token in sentence if str(token) != "."]) + "."
-            for sentence in doc.sents
+            " ".join([token.text for token in nlp(sentence) if str(token) != "."]) + "."
+            for sentence in input_sentences
         ]
 
         input_ids = SentencesProcessor.get_input_ids(
@@ -1015,7 +999,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         if raw_scores:
             # key=sentence
             # value=score
-            sent_scores = dict(zip(src_txt, outputs.tolist()[0]))
+            sent_scores = list(zip(src_txt, outputs.tolist()[0]))
             return sent_scores
 
         sorted_ids = (
@@ -1030,6 +1014,32 @@ class ExtractiveSummarizer(pl.LightningModule):
             selected_sents.append(src_txt[i])
 
         return " ".join(selected_sents).strip()
+
+    def predict(self, input_text: str, raw_scores=False, num_summary_sentences=3):
+        """Summaries ``input_text`` using the model.
+
+        Args:
+            input_text (str): The text to be summarized.
+            raw_scores (bool, optional): Return a dictionary containing each sentence
+                and its corespoding score instead of the summary. Defaults to False.
+            num_summary_sentences (int, optional): The number of sentences in the
+                output summary. This value specifies the number of top sentences to
+                select as the summary. Defaults to 3.
+
+        Returns:
+            str: The summary text. If ``raw_scores`` is set then returns a dictionary
+            of input sentences and their corespoding scores.
+        """
+        nlp = English()
+        sentencizer = nlp.create_pipe("sentencizer")
+        nlp.add_pipe(sentencizer)
+        doc = nlp(input_text)
+
+        return predict_sentences(
+            input_sentences=list(doc.sents),
+            raw_scores=raw_scores,
+            num_summary_sentences=num_summary_sentences,
+        )
 
     @staticmethod
     def add_model_specific_args(parent_parser):
