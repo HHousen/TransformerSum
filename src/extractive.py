@@ -634,21 +634,18 @@ class ExtractiveSummarizer(pl.LightningModule):
         ) = self.compute_loss(outputs, labels, mask)
 
         # Generate logs
-        tqdm_dict = {
+        loss_dict = {
             "train_loss_total": loss_total,
             "train_loss_total_norm_batch": loss_total_norm_batch,
             "train_loss_avg_seq_sum": loss_avg_seq_sum,
             "train_loss_avg_seq_mean": loss_avg_seq_mean,
             "train_loss_avg": loss_avg,
         }
-        output = OrderedDict(
-            {
-                "loss": tqdm_dict["train_" + self.hparams.loss_key],
-                "progress_bar": tqdm_dict,
-                "log": tqdm_dict,
-            }
-        )
-        return output
+
+        for name, value in loss_dict.items():
+            self.log(name, value, prog_bar=True)
+
+        return loss_dict["train_" + self.hparams.loss_key]
 
     def validation_step(self, batch, batch_idx):  # skipcq: PYL-W0613
         """
@@ -725,7 +722,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         avg_val_acc_and_f1 = torch.stack([x["val_acc_and_f1"] for x in outputs]).mean()
 
         # Generate logs
-        tqdm_dict = {
+        loss_dict = {
             "val_loss_total": avg_loss_total,
             "val_loss_total_norm_batch": avg_loss_total_norm_batch,
             "val_loss_avg_seq_sum": avg_loss_avg_seq_sum,
@@ -735,12 +732,11 @@ class ExtractiveSummarizer(pl.LightningModule):
             "val_f1": avg_val_f1,
             "val_acc_and_f1": avg_val_acc_and_f1,
         }
-        result = {
-            "progress_bar": tqdm_dict,
-            "log": tqdm_dict,
-            "val_loss": tqdm_dict["val_" + self.hparams.loss_key],
-        }
-        return result
+
+        for name, value in loss_dict.items():
+            self.log(name, value, prog_bar=True)
+
+        self.log("val_loss", loss_dict["val_" + self.hparams.loss_key])
 
     def test_step(self, batch, batch_idx):
         """
@@ -946,14 +942,16 @@ class ExtractiveSummarizer(pl.LightningModule):
                 rouge_scores_log[metric + "-fmeasure"] = value.mid.fmeasure
 
         # Generate logs
-        tqdm_dict = {
+        loss_dict = {
             "test_acc": avg_test_acc,
             "test_f1": avg_test_f1,
             "avg_test_acc_and_f1": avg_test_acc_and_f1,
         }
-        log = {**tqdm_dict, **rouge_scores_log}
-        result = {"progress_bar": tqdm_dict, "log": log}
-        return result
+
+        for name, value in loss_dict.items():
+            self.log(name, value, prog_bar=True)
+        for name, value in rouge_scores_log.items():
+            self.log(name, value, prog_bar=False)
 
     def predict(self, input_text, raw_scores=False, num_summary_sentences=3):
         """Summaries ``input_text`` using the model.
