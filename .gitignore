@@ -116,3 +116,5 @@ wandb
 doc/_build
 notebooks/
 models
+.DS_Store
+venv
