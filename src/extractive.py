@@ -2,6 +2,7 @@ import os
 import sys
 import glob
 import logging
+from typing import List
 import numpy as np
 from functools import partial
 from collections import OrderedDict
@@ -1035,8 +1036,8 @@ class ExtractiveSummarizer(pl.LightningModule):
         nlp.add_pipe(sentencizer)
         doc = nlp(input_text)
 
-        return predict_sentences(
-            input_sentences=list(doc.sents),
+        return self.predict_sentences(
+            input_sentences=[sent.text for sent in doc.sents],
             raw_scores=raw_scores,
             num_summary_sentences=num_summary_sentences,
         )
