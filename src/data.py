@@ -511,17 +511,17 @@ class SentencesProcessor:
             current_segment_flag = True
             segment_ids = []
             for token in input_ids:
+                segment_ids += [0 if current_segment_flag else 1]
                 if token == segment_token_id:
                     current_segment_flag = not current_segment_flag
-                segment_ids += [0 if current_segment_flag else 1]
 
         if create_segment_ids == "sequential":
             current_segment = 0
             segment_ids = []
             for token in input_ids:
+                segment_ids += [current_segment]
                 if token == segment_token_id:
                     current_segment += 1
-                segment_ids += [current_segment]
 
         # Sentence Representation Token IDs and Sentence Lengths
         sent_rep_ids = None
