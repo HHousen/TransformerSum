@@ -961,7 +961,10 @@ class ExtractiveSummarizer(pl.LightningModule):
         """Summarizes ``input_sentences`` using the model.
 
         Args:
-            input_sentences (list or generator): The sentences to be summarized.
+            input_sentences (list or generator): The sentences to be summarized as a
+                list or a generator of spacy Spans (``spacy.tokens.span.Span``), which
+                can be obtained by running ``nlp("input document").sents`` where
+                ``nlp`` is a spacy model with a sentencizer.
             raw_scores (bool, optional): Return a list containing each sentence
                 and its corespoding score instead of the summary. Defaults to False.
             num_summary_sentences (int, optional): The number of sentences in the
