@@ -511,6 +511,12 @@ class ExtractiveSummarizer(pl.LightningModule):
                 # pool.close()
                 # pool.join()
 
+                # since the dataset has been prepared, the dataset ".pt" files should exist on disk.
+                # scan for dataset ".pt" files again.
+                dataset_files = glob.glob(
+                    os.path.join(self.hparams.data_path, "*" + corpus_type + ".*.pt")
+                )
+
             # if set to only preprocess the data then continue to next loop (aka next split of dataset)
             if self.hparams.only_preprocess:
                 continue
