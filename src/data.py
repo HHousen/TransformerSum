@@ -544,6 +544,8 @@ class SentencesProcessor:
                         sent_rep_ids[i] - sent_rep_ids[i - 1]
                         for i in range(1, len(sent_rep_ids))
                     ]
+                    # add sentence length for the last sentence
+                    sent_lengths.append(len(sent_rep_ids) - sent_rep_ids[-1])
 
         # Attention
         # The mask has 1 for real tokens and 0 for padding tokens. Only real
