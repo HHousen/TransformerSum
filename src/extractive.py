@@ -2,6 +2,8 @@ import os
 import sys
 import glob
 import logging
+import types
+from typing import List, Union
 import numpy as np
 from functools import partial
 from collections import OrderedDict
@@ -959,32 +961,46 @@ class ExtractiveSummarizer(pl.LightningModule):
         for name, value in rouge_scores_log.items():
             self.log(name, value, prog_bar=False)
 
-    def predict(self, input_text, raw_scores=False, num_summary_sentences=3):
-        """Summaries ``input_text`` using the model.
+    def predict_sentences(
+        self, input_sentences: Union[List[str], types.GeneratorType], raw_scores=False, num_summary_sentences=3, tokenized=False
+    ):
+        """Summarizes ``input_sentences`` using the model.
 
         Args:
-            input_text (str): The text to be summarized.
-            raw_scores (bool, optional): Return a dictionary containing each sentence
+            input_sentences (list or generator): The sentences to be summarized as a
+                list or a generator of spacy Spans (``spacy.tokens.span.Span``), which
+                can be obtained by running ``nlp("input document").sents`` where
+                ``nlp`` is a spacy model with a sentencizer.
+            raw_scores (bool, optional): Return a list containing each sentence
                 and its corespoding score instead of the summary. Defaults to False.
             num_summary_sentences (int, optional): The number of sentences in the
                 output summary. This value specifies the number of top sentences to
                 select as the summary. Defaults to 3.
+            tokenized (bool, optional): If the input sentences are already tokenized
+                using spacy. If true, ``input_sentences`` should be a list of lists
+                where the outer list contains sentences and the inner lists contain
+                tokens. Defaults to False.
 
         Returns:
-            str: The summary text. If ``raw_scores`` is set then returns a dictionary
+            str: The summary text. If ``raw_scores`` is set then returns a list
             of input sentences and their corespoding scores.
         """
-        nlp = English()
-        sentencizer = nlp.create_pipe("sentencizer")
-        nlp.add_pipe(sentencizer)
-        doc = nlp(input_text)
-
         # Create source text.
         # Don't add periods when joining because that creates a space before the period.
-        src_txt = [
-            " ".join([token.text for token in sentence if str(token) != "."]) + "."
-            for sentence in doc.sents
-        ]
+        if tokenized:
+            src_txt = [
+                " ".join([token.text for token in sentence if str(token) != "."]) + "."
+                for sentence in input_sentences
+            ]
+        else:
+            nlp = English()
+            sentencizer = nlp.create_pipe("sentencizer")
+            nlp.add_pipe(sentencizer)
+
+            src_txt = [
+                " ".join([token.text for token in nlp(sentence) if str(token) != "."]) + "."
+                for sentence in input_sentences
+            ]
 
         input_ids = SentencesProcessor.get_input_ids(
             self.tokenizer,
@@ -1021,7 +1037,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         if raw_scores:
             # key=sentence
             # value=score
-            sent_scores = dict(zip(src_txt, outputs.tolist()[0]))
+            sent_scores = list(zip(src_txt, outputs.tolist()[0]))
             return sent_scores
 
         sorted_ids = (
@@ -1036,6 +1052,33 @@ class ExtractiveSummarizer(pl.LightningModule):
             selected_sents.append(src_txt[i])
 
         return " ".join(selected_sents).strip()
+
+    def predict(self, input_text: str, raw_scores=False, num_summary_sentences=3):
+        """Summarizes ``input_text`` using the model.
+
+        Args:
+            input_text (str): The text to be summarized.
+            raw_scores (bool, optional): Return a list containing each sentence
+                and its corespoding score instead of the summary. Defaults to False.
+            num_summary_sentences (int, optional): The number of sentences in the
+                output summary. This value specifies the number of top sentences to
+                select as the summary. Defaults to 3.
+
+        Returns:
+            str: The summary text. If ``raw_scores`` is set then returns a list
+            of input sentences and their corespoding scores.
+        """
+        nlp = English()
+        sentencizer = nlp.create_pipe("sentencizer")
+        nlp.add_pipe(sentencizer)
+        doc = nlp(input_text)
+
+        return self.predict_sentences(
+            input_sentences=doc.sents,
+            raw_scores=raw_scores,
+            num_summary_sentences=num_summary_sentences,
+            tokenized=True,
+        )
 
     @staticmethod
     def add_model_specific_args(parent_parser):
