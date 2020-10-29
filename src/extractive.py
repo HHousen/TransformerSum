@@ -488,7 +488,7 @@ class ExtractiveSummarizer(pl.LightningModule):
                 inferred_data_type = most_common
             else:
                 inferred_data_type = self.hparams.data_type
-            
+
             return inferred_data_type
 
         datasets = {}
@@ -583,17 +583,19 @@ class ExtractiveSummarizer(pl.LightningModule):
             if self.hparams.only_preprocess:
                 continue
 
-            # always create actual dataset, either after writing the shard ".pt" files to disk
-            # or by skipping that step (because preprocessed ".pt" files detected) and going right to loading.
-            # Since `FSIterableDataset` is an `IterableDataset` the
-            # `DataLoader` will ask the `Dataset` for the length instead of calculating it because
-            # the length of `IterableDatasets` might not be known, but it is in this case.
+            # always create actual dataset, either after writing the shard  files to disk
+            # or by skipping that step (because preprocessed files detected) and going right to loading.
             if self.hparams.dataloader_type == "map":
                 if inferred_data_type != "txt":
-                    logger.error("The `--dataloader_type` is 'map' but the `--data_type` was not inferred to be 'txt'. The map-style dataloader requires 'txt' data.")
+                    logger.error(
+                        "The `--dataloader_type` is 'map' but the `--data_type` was not inferred to be 'txt'. The map-style dataloader requires 'txt' data."
+                    )
                     sys.exit(1)
                 datasets[corpus_type] = FSDataset(dataset_files, verbose=True)
             elif self.hparams.dataloader_type == "iterable":
+                # Since `FSIterableDataset` is an `IterableDataset` the `DataLoader` will ask
+                # the `Dataset` for the length instead of calculating it because the length
+                # of `IterableDatasets` might not be known, but it is in this case.
                 datasets[corpus_type] = FSIterableDataset(dataset_files, verbose=True)
                 # Force use one worker if using an iterable dataset to prevent duplicate data
                 self.hparams.dataloader_num_workers = 1
@@ -1030,7 +1032,11 @@ class ExtractiveSummarizer(pl.LightningModule):
             self.log(name, value, prog_bar=False)
 
     def predict_sentences(
-        self, input_sentences: Union[List[str], types.GeneratorType], raw_scores=False, num_summary_sentences=3, tokenized=False
+        self,
+        input_sentences: Union[List[str], types.GeneratorType],
+        raw_scores=False,
+        num_summary_sentences=3,
+        tokenized=False,
     ):
         """Summarizes ``input_sentences`` using the model.
 
@@ -1066,7 +1072,8 @@ class ExtractiveSummarizer(pl.LightningModule):
             nlp.add_pipe(sentencizer)
 
             src_txt = [
-                " ".join([token.text for token in nlp(sentence) if str(token) != "."]) + "."
+                " ".join([token.text for token in nlp(sentence) if str(token) != "."])
+                + "."
                 for sentence in input_sentences
             ]
 
@@ -1170,7 +1177,12 @@ class ExtractiveSummarizer(pl.LightningModule):
             action="store_true",
             help="Don't use the fast version of the tokenizer for the specified model. More info: https://huggingface.co/transformers/main_classes/tokenizer.html.",
         )
-        parser.add_argument("--max_seq_length", type=int, default=0)
+        parser.add_argument(
+            "--max_seq_length",
+            type=int,
+            default=0,
+            help="The maximum sequence length of processed documents.",
+        )
         parser.add_argument(
             "--data_path", type=str, help="Directory containing the dataset."
         )
