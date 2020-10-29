@@ -229,7 +229,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--profiler",
-        action="store_true",
+        default=None,
+        type=str,
+        choices=["simple", "advanced"],
         help="To profile individual steps during training and assist in identifying bottlenecks.",
     )
     parser.add_argument(
