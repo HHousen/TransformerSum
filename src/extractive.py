@@ -588,7 +588,12 @@ class ExtractiveSummarizer(pl.LightningModule):
             if self.hparams.dataloader_type == "map":
                 if inferred_data_type != "txt":
                     logger.error(
-                        "The `--dataloader_type` is 'map' but the `--data_type` was not inferred to be 'txt'. The map-style dataloader requires 'txt' data."
+                        """The `--dataloader_type` is 'map' but the `--data_type` was not 
+                        inferred to be 'txt'. The map-style dataloader requires 'txt' data. 
+                        Either set `--dataloader_type` to 'iterable' to use the old data 
+                        format or process the JSON to TXT by setting `--data_type` to
+                        'txt'. Alternatively, you can convert directly from PT to TXT 
+                        using `scripts/convert_extractive_pt_to_txt.py`."""
                     )
                     sys.exit(1)
                 datasets[corpus_type] = FSDataset(dataset_files, verbose=True)
