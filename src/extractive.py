@@ -4,6 +4,7 @@ import glob
 import logging
 import types
 from typing import List, Union
+import statistics
 import numpy as np
 from functools import partial
 from collections import OrderedDict
@@ -15,7 +16,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from spacy.lang.en import English
 from pooling import Pooling
-from data import SentencesProcessor, FSIterableDataset, pad_batch_collate
+from data import SentencesProcessor, FSIterableDataset, pad_batch_collate, FSDataset
 from classifier import (
     LinearClassifier,
     SimpleLinearClassifier,
@@ -436,6 +437,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             return_type="lists",
             save_to_path=hparams.data_path,
             save_to_name=os.path.basename(file_path),
+            save_as_type=hparams.data_type,
         )
 
     def prepare_data(self):
@@ -453,6 +455,42 @@ class ExtractiveSummarizer(pl.LightningModule):
         then this function will run once, loading the entire dataset into memory to process
         just like the ``convert_to_extractive.py`` script.
         """
+
+        def get_inferred_data_type(dataset_files):
+            dataset_files_extensions = [os.path.splitext(x)[1] for x in dataset_files]
+            dataset_files_extensions_equal = len(set(dataset_files_extensions)) <= 1
+
+            if (
+                not dataset_files_extensions_equal
+            ) and self.hparams.data_type == "none":
+                logger.error(
+                    "Cannot infer data file type because files with different extensions detected. Please set `--data_type`."
+                )
+                sys.exit(1)
+
+            most_common = None
+            if len(dataset_files_extensions) > 0:
+                # If the most common file extension found is not the specified data type
+                # then warn the user they may have chosen the wrong data type.
+                most_common = statistics.mode(dataset_files_extensions)[1:]
+                if (
+                    most_common != self.hparams.data_type
+                    and self.hparams.data_type != "none"
+                ):
+                    logger.warning(
+                        "`--data_type` is '%s', but the most common file type detected in the `--data_path` is '%s'. Using '%s' as the type. Data will be processed if this type does not exist. Did you choose the correct data type?",
+                        self.hparams.data_type,
+                        most_common,
+                        self.hparams.data_type,
+                    )
+
+            if self.hparams.data_type == "none":
+                inferred_data_type = most_common
+            else:
+                inferred_data_type = self.hparams.data_type
+            
+            return inferred_data_type
+
         datasets = {}
 
         # loop through all data_splits
@@ -463,14 +501,33 @@ class ExtractiveSummarizer(pl.LightningModule):
         ]
         for corpus_type in data_splits:
             # get the current list of dataset files. if preprocessing has already happened
-            # then this will be the list of files that should be passed to a FSIterableDataset.
+            # then this will be the list of files that should be passed to an FSDataset.
             # if preprocessing has not happened then `dataset_files` should be an empty list
             # and the data will be processed
             dataset_files = glob.glob(
-                os.path.join(self.hparams.data_path, "*" + corpus_type + ".*.pt")
+                os.path.join(self.hparams.data_path, "*" + corpus_type + ".*.*")
             )
+            # remove json files from glob results since they are unprocessed files
+            dataset_files = [x for x in dataset_files if "json" not in x]
+
+            inferred_data_type = get_inferred_data_type(dataset_files)
+
+            # rescan for dataset files after data type is determined
+            dataset_files = glob.glob(
+                os.path.join(
+                    self.hparams.data_path,
+                    "*" + corpus_type + ".*." + inferred_data_type,
+                )
+            )
+
             # if no dataset files detected or model is set to `only_preprocess`
             if (not dataset_files) or (self.hparams.only_preprocess):
+                if self.hparams.data_type == "none":
+                    logger.error(
+                        "Data is going to be processed, but you have not specified an output format. Set `--data_type` to the desired format."
+                    )
+                    sys.exit(1)
+
                 json_files = glob.glob(
                     os.path.join(self.hparams.data_path, "*" + corpus_type + ".*.json*")
                 )
@@ -513,10 +570,13 @@ class ExtractiveSummarizer(pl.LightningModule):
                 # pool.close()
                 # pool.join()
 
-                # since the dataset has been prepared, the dataset ".pt" files should exist on disk.
-                # scan for dataset ".pt" files again.
+                # since the dataset has been prepared, the processed dataset files should
+                # exist on disk. scan for final dataset files again.
                 dataset_files = glob.glob(
-                    os.path.join(self.hparams.data_path, "*" + corpus_type + ".*.pt")
+                    os.path.join(
+                        self.hparams.data_path,
+                        "*" + corpus_type + ".*." + inferred_data_type,
+                    )
                 )
 
             # if set to only preprocess the data then continue to next loop (aka next split of dataset)
@@ -525,13 +585,18 @@ class ExtractiveSummarizer(pl.LightningModule):
 
             # always create actual dataset, either after writing the shard ".pt" files to disk
             # or by skipping that step (because preprocessed ".pt" files detected) and going right to loading.
-            # `FSIterableDataset` needs to know `batch_size` in order to properly tell the DataLoader
-            # how many steps there are per epoch. Since `FSIterableDataset` is an `IterableDataset` the
+            # Since `FSIterableDataset` is an `IterableDataset` the
             # `DataLoader` will ask the `Dataset` for the length instead of calculating it because
             # the length of `IterableDatasets` might not be known, but it is in this case.
-            datasets[corpus_type] = FSIterableDataset(
-                dataset_files, batch_size=self.hparams.batch_size, verbose=True
-            )
+            if self.hparams.dataloader_type == "map":
+                if inferred_data_type != "txt":
+                    logger.error("The `--dataloader_type` is 'map' but the `--data_type` was not inferred to be 'txt'. The map-style dataloader requires 'txt' data.")
+                    sys.exit(1)
+                datasets[corpus_type] = FSDataset(dataset_files, verbose=True)
+            elif self.hparams.dataloader_type == "iterable":
+                datasets[corpus_type] = FSIterableDataset(dataset_files, verbose=True)
+                # Force use one worker if using an iterable dataset to prevent duplicate data
+                self.hparams.dataloader_num_workers = 1
 
         # if set to only preprocess the data then exit after all loops have been completed
         if self.hparams.only_preprocess:
@@ -564,6 +629,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         train_dataset = self.datasets[self.hparams.train_name]
         train_dataloader = DataLoader(
             train_dataset,
+            num_workers=self.hparams.dataloader_num_workers,
             # sampler=train_sampler,
             batch_size=self.hparams.batch_size,
             collate_fn=self.pad_batch_collate,
@@ -577,6 +643,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         valid_dataset = self.datasets[self.hparams.val_name]
         valid_dataloader = DataLoader(
             valid_dataset,
+            num_workers=self.hparams.dataloader_num_workers,
             # sampler=valid_sampler,
             batch_size=self.hparams.batch_size,
             collate_fn=self.pad_batch_collate,
@@ -592,6 +659,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         test_dataset = self.datasets[self.hparams.test_name]
         test_dataloader = DataLoader(
             test_dataset,
+            num_workers=self.hparams.dataloader_num_workers,
             # sampler=test_sampler,
             batch_size=self.hparams.batch_size,
             collate_fn=self.pad_batch_collate,
@@ -1106,6 +1174,18 @@ class ExtractiveSummarizer(pl.LightningModule):
         parser.add_argument(
             "--data_path", type=str, help="Directory containing the dataset."
         )
+        parser.add_argument(
+            "--data_type",
+            default="none",
+            type=str,
+            choices=["txt", "pt", "none"],
+            help="""The file extension of the prepared data. The 'map' `--dataloader_type` 
+            requires `txt` and the 'iterable' `--dataloader_type` works with both. If the data 
+            is not prepared yet (in JSON format) this value specifies the output format 
+            after processing. If the data is prepared, this value specifies the format to load. 
+            If it is `none` then the type of data to be loaded will be inferred from the 
+            `data_path`. If data needs to be prepared, this cannot be set to `none`.""",
+        )
         parser.add_argument("--num_threads", type=int, default=4)
         parser.add_argument("--processing_num_threads", type=int, default=2)
         parser.add_argument(
@@ -1126,6 +1206,22 @@ class ExtractiveSummarizer(pl.LightningModule):
             default=8,
             type=int,
             help="Batch size per GPU/CPU for training/evaluation/testing.",
+        )
+        parser.add_argument(
+            "--dataloader_type",
+            default="map",
+            type=str,
+            choices=["map", "iterable"],
+            help="The style of dataloader to use. `map` is faster and uses less memory.",
+        )
+        parser.add_argument(
+            "--dataloader_num_workers",
+            default=4,
+            type=int,
+            help="""The number of workers to use when loading data. A general place to 
+            start is to set num_workers equal to the number of CPU cores on your machine. 
+            If `--dataloader_type` is 'iterable' then this setting has no effect and 
+            num_workers will be 1. More details here: https://pytorch-lightning.readthedocs.io/en/latest/performance.html#num-workers""",
         )
         parser.add_argument(
             "--processor_no_bert_compatible_cls",

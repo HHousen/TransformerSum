@@ -4,7 +4,9 @@ import copy
 import json
 import random
 import logging
+import linecache
 import torch
+import numpy as np
 from multiprocessing import Pool
 from functools import partial
 from helpers import pad
@@ -134,6 +136,54 @@ def pad_batch_collate(batch, modifier=None):
     return final_dictionary
 
 
+class FSDataset(torch.utils.data.Dataset):
+    def __init__(self, files_list, shuffle=True, verbose=False):
+        super(FSIterableDataset).__init__()
+        if shuffle:
+            random.shuffle(files_list)  # happens in-place
+        self.files_list = files_list
+        self.shuffle = shuffle
+        self.verbose = verbose
+        self.lengths = self.get_files_lengths(files_list)
+
+    def get_files_lengths(self, files_list):
+        lengths = []
+        for data_file in files_list:
+            data_file_len = sum(1 for i in open(data_file, "rb"))
+            lengths.append(data_file_len)
+
+        lengths = np.cumsum(lengths)
+        self.lengths = lengths
+
+        return lengths
+
+    def __getitem__(self, index):
+        file_index = np.searchsorted(self.lengths, [index,], side="right")[0]
+
+        if file_index > 0:
+            total_lines_in_other_files = self.lengths[file_index - 1]
+        else:
+            total_lines_in_other_files = 0
+        file_path = self.files_list[file_index]
+        linecache_index = index + 1  # linecache starts at 1
+        linecache_index -= (
+            total_lines_in_other_files  # remove lines counted from other files
+        )
+
+        line_str = linecache.getline(file_path, linecache_index).rstrip("\n")
+        try:
+            line_json = json.loads(line_str)
+        except:
+            input(file_path)
+            input(index)
+            input(linecache_index)
+            input(line_str)
+        return line_json
+
+    def __len__(self):
+        return self.lengths[-1]
+
+
 class FSIterableDataset(torch.utils.data.IterableDataset):
     """
     A dataset to yield examples from a list of files that are saved python
@@ -162,21 +212,27 @@ class FSIterableDataset(torch.utils.data.IterableDataset):
     """
 
     # TODO: Add shuffling
-    def __init__(self, files_list, shuffle=True, batch_size=1, verbose=False):
+    def __init__(self, files_list, shuffle=True, verbose=False):
         super(FSIterableDataset).__init__()
         if shuffle:
             random.shuffle(files_list)  # happens in-place
         self.files_list = files_list
         self.shuffle = shuffle
-        self.batch_size = batch_size
         self.verbose = verbose
         self.total_length = None
+        self.file_type = os.path.splitext(files_list[0])[1]
 
     def __iter__(self):
         for data_file in self.files_list:
             if self.verbose:
                 logger.info("Loading examples from %s", data_file)
-            dataset_section = torch.load(data_file)
+
+            if self.file_type == ".pt":
+                dataset_section = torch.load(data_file)
+            elif self.file_type == ".txt":
+                with open(data_file, "r") as file:
+                    dataset_section = [json.loads(x) for x in file.readlines()]
+
             for example in dataset_section:
                 yield example
                 # input(example)
@@ -195,10 +251,14 @@ class FSIterableDataset(torch.utils.data.IterableDataset):
         )
         total_length = 0
         for data_file in self.files_list:
-            dataset_section = torch.load(data_file)
+            if self.file_type == ".pt":
+                dataset_section = torch.load(data_file)
+            elif self.file_type == ".txt":
+                with open(data_file, "r") as file:
+                    dataset_section = file.readlines()
             total_length += len(dataset_section)
-        self.total_length = total_length
 
+        self.total_length = total_length
         return total_length
 
 
@@ -636,6 +696,7 @@ class SentencesProcessor:
         return_type=None,
         save_to_path=None,
         save_to_name=None,
+        save_as_type="txt",
     ):
         r"""Convert the examples stored by the ``SentencesProcessor`` to features that can be used by
         a model. The following processes can be performed: tokenization, token type ids (to separate
@@ -692,9 +753,12 @@ class SentencesProcessor:
                 ``max_length``. Default is ``False if return_type == "lists" else True``
             return_type (str, optional): Either "tensors", "lists", or None. See "Returns" section below. Default is None.
             save_to_path (str, optional): The folder/directory to save the data to OR None to not save.
-                Will save the type specified by ``return_type`` to disk. Default is None.
+                Will save the data specified by ``return_type`` to disk. Default is None.
             save_to_name (str, optional): The name of the file to save. The extension '.pt' is automatically
                 appended. Default is ``'dataset_' + self.name + '.pt'``.
+            save_as_type (str, optional): The file extension of saved file if `save_to_path` is set. Supports "pt" (PyTorch)
+                and "txt" (Text). Saving as "txt" requires the ``return_type`` to be ``lists``. If ``return_type`` is
+                ``tensors`` the only ``save_as_type`` available is "pt". Defaults to "txt".
 
         Returns:
             list or torch.TensorDataset: If ``return_type is None`` return the list of calculated
@@ -705,6 +769,11 @@ class SentencesProcessor:
             dictionary to a list. Returns that list.
         """
         assert return_type in ["tensors", "lists"] or return_type is None
+        assert save_as_type in ["txt", "pt"] or save_to_path is None
+        if save_as_type == "txt":
+            assert return_type == "lists"
+        if return_type == "tensors":
+            assert save_as_type == "pt" or save_to_path is None
         if return_type == "lists":
             create_attention_mask = False
             pad_ids_and_attention = False
@@ -815,9 +884,20 @@ class SentencesProcessor:
 
         if save_to_path:
             final_save_name = save_to_name if save_to_name else ("dataset_" + self.name)
-            dataset_path = os.path.join(save_to_path, (final_save_name + ".pt"),)
+            dataset_path = os.path.join(
+                save_to_path, (final_save_name + "." + save_as_type),
+            )
             logger.info("Saving dataset into cached file %s", dataset_path)
-            torch.save(dataset, dataset_path)
+            if save_as_type == "txt":
+                with open(dataset_path, "w+") as file:
+                    # Need to replace single with double quotes so it can be loaded as JSON
+                    file.write(
+                        "\n".join([str(x).replace("'", '"') for x in dataset]) + "\n"
+                    )
+            elif save_as_type == "pt":
+                torch.save(dataset, dataset_path)
+            else:
+                logger.error("'%s' is an invalid save type.", save_as_type)
 
         return dataset
 
