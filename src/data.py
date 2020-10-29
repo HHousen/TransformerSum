@@ -531,7 +531,7 @@ class SentencesProcessor:
             sent_rep_ids = [
                 i for i, t in enumerate(input_ids) if t == sent_rep_token_id
             ]
-            # truncate `label` to the length of the `cls_ids` aka the number of sentences
+            # truncate `label` to the length of the `sent_rep_ids` aka the number of sentences
             label = label[: len(sent_rep_ids)]
 
             if create_sent_lengths:
@@ -544,8 +544,19 @@ class SentencesProcessor:
                         sent_rep_ids[i] - sent_rep_ids[i - 1]
                         for i in range(1, len(sent_rep_ids))
                     ]
-                    # add sentence length for the last sentence
-                    sent_lengths.append(len(sent_rep_ids) - sent_rep_ids[-1])
+                    # Add sentence length for the last sentence, if missing.
+                    # If the last sentence representation token position in `input_ids` is not
+                    # the last token in `input_ids` then add the length of the last sentence
+                    # to `sent_lengths` by subtracting the position of the last `sent_rep_token`
+                    # from the length of `input_ids`
+                    if sent_rep_ids[-1] != len(input_ids) - 1:
+                        sent_lengths.append(len(input_ids) - sent_rep_ids[-1])
+                    # Add sentence length for the first sentence, if missing.
+                    # If the first sentence representation token is not the first token in
+                    # `input_ids` then add the length of the first sentence by inserting
+                    # the first value in `sent_rep_ids` at the front of `sent_lengths`.
+                    if sent_rep_ids[0] != 0:
+                        sent_lengths.insert(0, sent_rep_ids[0] + 1)
 
         # Attention
         # The mask has 1 for real tokens and 0 for padding tokens. Only real
