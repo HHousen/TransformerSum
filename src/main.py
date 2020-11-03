@@ -60,18 +60,14 @@ def main(args):
     args.callbacks = [lr_logger]
 
     if args.use_logger == "wandb":
-        wandb_logger = WandbLogger(project=args.wandb_project,)
+        wandb_logger = WandbLogger(
+            project=args.wandb_project, log_model=(not args.no_wandb_logger_log_model)
+        )
         args.logger = wandb_logger
-        if not args.no_wandb_logger_log_model:
-            import wandb
-
-            args.weights_save_path = wandb_logger.experiment.dir
-            checkpoint_glob = os.path.join(wandb_logger.experiment.dir, "*.ckpt")
-            wandb.save(checkpoint_glob)
 
     if args.use_custom_checkpoint_callback:
         args.checkpoint_callback = ModelCheckpoint(
-            filepath=args.weights_save_path, save_top_k=-1, period=1, verbose=True,
+            save_top_k=-1, period=1, verbose=True,
         )
     if args.custom_checkpoint_every_n:
         custom_checkpoint_callback = StepCheckpointCallback(
@@ -111,22 +107,18 @@ if __name__ == "__main__":
         help="Extractive or abstractive summarization training. Default is 'extractive'.",
     )
     parser.add_argument(
-        "--default_root_dir",
-        type=str,
-        help="Default path for logs and weights. To use this option with the `wandb` logger specify the `--no_wandb_logger_log_model` option.",
+        "--default_root_dir", type=str, help="Default path for logs and weights.",
     )
     parser.add_argument(
         "--weights_save_path",
         type=str,
         help="""Where to save weights if specified. Will override `--default_root_dir` for 
         checkpoints only. Use this if for whatever reason you need the checkpoints stored in 
-        a different place than the logs written in `--default_root_dir`. This option will 
-        override the save locations when using a custom checkpoint callback, such as those
-        created when using `--use_custom_checkpoint_callback or `--custom_checkpoint_every_n`.
+        a different place than the logs written in `--default_root_dir`.
         If you are using the `wandb` logger, then you must also set `--no_wandb_logger_log_model`
         when using this option. Model weights are saved with the wandb logs to be uploaded to 
         wandb.ai by default. Setting this option without setting `--no_wandb_logger_log_model` 
-        effectively creates two save paths, which will crash the script.""",
+        effectively creates two save paths, which may crash the script.""",
     )
     parser.add_argument(
         "--learning_rate",
@@ -249,7 +241,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--val_check_interval",
         default=1.0,
-        help="How often within one training epoch to check the validation set. Can specify as float or int. Use float to check within a training epoch. Use int to check every n steps (batches)."
+        help="How often within one training epoch to check the validation set. Can specify as float or int. Use float to check within a training epoch. Use int to check every n steps (batches).",
     )
     parser.add_argument(
         "--use_logger",
@@ -308,7 +300,7 @@ if __name__ == "__main__":
         help="""The number of steps between additional checkpoints. By default checkpoints are saved 
         every epoch. Setting this value will save them every epoch and every N steps. This does not 
         use the same callback as `--use_custom_checkpoint_callback` but instead uses a different class 
-        called `StepCheckpointCallback`. You can change the save path by setting the 
+        called `StepCheckpointCallback`. When using this callback, you must specify the save path with the 
         `--weights_save_path` option.""",
     )
     parser.add_argument(
