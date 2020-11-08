@@ -56,7 +56,7 @@ class Pooling(nn.Module):
         if self.sent_rep_tokens:
             sents_vec = word_vectors[
                 torch.arange(word_vectors.size(0)).unsqueeze(1), sent_rep_token_ids
-            ].squeeze()
+            ]
             sents_vec = sents_vec * sent_rep_mask[:, :, None].float()
             output_vectors.append(sents_vec)
             output_masks.append(sent_rep_mask)
