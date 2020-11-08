@@ -321,10 +321,12 @@ class ExtractiveSummarizer(pl.LightningModule):
         except ValueError as e:
             logger.error(e)
             logger.error(
-                "Details about above error:\n1. outputs=%s\nlabels.float()=%s",
+                "Details about above error:\n1. outputs=%s\n2. labels.float()=%s",
                 outputs,
                 labels.float(),
             )
+            sys.exit(1)
+
         # set all padding values to zero
         loss = loss * mask.float()
         # add up all the loss values for each sequence (including padding because
@@ -485,6 +487,12 @@ class ExtractiveSummarizer(pl.LightningModule):
                         self.hparams.data_type,
                     )
 
+            if len(dataset_files) == 0 and self.hparams.data_type == "none":
+                logger.error(
+                    "Data is going to be processed, but you have not specified an output format. Set `--data_type` to the desired format."
+                )
+                sys.exit(1)
+
             if self.hparams.data_type == "none":
                 inferred_data_type = most_common
             else:
@@ -523,15 +531,15 @@ class ExtractiveSummarizer(pl.LightningModule):
 
             # if no dataset files detected or model is set to `only_preprocess`
             if (not dataset_files) or (self.hparams.only_preprocess):
-                if self.hparams.data_type == "none":
-                    logger.error(
-                        "Data is going to be processed, but you have not specified an output format. Set `--data_type` to the desired format."
-                    )
-                    sys.exit(1)
-
                 json_files = glob.glob(
                     os.path.join(self.hparams.data_path, "*" + corpus_type + ".*.json*")
                 )
+                if len(json_files) == 0:
+                    logger.error(
+                        "No JSON dataset files detected for %s split. Make sure the `--data_path` is correct.",
+                        corpus_type,
+                    )
+                    sys.exit(1)
 
                 if self.hparams.preprocess_resume:
                     completed_files = [
