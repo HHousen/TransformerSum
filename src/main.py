@@ -271,7 +271,9 @@ if __name__ == "__main__":
         "--load_weights",
         default=False,
         type=str,
-        help="Loads the model weights from a given checkpoint",
+        help="""Loads the model weights from a given checkpoint. Hyperparameters are initialized 
+        from command line arguments. This can be used to change paramters between the training 
+        and testing stages, for example.""",
     )
     parser.add_argument(
         "--load_from_checkpoint",

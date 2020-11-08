@@ -102,6 +102,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             hparams, "gradient_checkpointing", False
         )
         hparams.tokenizer_no_use_fast = getattr(hparams, "tokenizer_no_use_fast", False)
+        hparams.data_type = getattr(hparams, "data_type", "none")
 
         self.hparams = hparams
         self.forward_modify_inputs_callback = None
