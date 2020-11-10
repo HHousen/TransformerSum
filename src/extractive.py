@@ -123,9 +123,9 @@ class ExtractiveSummarizer(pl.LightningModule):
                 (
                     "You are using a %s model but did not set "
                     + "--no_use_token_type_ids. This model does not support `token_type_ids` so "
-                    + "this option has been automatically enabled.",
-                    hparams.model_type,
-                )
+                    + "this option has been automatically enabled."
+                ),
+                hparams.model_type,
             )
             self.hparams.no_use_token_type_ids = True
 
