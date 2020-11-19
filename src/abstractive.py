@@ -703,40 +703,22 @@ class AbstractiveSummarizer(pl.LightningModule):
         cross_entropy_loss = self._step(batch)
 
         tqdm_dict = {"train_loss": cross_entropy_loss}
-        output = OrderedDict(
-            {"loss": cross_entropy_loss, "progress_bar": tqdm_dict, "log": tqdm_dict,}
-        )
-        return output
+        self.log("train_loss", cross_entropy_loss, prog_bar=True)
+
+        return cross_entropy_loss
 
     def validation_step(self, batch, batch_idx):  # skipcq: PYL-W0613
         """Validation step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.validation_step>`__"""
         cross_entropy_loss = self._step(batch)
+        return cross_entropy_loss
 
-        tqdm_dict = {"val_loss": cross_entropy_loss}
-        output = OrderedDict(
-            {
-                "val_loss": cross_entropy_loss,
-                "progress_bar": tqdm_dict,
-                "log": tqdm_dict,
-            }
-        )
-        return output
-
-    @staticmethod
-    def validation_epoch_end(outputs):
+    def validation_epoch_end(self, outputs):
         """
         Called at the end of a validation epoch: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.validation_epoch_end>`__
         Finds the mean of all the metrics logged by :meth:`~abstractive.AbstractiveSummarizer.validation_step`.
         """
-        avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
-
-        tqdm_dict = {"val_loss": avg_loss}
-        output = {
-            "val_loss": avg_loss,
-            "progress_bar": tqdm_dict,
-            "log": tqdm_dict,
-        }
-        return output
+        avg_loss = torch.stack(outputs).mean()
+        self.log("val_loss", avg_loss, prog_bar=True)
 
     def test_step(self, batch, batch_idx):  # skipcq: PYL-W0613
         """

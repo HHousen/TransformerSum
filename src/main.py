@@ -382,6 +382,11 @@ if __name__ == "__main__":
     else:
         parser = ExtractiveSummarizer.add_model_specific_args(parser)
 
+    if main_args[0].custom_checkpoint_every_n and (not main_args[0].weights_save_path):
+        logger.error(
+            "You must specify the `--weights_save_path` to use `--custom_checkpoint_every_n`."
+        )
+
     main_args = parser.parse_args()
 
     # Setup logging config
