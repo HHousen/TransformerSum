@@ -1,7 +1,7 @@
 Experiments
 ===========
 
-Interactive charts, graphs, raw data, run commands, hyperparameter choices, and more for all experiments are publicly available on the `TransformerSum Weights & Biases page <https://app.wandb.ai/hhousen/transformerextsum>`__. Please open an `issue <https://github.com/HHousen/TransformerSum/issues/new>`__ if you have questions about these experiments.
+Interactive charts, graphs, raw data, run commands, hyperparameter choices, and more for all experiments are publicly available on the `TransformerSum Weights & Biases page <https://app.wandb.ai/hhousen/transformerextsum>`__. You can download the raw data for each model on this site, or `download an overview as a CSV <../_static/summarization-model-experiments-raw-data.csv>`__. Please open an `issue <https://github.com/HHousen/TransformerSum/issues/new>`__ if you have questions about these experiments.
 
 Important notes when running experiments:
 
@@ -10,10 +10,166 @@ Important notes when running experiments:
 
 The :ref:`older_experiments` were conducted on a previous version of ``TransformerSum`` that contained bugs. Thus, the scores and graphs of the older experiments don't represent model performance but their results relative to each other should still be accurate. The :ref:`newer_experiments` were conducted on a new version without bugs and thus should be easily reproducible.
 
+.. _experiments_version_3:
+
+Version 3
+---------
+
+All version 3 extractive models were trained for three epochs with gradient accumulation every two steps. The AdamW optimizer was used with :math:`\beta_1=0.9`, :math:`\beta_2=0.999`, and :math:`\epsilon=1\mathrm{e}{-8}`. Models were trained on one NVIDIA Tesla P100 GPU. Unless otherwise specified, the learning rate was 2e-5 and a linear warmup with decay learning rate scheduler was used with 1400 steps of warmup (technically 2800 steps due to gradient accumulation every two steps). Except during their respective experiments, the ``simple_linear`` classifier and ``sent_rep_tokens`` pooling method are used. Gradients are clipped at 1.0 during training for all models. Model checkpoints were saved and evaluated on the validation set at the end of each epoch. ROUGE scores are reported on the test set of the model checkpoint saved after the final epoch.
+
+.. _experiments_version_3_pooling_mode:
+
+Pooling Mode
+^^^^^^^^^^^^
+
+`Wandb Tag <https://app.wandb.ai/hhousen/transformerextsum>`_: ``pooling-mode-test-v3``
+
+All three pooling modes (``mean_tokens``, ``sentence_rep_tokens``, and ``max_tokens``) were tested using DistilBERT and DistilRoBERTa, which are warm started from the ``distilbert-base-uncased`` and ``distilroberta-base`` checkpoints, respectively. I only test the ``distil*`` models since they reach at least 95% of the performance of the original model while being significantly faster to train. The models were trained and tested on CNN/DailyMail, WikiHow, and ArXiv/PubMed to determine if certain methods worked better with certain topics. All models were trained with a batch size of 32 and the hyperparameters discussed in above at :ref:`experiments_version_3`.
+
+Pooling Mode Results
+~~~~~~~~~~~~~~~~~~~~
+
+**ROUGE Scores:**
+
++-------------------------+----------------+-------------------+-------------------+-------------------+
+| Model                   | Pooling Method | CNN/DM            | WikiHow           | ArXiv/PubMed      |
++=========================+================+===================+===================+===================+
+| distilbert-base-uncased | sent_rep       | 42.71/19.91/39.18 | 30.69/08.65/28.58 | 34.93/12.21/31.00 |
+|                         +----------------+-------------------+-------------------+-------------------+
+|                         | mean           | 42.70/19.88/39.16 | 30.48/08.56/28.42 | 34.48/11.89/30.61 |
+|                         +----------------+-------------------+-------------------+-------------------+
+|                         | max            | 42.74/19.90/39.17 | 30.51/08.62/28.43 | 34.50/11.91/30.62 |
++-------------------------+----------------+-------------------+-------------------+-------------------+
+| distilroberta-base      | sent_rep       | 42.87/20.02/39.31 | 31.07/08.96/28.95 | 34.70/12.16/30.82 |
+|                         +----------------+-------------------+-------------------+-------------------+
+|                         | mean           | 43.00/20.08/39.42 | 30.96/08.93/28.86 | 34.24/11.82/30.42 |
+|                         +----------------+-------------------+-------------------+-------------------+
+|                         | max            | 42.91/20.04/39.33 | 30.93/08.92/28.82 | 34.28/11.82/30.44 |
++-------------------------+----------------+-------------------+-------------------+-------------------+
+
+**Main Takeaway:** Across all datasets and models, the pooling mode has no significant impact on the final ROUGE scores. However, the sent_rep method usually performs slightly better. Additionally, the mean and max methods are about 30% slower than the sent_rep pooling method.
+
+Classifier/Encoder
+^^^^^^^^^^^^^^^^^^
+
+`Wandb Tag <https://app.wandb.ai/hhousen/transformerextsum>`_: ``encoder-test-v3``
+
+All four summarization layers, including two variations of the \verb|transformer| method for a total of five configurations, were tested using the same models and datasets from the :ref:`pooling modes experiment <experiments_version_3_pooling_mode>`. For this experiment, a batch size of 32 was used.
+
+Classifier/Encoder Results
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**ROUGE Scores:**
+
++-------------------------+--------------------+-------------------+-------------------+-------------------+
+| Model                   | Classifier         | CNN/DM            | WikiHow           | ArXiv/PubMed      |
++=========================+====================+===================+===================+===================+
+| distilbert-base-uncased | simple_linear      | 42.71/19.91/39.18 | 30.69/08.65/28.58 | 34.93/12.21/31.00 |
+|                         +--------------------+-------------------+-------------------+-------------------+
+|                         | linear             | 42.70/19.84/39.14 | 30.67/08.62/28.56 | 34.87/12.20/30.96 |
+|                         +--------------------+-------------------+-------------------+-------------------+
+|                         | transformer        | 42.78/19.93/39.22 | 30.66/08.69/28.57 | 34.94/12.22/31.03 |
+|                         +--------------------+-------------------+-------------------+-------------------+
+|                         | transformer_linear | 42.78/19.93/39.22 | 30.64/08.64/28.54 | 34.97/12.22/31.02 |
++-------------------------+--------------------+-------------------+-------------------+-------------------+
+| distilroberta-base      | simple_linear      | 42.87/20.02/39.31 | 31.07/08.96/28.95 | 34.70/12.16/30.82 |
+|                         +--------------------+-------------------+-------------------+-------------------+
+|                         | linear             | 43.18/20.26/39.61 | 31.08/08.98/28.96 | 34.77/12.17/30.88 |
+|                         +--------------------+-------------------+-------------------+-------------------+
+|                         | transformer        | 42.94/20.03/39.37 | 31.05/08.97/28.93 | 34.77/12.17/30.87 |
+|                         +--------------------+-------------------+-------------------+-------------------+
+|                         | transformer_linear | 42.90/20.00/39.34 | 31.13/09.01/29.02 | 34.77/12.18/30.88 |
++-------------------------+--------------------+-------------------+-------------------+-------------------+
+
+**Main Takeaway:** There is no significant difference between the classifier used. Thus, you should use the linear classifier by default since it contains fewer parameters.
+
+.. _newer_experiments:
+
+Version 2
+---------
+
+Classifier/Encoder ``simple_linear`` vs ``linear``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Commit `dfefd15` added a :class:`~classifier.SimpleLinearClassifier`. This experiment servers to determine if ``simple_linear`` (:class:`~classifier.SimpleLinearClassifier`) is better than ``linear`` (:class:`~classifier.LinearClassifier`).
+
+Command used to run the tests:
+
+.. code-block:: 
+
+   python main.py \
+   --model_name_or_path distilbert-base-uncased \
+   --model_type distilbert \
+   --no_use_token_type_ids \
+   --use_custom_checkpoint_callback \
+   --data_path ./pt/bert-base-uncased \
+   --max_epochs 3 \
+   --accumulate_grad_batches 2 \
+   --warmup_steps 1400 \
+   --gradient_clip_val 1.0 \
+   --optimizer_type adamw \
+   --use_scheduler linear \
+   --do_train --do_test \
+   --batch_size 32 \
+   --classifier [`linear` or `simple_linear`]
+
+Classifier/Encoder Results
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Training Times and Model Sizes:**
+
++-------------------+------------+------------+
+| Model Key         | Time       | Model Size |
++===================+============+============+
+| ``linear``        | 6h 28m 21s | 810.6MB    |
++-------------------+------------+------------+
+| ``simple_linear`` | 6h 22m 32s | 796.4MB    |
++-------------------+------------+------------+
+
+**ROUGE Scores:**
+
++-------------------+---------+---------+---------+-------------+
+| Name              | ROUGE-1 | ROUGE-2 | ROUGE-L | ROUGE-L-Sum |
++===================+=========+=========+=========+=============+
+| ``linear``        | 42.8    | 19.9    | 27.5    | 39.2        |
++-------------------+---------+---------+---------+-------------+
+| ``simple_linear`` | 42.7    | 19.9    | 27.5    | 39.2        |
++-------------------+---------+---------+---------+-------------+
+
+**Main Takeaway:** There is no significant difference in performance between the ``linear`` and ``simple_linear`` classifiers/encoders. However, ``simple_linear`` is better due to its lower training and validation loss.
+
+**Outliers Included:**
+
+.. image:: ../_static/encoder_v2/loss_avg_seq_mean_outliers.png
+   :width: 48%
+
+.. image:: ../_static/encoder_v2/loss_total_outliers.png
+   :width: 48%
+
+**No Outliers:**
+
+.. image:: ../_static/encoder_v2/loss_avg_seq_sum.png
+   :width: 48%
+
+.. image:: ../_static/encoder_v2/loss_avg_seq_mean.png
+   :width: 48%
+
+.. image:: ../_static/encoder_v2/loss_total_norm_batch.png
+   :width: 48%
+
+.. image:: ../_static/encoder_v2/loss_avg.png
+   :width: 48%
+
+.. image:: ../_static/encoder_v2/loss_total.png
+   :width: 48%
+
+.. image:: ../_static/encoder_v2/loss_avg_seq_mean_val_only.png
+   :width: 48%
+
 .. _older_experiments:
 
-Older Experiments
------------------
+Version 1
+---------
 
 .. important:: These experiments may be difficult to reproduce because they were conducted on an early version of the project that contained several bugs.
 
@@ -541,87 +697,4 @@ Classifier/Encoder Results
 **Relative Time:**
 
 .. image:: ../_static/encoder/loss_avg_seq_mean_reltime.png
-   :width: 48%
-
-.. _newer_experiments:
-
-Newer Experiments
------------------
-
-Classifier/Encoder ``simple_linear`` vs ``linear``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Commit `dfefd15` added a :class:`~classifier.SimpleLinearClassifier`. This experiment servers to determine if ``simple_linear`` (:class:`~classifier.SimpleLinearClassifier`) is better than ``linear`` (:class:`~classifier.LinearClassifier`).
-
-Command used to run the tests:
-
-.. code-block:: 
-
-   python main.py \
-   --model_name_or_path distilbert-base-uncased \
-   --model_type distilbert \
-   --no_use_token_type_ids \
-   --use_custom_checkpoint_callback \
-   --data_path ./pt/bert-base-uncased \
-   --max_epochs 3 \
-   --accumulate_grad_batches 2 \
-   --warmup_steps 1400 \
-   --gradient_clip_val 1.0 \
-   --optimizer_type adamw \
-   --use_scheduler linear \
-   --do_train --do_test \
-   --batch_size 32 \
-   --classifier [`linear` or `simple_linear`]
-
-Classifier/Encoder Results
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-**Training Times and Model Sizes:**
-
-+-------------------+------------+------------+
-| Model Key         | Time       | Model Size |
-+===================+============+============+
-| ``linear``        | 6h 28m 21s | 810.6MB    |
-+-------------------+------------+------------+
-| ``simple_linear`` | 6h 22m 32s | 796.4MB    |
-+-------------------+------------+------------+
-
-**ROUGE Scores:**
-
-+-------------------+---------+---------+---------+-------------+
-| Name              | ROUGE-1 | ROUGE-2 | ROUGE-L | ROUGE-L-Sum |
-+===================+=========+=========+=========+=============+
-| ``linear``        | 42.8    | 19.9    | 27.5    | 39.2        |
-+-------------------+---------+---------+---------+-------------+
-| ``simple_linear`` | 42.7    | 19.9    | 27.5    | 39.2        |
-+-------------------+---------+---------+---------+-------------+
-
-**Main Takeaway:** There is no significant difference in performance between the ``linear`` and ``simple_linear`` classifiers/encoders. However, ``simple_linear`` is better due to its lower training and validation loss.
-
-**Outliers Included:**
-
-.. image:: ../_static/encoder_v2/loss_avg_seq_mean_outliers.png
-   :width: 48%
-
-.. image:: ../_static/encoder_v2/loss_total_outliers.png
-   :width: 48%
-
-**No Outliers:**
-
-.. image:: ../_static/encoder_v2/loss_avg_seq_sum.png
-   :width: 48%
-
-.. image:: ../_static/encoder_v2/loss_avg_seq_mean.png
-   :width: 48%
-
-.. image:: ../_static/encoder_v2/loss_total_norm_batch.png
-   :width: 48%
-
-.. image:: ../_static/encoder_v2/loss_avg.png
-   :width: 48%
-
-.. image:: ../_static/encoder_v2/loss_total.png
-   :width: 48%
-
-.. image:: ../_static/encoder_v2/loss_avg_seq_mean_val_only.png
    :width: 48%
