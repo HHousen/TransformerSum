@@ -12,6 +12,8 @@ These models are the raw output from the ``convert_bart_to_longformerencoderdeco
 
 The output of the ``convert_bart_to_longformerencoderdecoder.py`` script works for long documents even without further training. Check tables 6 and 11 in `the longformer paper <https://arxiv.org/pdf/2004.05150.pdf>`_ to get a sense of the expected performance of this model before any additional gradient updates.
 
+These are ``huggingface/transformers`` models, so they need to be used with the ``--model_name_or_path`` option. They can also be loaded directly in ``huggingface/transformers`` using ``LongformerEncoderDecoderForConditionalGeneration.from_pretrained()``.
+
 The Google Drive folder containing all of the below models is available `at this link <https://drive.google.com/drive/folders/18W_wJ5ovpSN98AT4626JtEJUCW_wA4ax>`__.
 
 +--------------------------------------------------+----------+------------------------------------------------------------------------------------------------------+
