@@ -884,6 +884,11 @@ class AbstractiveSummarizer(pl.LightningModule):
             return_token_type_ids=False,
         )["input_ids"]
         input_sequence_encoded = torch.tensor(input_sequence_encoded)
+        
+        # If using the LongformerEncoderDecoder then apply the padding for sliding
+        # chunks attention.
+        if "longformer-encdec" in self.hparams.model_name_or_path.lower():
+            input_sequence_encoded = pad_tensors(input_sequence_encoded, nearest_multiple_of=model.config.attention_window[0] * 2)
 
         t0 = time()
         generated_ids = self.model.generate(
