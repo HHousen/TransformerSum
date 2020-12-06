@@ -28,6 +28,8 @@ By default, the model weights are saved after every epoch to the ``--default_roo
 
 The length of output summaries during testing is 3 by default. You can change this by setting the ``--test_k`` option to the number of sentences desired in generated summaries. This assumes ``--test_id_method`` is set to ``top_k``, which is the default. ``top_k`` selects the top ``k`` sentences and the other option, ``greater_k``, selects those sentences with a rank above ``k``. ``k`` is specified by the ``--test_k`` argument.
 
+.. important:: More example training commands can be found on the `TransformerSum Weights & Biases page <https://app.wandb.ai/hhousen/transformerextsum>`__. Just click the name of a training run, go to the overview page by clicking the "i" icon in the top left, and look at the command value.
+
 .. _extractive_pooling_modes:
 
 Pooling Modes

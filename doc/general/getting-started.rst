@@ -116,7 +116,9 @@ Training command:
     --do_train --do_test \
     --batch_size 16
 
-You can learn more about the above command on :ref:`train_extractive_model`. 
+You can learn more about the above command on :ref:`train_extractive_model`.
+
+.. important:: More example training commands can be found on the `TransformerSum Weights & Biases page <https://app.wandb.ai/hhousen/transformerextsum>`__. Just click the name of a training run, go to the overview page by clicking the "i" icon in the top left, and look at the command value.
 
 Abstractive Summarization
 ^^^^^^^^^^^^^^^^^^^^^^^^^
