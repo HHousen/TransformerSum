@@ -431,11 +431,9 @@ class ExtractiveSummarizer(pl.LightningModule):
             max_length=(
                 hparams.max_seq_length
                 if hparams.max_seq_length
-                else self.tokenizer.max_len
+                else self.tokenizer.model_max_length
             ),
-            pad_on_left=bool(
-                hparams.model_type in ["xlnet"]
-            ),  # pad on the left for xlnet
+            pad_on_left=self.tokenizer.padding_side == "left",
             pad_token=tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0],
             return_type="lists",
             save_to_path=hparams.data_path,
