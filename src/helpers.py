@@ -141,10 +141,12 @@ def _get_word_ngrams(n, sentences):
     return _get_ngrams(n, words)
 
 
-def pad(data, pad_id, width=None, pad_on_left=False):
+def pad(data, pad_id, width=None, pad_on_left=False, nearest_multiple_of=False):
     """Pad ``data`` with ``pad_id`` to ``width`` on the right by default but if ``pad_on_left`` then left."""
     if not width:
         width = max([len(d) for d in data])
+    if nearest_multiple_of:
+        width = math.ceil(width / nearest_multiple_of) * nearest_multiple_of
     if pad_on_left:
         rtn_data = [[pad_id] * (width - len(d)) + d for d in data]
     else:

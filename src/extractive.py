@@ -81,6 +81,8 @@ def longformer_modifier(final_dictionary):
         global_attention_mask[idx, items] = 1
 
     final_dictionary["global_attention_mask"] = global_attention_mask
+    # The `global_attention_mask` is passed through the model's `forward`
+    # function as `**kwargs`.
     return final_dictionary
 
 
@@ -116,8 +118,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         self.word_embedding_model = AutoModel.from_config(embedding_model_config)
 
         if (
-            "roberta" in hparams.model_name_or_path
-            or "distil" in hparams.model_name_or_path
+            any(x in hparams.model_name_or_path for x in ["roberta", "distil", "longformer"])
         ) and not hparams.no_use_token_type_ids:
             logger.warning(
                 (
