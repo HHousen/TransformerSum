@@ -174,10 +174,11 @@ class FSDataset(torch.utils.data.Dataset):
         try:
             line_json = json.loads(line_str)
         except:
-            input(file_path)
-            input(index)
-            input(linecache_index)
-            input(line_str)
+            print("** JSON Loading Error **")
+            print(file_path)
+            print(index)
+            print(linecache_index)
+            print(line_str)
         return line_json
 
     def __len__(self):
@@ -905,7 +906,7 @@ class SentencesProcessor:
                 with open(dataset_path, "w+") as file:
                     # Need to replace single with double quotes so it can be loaded as JSON
                     file.write(
-                        "\n".join([str(x).replace("'", '"') for x in dataset]) + "\n"
+                        "\n".join([json.dumps(x) for x in dataset]) + "\n"
                     )
             elif save_as_type == "pt":
                 torch.save(dataset, dataset_path)
