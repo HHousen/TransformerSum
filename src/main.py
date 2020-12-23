@@ -262,6 +262,13 @@ if __name__ == "__main__":
         help="Enable gradient checkpointing (save memory at the expense of a slower backward pass) for the word embedding model. More info: https://github.com/huggingface/transformers/pull/4659#issue-424841871",
     )
     parser.add_argument(
+        "--accelerator",
+        default=None,
+        type=str,
+        choices=["dp", "ddp", "ddp_cpu", "ddp2"],
+        help="The accelerator backend to use (previously known as distributed_backend).",
+    )
+    parser.add_argument(
         "--do_train", action="store_true", help="Run the training procedure."
     )
     parser.add_argument(
