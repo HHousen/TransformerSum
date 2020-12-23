@@ -41,7 +41,7 @@ from transformers.data.metrics import acc_and_f1
 # CUSTOM_MODEL_CLASSES = ("longformer",)
 
 try:
-    from transformers.modeling_auto import MODEL_MAPPING
+    from transformers.models.auto.modeling_auto import MODEL_MAPPING
 
     MODEL_CLASSES = tuple(
         [m.model_type for m in MODEL_MAPPING]
@@ -734,7 +734,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         }
 
         for name, value in loss_dict.items():
-            self.log(name, value, prog_bar=True)
+            self.log(name, value, prog_bar=True, sync_dist=True)
 
         return loss_dict["train_" + self.hparams.loss_key]
 
@@ -825,9 +825,9 @@ class ExtractiveSummarizer(pl.LightningModule):
         }
 
         for name, value in loss_dict.items():
-            self.log(name, value, prog_bar=True)
+            self.log(name, value, prog_bar=True, sync_dist=True)
 
-        self.log("val_loss", loss_dict["val_" + self.hparams.loss_key])
+        self.log("val_loss", loss_dict["val_" + self.hparams.loss_key], sync_dist=True)
 
     def test_step(self, batch, batch_idx):
         """
@@ -1040,9 +1040,9 @@ class ExtractiveSummarizer(pl.LightningModule):
         }
 
         for name, value in loss_dict.items():
-            self.log(name, value, prog_bar=True)
+            self.log(name, value, prog_bar=True, sync_dist=True)
         for name, value in rouge_scores_log.items():
-            self.log(name, value, prog_bar=False)
+            self.log(name, value, prog_bar=False, sync_dist=True)
 
     def predict_sentences(
         self,
