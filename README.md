@@ -22,7 +22,7 @@
 * "Smart batching" (extractive) and trimming (abstractive) support to not perform unnecessary calculations (speeds up training).
 * Use of `pytorch_lightning` for code readability.
 * Extensive documentation.
-* Two pooling modes (convert word vectors to sentence embeddings): mean of word embeddings or use the CLS token.
+* Three pooling modes (convert word vectors to sentence embeddings): mean or max of word embeddings in addition to the CLS token.
 
 ## Pre-trained Models
 

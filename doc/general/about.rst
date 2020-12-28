@@ -24,12 +24,12 @@ Features
 * "Smart batching" (extractive) and trimming (abstractive) support to not perform unnecessary calculations (speeds up training).
 * Use of ``pytorch_lightning`` for code readability.
 * Extensive documentation.
-* Two pooling modes (convert word vectors to sentence embeddings): mean of word embeddings or use the CLS token.
+* Three pooling modes (convert word vectors to sentence embeddings): mean or max of word embeddings in addition to the CLS token.
 
 Significant People
 ------------------
 
-The project was created by `Hayden Housen <https://haydenhousen.com/>`_ during his sophomore year of highschool as part of the Science Research program. It is actively maintained and updated by him and the community. You can contribute at `HHousen/TransformerSum <https://github.com/HHousen/TransformerSum>`_.
+The project was created by `Hayden Housen <https://haydenhousen.com/>`_ during his junior and senior years of high school as part of the Science Research program. It is actively maintained and updated by him and the community. You can contribute at `HHousen/TransformerSum <https://github.com/HHousen/TransformerSum>`_.
 
 .. _about_rouge_scores:
 
