@@ -41,9 +41,28 @@ def main(args):
         checkpoint = torch.load(
             args.load_weights, map_location=lambda storage, loc: storage
         )
-        model.load_state_dict(checkpoint["state_dict"])
+        model.load_state_dict(checkpoint["state_dict"], strict=args.no_strict)
     elif args.load_from_checkpoint:
-        model = summarizer.load_from_checkpoint(args.load_from_checkpoint)
+        try:
+            model = summarizer.load_from_checkpoint(
+                args.load_from_checkpoint, strict=args.no_strict
+            )
+        except RuntimeError as e:
+            e_str = str(e)
+            if (
+                "Missing key(s) in state_dict" in e_str
+                or "word_embedding_model.embeddings.position_ids" in e_str
+            ):
+                print(
+                    (
+                        "The below is a common issue. Due to the `transformers` update "
+                        "from 3.0.2 to 3.1.0, models trained in versions <3.0.2 need to be "
+                        "loaded with the `--no_strict` argument. More details can be found at "
+                        "huggingface/transformers#6882."
+                    )
+                )
+            raise e
+        
         # The model is loaded with self.hparams.data_path set to the directory where the data
         # was located during training. When loading the model, it may be desired to change
         # the data path, which the below line accomplishes.
@@ -348,14 +367,19 @@ if __name__ == "__main__":
         default=6,
         type=int,
         help="""Ranger (LookAhead) optimizer k value (default: 6). LookAhead keeps a single
-        extra copy of the weights, then lets the internalized ‘faster’ optimizer (for Ranger,
-        that’s RAdam) explore for 5 or 6 batches. The batch interval is specified via the k parameter.""",
+        extra copy of the weights, then lets the internalized 'faster' optimizer (for Ranger,
+        that's RAdam) explore for 5 or 6 batches. The batch interval is specified via the k parameter.""",
     )
     parser.add_argument(
         "--warmup_steps",
         default=0,
         type=int,
         help="Linear warmup over warmup_steps. Only active if `--use_scheduler` is set to linear.",
+    )
+    parser.add_argument(
+        "--no_strict",
+        action="store_false",
+        help="Load a model with `strict` mode disabled. This will *not* enforce that the keys in `state_dict` match the keys returned by the module's `state_dict()` function.",
     )
     parser.add_argument(
         "--use_scheduler",
