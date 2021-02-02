@@ -138,7 +138,7 @@ def pad_batch_collate(batch, modifier=None):
 
 class FSDataset(torch.utils.data.Dataset):
     def __init__(self, files_list, shuffle=True, verbose=False):
-        super(FSIterableDataset).__init__()
+        super(FSDataset).__init__()
         if shuffle:
             random.shuffle(files_list)  # happens in-place
         self.files_list = files_list
