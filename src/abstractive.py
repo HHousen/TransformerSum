@@ -883,7 +883,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         ):
             input_sequence_encoded = pad_tensors(
                 input_sequence_encoded,
-                nearest_multiple_of=model.config.attention_window[0] * 2,
+                nearest_multiple_of=self.model.config.attention_window[0],
             )
 
         t0 = time()
