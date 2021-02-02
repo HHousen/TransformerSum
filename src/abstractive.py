@@ -20,7 +20,6 @@ import pytorch_lightning as pl
 from transformers import (
     AutoTokenizer,
     EncoderDecoderModel,
-    BartTokenizerFast,
     AutoModelForSeq2SeqLM,
 )
 from helpers import (
@@ -34,13 +33,6 @@ from helpers import (
 from convert_to_extractive import tokenize
 
 logger = logging.getLogger(__name__)
-
-try:
-    from longformer import LongformerEncoderDecoderForConditionalGeneration
-except ImportError:
-    logger.warning(
-        "Abstractive Only: Could not import `LongformerEncoderDecoderForConditionalGeneration` from `longformer`, which means the `LongformerEncoderDecoder` model is not available. Install with `pip install git+https://github.com/allenai/longformer.git@encoderdecoder`."
-    )
 
 
 def trim_batch(
@@ -82,7 +74,7 @@ def longformer_modifier(final_dictionary, tokenizer, attention_window):
 
     for key, item in final_dictionary.items():
         final_dictionary[key] = pad_tensors(
-            item, nearest_multiple_of=attention_window[0] * 2,
+            item, nearest_multiple_of=attention_window[0],
         )
 
     return final_dictionary
@@ -103,35 +95,29 @@ class AbstractiveSummarizer(pl.LightningModule):
         if len(self.hparams.dataset) <= 1:
             self.hparams.dataset = self.hparams.dataset[0]
 
-        if "longformer-encdec" in self.hparams.model_name_or_path.lower():
-            self.model = LongformerEncoderDecoderForConditionalGeneration.from_pretrained(
-                self.hparams.model_name_or_path, gradient_checkpointing=True
-            )
-
-            self.tokenizer = BartTokenizerFast.from_pretrained(
-                self.hparams.model_name_or_path, add_prefix_space=True
+        if self.hparams.decoder_model_name_or_path:
+            self.model = EncoderDecoderModel.from_encoder_decoder_pretrained(
+                self.hparams.model_name_or_path,
+                (
+                    self.hparams.decoder_model_name_or_path
+                    if self.hparams.decoder_model_name_or_path
+                    else self.hparams.model_name_or_path
+                ),
+                gradient_checkpointing=self.hparams.gradient_checkpointing,
+                tie_encoder_decoder=self.hparams.tie_encoder_decoder,
             )
         else:
-            if self.hparams.decoder_model_name_or_path:
-                self.model = EncoderDecoderModel.from_encoder_decoder_pretrained(
-                    self.hparams.model_name_or_path,
-                    (
-                        self.hparams.decoder_model_name_or_path
-                        if self.hparams.decoder_model_name_or_path
-                        else self.hparams.model_name_or_path
-                    ),
-                    gradient_checkpointing=self.hparams.gradient_checkpointing,
-                    tie_encoder_decoder=self.hparams.tie_encoder_decoder,
-                )
-            else:
-                self.model = AutoModelForSeq2SeqLM.from_pretrained(
-                    self.hparams.model_name_or_path,
-                    gradient_checkpointing=self.hparams.gradient_checkpointing,
-                )
+            self.model = AutoModelForSeq2SeqLM.from_pretrained(
+                self.hparams.model_name_or_path,
+                gradient_checkpointing=self.hparams.gradient_checkpointing,
+            )
 
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.hparams.model_name_or_path, use_fast=True
             )
+
+        if self.hparams.model_max_length:
+            self.tokenizer.model_max_length = self.hparams.model_max_length
 
         self.rouge_sentence_split_token = "<q>"
         self.tokenizer.add_tokens(self.rouge_sentence_split_token)
@@ -199,7 +185,10 @@ class AbstractiveSummarizer(pl.LightningModule):
             )
             self.tokenized_data_file_paths[split] = features_cache_file
 
-        if "longformer" in self.hparams.model_name_or_path:
+        if any(
+            x in self.hparams.model_name_or_path
+            for x in ["longformer", "led-base", "led-large"]
+        ):
             longformer_modifier_ = partial(
                 longformer_modifier,
                 tokenizer=self.tokenizer,
@@ -255,7 +244,7 @@ class AbstractiveSummarizer(pl.LightningModule):
             decoder_input_ids=target,
             decoder_attention_mask=target_mask,
             use_cache=(labels is None),
-            labels=None,  # `labels` is None here so that huggingface/transformers does not calculate loss
+            labels=None,  # `labels` is None here so that `huggingface/transformers` does not calculate loss
             **kwargs
         )
 
@@ -311,7 +300,7 @@ class AbstractiveSummarizer(pl.LightningModule):
             return
 
         def convert_to_features(example_batch):
-            max_length = self.tokenizer.max_len
+            max_length = self.tokenizer.model_max_length
 
             articles = example_batch[self.hparams.data_example_column]
 
@@ -691,6 +680,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         )
 
         labels = target.clone()
+        # Padding token is ignored in loss function so below line is unnecessary.
         # labels[labels == 1] = -100  # -100 index = padding token
 
         outputs = self.forward(source, target, source_mask, target_mask, labels=labels)
@@ -746,7 +736,7 @@ class AbstractiveSummarizer(pl.LightningModule):
             max_length=(
                 self.hparams.gen_max_len
                 if self.hparams.gen_max_len
-                else int(self.tokenizer.max_len / 2)
+                else int(self.tokenizer.model_max_length / 2)
             ),
             no_repeat_ngram_size=3,
             use_cache=True,
@@ -884,11 +874,17 @@ class AbstractiveSummarizer(pl.LightningModule):
             return_token_type_ids=False,
         )["input_ids"]
         input_sequence_encoded = torch.tensor(input_sequence_encoded)
-        
+
         # If using the LongformerEncoderDecoder then apply the padding for sliding
         # chunks attention.
-        if "longformer-encdec" in self.hparams.model_name_or_path.lower():
-            input_sequence_encoded = pad_tensors(input_sequence_encoded, nearest_multiple_of=model.config.attention_window[0] * 2)
+        if any(
+            x in self.hparams.model_name_or_path.lower()
+            for x in ["led-large", "led-base"]
+        ):
+            input_sequence_encoded = pad_tensors(
+                input_sequence_encoded,
+                nearest_multiple_of=model.config.attention_window[0] * 2,
+            )
 
         t0 = time()
         generated_ids = self.model.generate(
@@ -901,7 +897,7 @@ class AbstractiveSummarizer(pl.LightningModule):
             max_length=(
                 self.hparams.gen_max_len
                 if self.hparams.gen_max_len
-                else int(self.tokenizer.max_len / 2)
+                else int(self.tokenizer.model_max_length / 2)
             ),
             no_repeat_ngram_size=3,
             use_cache=True,
@@ -975,7 +971,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         parser.add_argument(
             "--decoder_model_name_or_path",
             type=str,
-            default="bert-base-uncased",
+            default=None,
             help="Path to pre-trained model or shortcut name to use as the decoder if an EncoderDecoderModel architecture is desired. If this option is not specified, the shortcut name specified by `--model_name_or_path` is loaded using the Seq2seq AutoModel. Default is 'bert-base-uncased'.",
         )
         parser.add_argument(
@@ -1085,6 +1081,12 @@ class AbstractiveSummarizer(pl.LightningModule):
             "--sentencizer",
             action="store_true",
             help="Use a spacy sentencizer instead of a statistical model for sentence detection (much faster but less accurate) during data preprocessing; see https://spacy.io/api/sentencizer.",
+        )
+        parser.add_argument(
+            "--model_max_length",
+            type=int,
+            default=None,
+            help="Changes the `model_max_length` attribute of the tokenizer. Overrides the default length of input sequences generated during data processing.",
         )
         parser.add_argument(
             "--gen_max_len",

@@ -44,36 +44,21 @@ Example training command:
 
 This command will train and test a bert-to-bert model for abstractive summarization for 4 epochs with a batch size of 4. The weights are saved to ``model_weights/`` and will not be uploaded to wandb.ai due to the ``--no_wandb_logger_log_model`` option. The CNN/DM dataset (which is the default dataset) will be downloaded (and automatically processed) to ``data/``\ . The gradients will be accumulated every 5 batches and training will be optimized by AdamW with a scheduler that warms up linearly for 8000 then decays. A checkpoint file will be saved every 300 steps.
 
-Importantly, you can specify the ``--tie_encoder_decoder`` option to tie the weights of the encoder and decoder when using an EncoderDecoderModels architecture. Specifying this option is equivalent to the "share" architecture tested in `Leveraging Pre-trained Checkpoints for Sequence Generation Tasks <https://arxiv.org/abs/1907.12461>`_.
+Importantly, you can specify the ``--tie_encoder_decoder`` option to tie the weights of the encoder and decoder when using an ``EncoderDecoderModel`` architecture. Specifying this option is equivalent to the "share" architecture tested in `Leveraging Pre-trained Checkpoints for Sequence Generation Tasks <https://arxiv.org/abs/1907.12461>`_.
 
 .. _abstractive_long_summarization:
 
 Abstractive Long Summarization
 ------------------------------
 
-.. warning:: Abstractive long summarization is a work in progress. Please see `huggingface/transformers #4406 <https://github.com/huggingface/transformers/issues/4406>`_ for more info.
+This script can perform abstractive summarization on long sequences using the `LongformerEncoderDecoder model <https://huggingface.co/transformers/model_doc/led.html>`_. ``LongformerEncoderDecoder`` is `BART <https://huggingface.co/transformers/model_doc/bart.html>`__ (`paper <https://arxiv.org/abs/1910.13461>`__) but with components from the `longformer <https://huggingface.co/transformers/model_doc/longformer.html>`_ (`paper <https://arxiv.org/abs/2004.05150>`__) that enable it to operate with long sequences.
 
-This script can perform abstractive summarization on long sequences using the ``LongformerEncoderDecoder`` model (`GitHub repo <https://github.com/HHousen/longformer/tree/encoderdecoder>`__). ``LongformerEncoderDecoder`` is `BART <https://huggingface.co/transformers/model_doc/bart.html>`__ (`paper <https://arxiv.org/abs/1910.13461>`__) but with components from the `longformer <https://huggingface.co/transformers/model_doc/longformer.html>`_ (`paper <https://arxiv.org/abs/2004.05150>`__) that enable it to operate with long sequences.
+During the development phase of the LED, LED installation and usage was complicated. Now, it is as simple as setting the ``--model_name_or_path`` option to a model from the `LED community models page <https://huggingface.co/models?filter=led>`__.
 
-Install ``LongformerEncoderDecoder`` by running ``pip install git+https://github.com/HHousen/longformer.git@encoderdecoder``. Then generate a long model with the `convert_bart_to_longformerencoderdecoder.py script <https://github.com/HHousen/longformer/blob/encoderdecoder/scripts/convert_bart_to_longformerencoderdecoder.py>`_. You can also download an already generated model from :ref:`bart_converted_to_longformerencdec`.
+.. important:: You can adjust the sequence length that the trained LED model will be able to handle by modifying the ``--model_max_length`` argument. This option controls the length of sequences during the data processing stage. So, this option will have no effect with pre-compiled datasets listed under the "Preprocessed Data Download" heading on :ref:`abstractive_supported_datasets`.
 
-For example to create the ``longformer-encdec-distilbart-cnn-12-6-converted`` model, as described on the :ref:`bart_converted_to_longformerencdec` page, run the following command:
 
-.. code-block:: 
-
-    python convert_bart_to_longformerencoderdecoder.py \
-    --base_model sshleifer/distilbart-xsum-12-6 \
-    --save_model_to ./longformer-encdec-distilbart-cnn-12-6-converted \
-    --max_pos 4096 \
-    --attention_window 512
-
-You can change ``max_pos`` to a different value to summarize sequences longer than 4096 tokens.
-
-With the ``LongformerEncoderDecoder`` model generated you can run the training script with the ``--model_name_or_path`` set to ``longformer-encdec-distilbart-cnn-12-6-converted`` (or wherever the configuration and model files are located).
-
-.. warning:: For this script to work correctly with ``LongformerEncoderDecoder`` the ``--model_name_or_path`` must contain the phrase "longformer-encdec".
-
-GitHub issues that discuss ``LongformerEncoderDecoder``:
+GitHub issues that discussed the creation of ``LongformerEncoderDecoder``:
 
 1. `huggingface/transformers #4406 <https://github.com/huggingface/transformers/issues/4406>`_
 2. `allenai/longformer #28 <https://github.com/allenai/longformer/issues/28>`_
@@ -81,36 +66,15 @@ GitHub issues that discuss ``LongformerEncoderDecoder``:
 Step-by-Step Instructions
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1. Clone the repository: ``git clone https://github.com/HHousen/TransformerSum.git`` and ``cd TransformerSum/src``
-2. Run: ``conda env create --file environment.yml`` and ``conda activate transformersum``
-3. Install version of ``huggingface/transformers`` with gradient checkpointing in BART: 
-
-    .. code-block:: 
-
-        pip uninstall -y transformers
-        pip install git+https://github.com/HHousen/transformers.git@longformer_encoder_decoder
-
-4. Install ``NVIDIA/apex`` for 16-bit precision:
-
-    .. code-block:: 
-
-        git clone https://github.com/NVIDIA/apex
-        cd apex
-        pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
-        cd ..
- 
-5. Install ``LongformerEncoderDecoder``: ``pip install git+https://github.com/allenai/longformer.git@encoderdecoder``
-6. Download long version of BART: ``gdown https://drive.google.com/uc?id=16hsOq7TCnqSGyUm_lSWdEzK6jT9DwVin``
-7. Extract: ``tar -xzvf longformer-encdec-bart-large-8192.tar.gz``
-8. Download dataset (≈2.8GB): ``gdown https://drive.google.com/uc?id=1eROWH-4cbLVIFOAsLcvvhNEfHqD27uvJ``
-9. Extract (≈90GB): ``tar -xzvf longformer-encdec-base-8192.tar.gz``
-10. Training command:
+1. Download dataset (≈2.8GB): ``gdown https://drive.google.com/uc?id=1eROWH-4cbLVIFOAsLcvvhNEfHqD27uvJ``
+2. Extract (≈90GB): ``tar -xzvf longformer-encdec-base-8192.tar.gz``
+3. Training command:
 
     .. code-block:: 
 
         python main.py \
         --mode abstractive \
-        --model_name_or_path longformer-encdec-bart-large-8192 \
+        --model_name_or_path allenai/led-base-16384 \
         --max_epochs 4 \
         --dataset scientific_papers \
         --do_train \
@@ -128,7 +92,7 @@ Step-by-Step Instructions
         --nlp_cache_dir nlp-cache \
         --custom_checkpoint_every_n 18000
 
-11. The ``--max_epochs``, ``--batch_size``, ``--accumulate_grad_batches``, ``--warmup_steps``, and ``--custom_checkpoint_every_n`` values will need to be tweaked.
+4. The ``--max_epochs``, ``--batch_size``, ``--accumulate_grad_batches``, ``--warmup_steps``, and ``--custom_checkpoint_every_n`` values will need to be tweaked.
 
 .. _abstractive_script_help:
 
