@@ -112,9 +112,9 @@ class AbstractiveSummarizer(pl.LightningModule):
                 gradient_checkpointing=self.hparams.gradient_checkpointing,
             )
 
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                self.hparams.model_name_or_path, use_fast=True
-            )
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.hparams.model_name_or_path, use_fast=True
+        )
 
         if self.hparams.model_max_length:
             self.tokenizer.model_max_length = self.hparams.model_max_length
