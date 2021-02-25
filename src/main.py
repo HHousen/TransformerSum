@@ -2,6 +2,7 @@ import logging
 import torch
 import numpy as np
 import random
+import json
 import datasets as nlp
 from pytorch_lightning import Trainer
 from extractive import ExtractiveSummarizer
@@ -11,6 +12,7 @@ from argparse import ArgumentParser
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.plugins import DeepSpeedPlugin
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +63,7 @@ def main(args):
                     )
                 )
             raise e
-        
+
         # The model is loaded with self.hparams.data_path set to the directory where the data
         # was located during training. When loading the model, it may be desired to change
         # the data path, which the below line accomplishes.
@@ -93,6 +95,12 @@ def main(args):
             save_path=args.weights_save_path,
         )
         args.callbacks.append(custom_checkpoint_callback)
+
+    if args.plugins.startswith("deepspeed"):
+        deepspeed_config_path = args.plugins.split(":")[1]
+        with open(deepspeed_config_path, "r") as deepspeed_config_file:
+            deepspeed_config = json.load(deepspeed_config_file)
+        args.plugins = DeepSpeedPlugin(config=deepspeed_config)
 
     trainer = Trainer.from_argparse_args(args)
 
@@ -396,6 +404,12 @@ if __name__ == "__main__":
         help="The ending learning rate when `--use_scheduler` is poly.",
     )
     parser.add_argument("--weight_decay", default=1e-2, type=float)
+    parser.add_argument(
+        "--plugins",
+        default=None,
+        type=str,
+        help="Allows you to connect arbitrary backends. Run `pip install deepspeed mpi4py` to use deepspeed plugin.",
+    )
     parser.add_argument(
         "-l",
         "--log",
