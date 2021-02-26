@@ -96,7 +96,7 @@ def main(args):
         )
         args.callbacks.append(custom_checkpoint_callback)
 
-    if args.plugins.startswith("deepspeed"):
+    if args.plugins and args.plugins.startswith("deepspeed"):
         deepspeed_config_path = args.plugins.split(":")[1]
         with open(deepspeed_config_path, "r") as deepspeed_config_file:
             deepspeed_config = json.load(deepspeed_config_file)
@@ -429,6 +429,15 @@ if __name__ == "__main__":
     if main_args[0].custom_checkpoint_every_n and (not main_args[0].weights_save_path):
         logger.error(
             "You must specify the `--weights_save_path` to use `--custom_checkpoint_every_n`."
+        )
+
+    if (
+        main_args[0].plugins
+        and main_args[0].plugins.startswith("deepspeed")
+        and (":" not in main_args[0].plugins)
+    ):
+        logger.error(
+            "If you are using the 'deepspeed' plugin, you must specify the path the to deepspeed config like so: `--plugins deepspeed:/path/to/config.json`."
         )
 
     main_args = parser.parse_args()
