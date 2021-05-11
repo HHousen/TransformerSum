@@ -158,7 +158,13 @@ class FSDataset(torch.utils.data.Dataset):
         return lengths
 
     def __getitem__(self, index):
-        file_index = np.searchsorted(self.lengths, [index,], side="right")[0]
+        file_index = np.searchsorted(
+            self.lengths,
+            [
+                index,
+            ],
+            side="right",
+        )[0]
 
         if file_index > 0:
             total_lines_in_other_files = self.lengths[file_index - 1]
@@ -403,7 +409,10 @@ class SentencesProcessor:
         sep_token = str(sep_token)
         cls_token = str(cls_token)
         if max_length is None:
-            max_length = tokenizer.max_len
+            try:
+                max_length = list(tokenizer.max_model_input_sizes.values())[0]
+            except AttributeError:
+                max_length = tokenizer.model_max_length
 
         if max_length > 1_000_000:
             logger.warning(
@@ -899,15 +908,14 @@ class SentencesProcessor:
         if save_to_path:
             final_save_name = save_to_name if save_to_name else ("dataset_" + self.name)
             dataset_path = os.path.join(
-                save_to_path, (final_save_name + "." + save_as_type),
+                save_to_path,
+                (final_save_name + "." + save_as_type),
             )
             logger.info("Saving dataset into cached file %s", dataset_path)
             if save_as_type == "txt":
                 with open(dataset_path, "w+") as file:
                     # Need to replace single with double quotes so it can be loaded as JSON
-                    file.write(
-                        "\n".join([json.dumps(x) for x in dataset]) + "\n"
-                    )
+                    file.write("\n".join([json.dumps(x) for x in dataset]) + "\n")
             elif save_as_type == "pt":
                 torch.save(dataset, dataset_path)
             else:
@@ -918,7 +926,10 @@ class SentencesProcessor:
     def load(self, load_from_path, dataset_name=None):
         """Attempts to load the dataset from storage. If that fails, will return None."""
         final_load_name = dataset_name if dataset_name else ("dataset_" + self.name)
-        dataset_path = os.path.join(load_from_path, (final_load_name + ".pt"),)
+        dataset_path = os.path.join(
+            load_from_path,
+            (final_load_name + ".pt"),
+        )
 
         if os.path.exists(dataset_path):
             logger.info("Loading data from file %s", dataset_path)
