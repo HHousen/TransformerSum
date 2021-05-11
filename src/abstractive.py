@@ -90,7 +90,7 @@ class AbstractiveSummarizer(pl.LightningModule):
     def __init__(self, hparams):
         super(AbstractiveSummarizer, self).__init__()
 
-        self.hparams = hparams
+        self.save_hyperparameters(hparams)
 
         if len(self.hparams.dataset) <= 1:
             self.hparams.dataset = self.hparams.dataset[0]

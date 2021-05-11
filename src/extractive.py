@@ -106,7 +106,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         hparams.tokenizer_no_use_fast = getattr(hparams, "tokenizer_no_use_fast", False)
         hparams.data_type = getattr(hparams, "data_type", "none")
 
-        self.hparams = hparams
+        self.save_hyperparameters(hparams)
         self.forward_modify_inputs_callback = None
 
         if not embedding_model_config:
