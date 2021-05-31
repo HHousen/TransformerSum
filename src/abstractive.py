@@ -385,7 +385,7 @@ class AbstractiveSummarizer(pl.LightningModule):
                 sents_input_ids = self.tokenizer.encode_plus(
                     sents_tokenized_flat,
                     truncation=True,
-                    is_pretokenized=True,
+                    is_split_into_words=True,
                     add_special_tokens=False,
                     max_length=(max_length - 2),
                     return_attention_mask=False,
