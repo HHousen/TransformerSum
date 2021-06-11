@@ -27,9 +27,9 @@ The **CNN/DailyMail** (Hermann et al., 2015) dataset contains 93k articles from 
 +-------------------------------+--------------------------------------------------------------------------------------+
 | Data Download Link            | `CNN/DM official website <https://cs.nyu.edu/~kcho/DMQA/>`__                         |
 +-------------------------------+--------------------------------------------------------------------------------------+
-| Processed Abstractive Dataset | `Google Drive <https://drive.google.com/uc?id=1OMJWMoO367yPZH5yp-TsAai_kUmWVQY2>`__  |
+| Processed Abstractive Dataset | `Google Drive <https://drive.google.com/uc?id=1jlo6kFUBxKZmTe4JHbGsdi5jPq-03-Ke>`__  |
 +-------------------------------+--------------------------------------------------------------------------------------+
-| Extractive Version            | `Google Drive <https://drive.google.com/uc?id=1-DLTTioISS8i3UrOG4sjjc_js0ncnBnn>`__  |
+| Extractive Version            | `Google Drive <https://drive.google.com/uc?id=1ucg-6WpFm3hV_OGsE35Jq-UQrL3s4AJY>`__  |
 +-------------------------------+--------------------------------------------------------------------------------------+
 
 Download and unzip the stories directories from `here <https://cs.nyu.edu/~kcho/DMQA/>`_ for both CNN and Daily Mail. The files can be downloaded from the terminal with `gdown`, which can be installed with `pip install gdown`.
@@ -70,11 +70,11 @@ WikiHow
 +===============================+===========================================================================================================================================================================+
 | Processor Repository          | `HHousen/WikiHow-Dataset <https://github.com/HHousen/WikiHow-Dataset>`_ (`Original Repo <https://github.com/mahnazkoupaee/WikiHow-Dataset>`__)                            |
 +-------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Data Download Link            | `wikihowAll.csv <https://bit.ly/3cueodA>`_ (`mirror <https://drive.google.com/uc?id=1_Xps_EI-S2Y6V785iKWtj3SLjjNHOaPc>`_) and `wikihowSep.csv <https://bit.ly/3btJ12G>`_  |
+| Data Download Link            | `wikihowAll.csv <https://bit.ly/3cueodA>`_ (`mirror <https://drive.google.com/uc?id=1cl11A9aDcWxGn8qMibEy7ovY9UnOVzP6>`_) and `wikihowSep.csv <https://bit.ly/3btJ12G>`_  |
 +-------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Processed Abstractive Dataset | `Google Drive <https://drive.google.com/uc?id=1KZkRW3WNUCMIzYubiYQzTRs8G5wgqfvN>`__                                                                                       |
+| Processed Abstractive Dataset | `Google Drive <https://drive.google.com/uc?id=1v5rDxh5WrXYh-u8eyHfNKTKy89QI7Dkd>`__                                                                                       |
 +-------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Extractive Version            | `Google Drive <https://drive.google.com/uc?id=1---N2EFQZdICpdDz3yBdM8gooh03roHu>`__                                                                                       |
+| Extractive Version            | `Google Drive <https://drive.google.com/uc?id=1jyNdc0fhrriZXArV-9R2UJMHfdQaQV3D>`__                                                                                       |
 +-------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 Processing Steps:
@@ -109,9 +109,9 @@ from [arXiv.org](http://arxiv.org/) (113k) and PubMed (215k). The task is to gen
 +-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------+
 | Data Download Link            | `PubMed <https://bit.ly/2VsKNvt>`_ (`mirror <https://bit.ly/2VLPJuh>`__) and `ArXiv <https://bit.ly/2wWeVpp>`_ (`mirror <https://bit.ly/2VPWnzs>`__)   |
 +-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Processed Abstractive Dataset | `Google Drive <https://drive.google.com/uc?id=1-fTvAvgimuBFVgwOEkQUkURkBoIS5XlL>`__                                                                    |
+| Processed Abstractive Dataset | `Google Drive <https://drive.google.com/uc?id=1a32oPIzIJ7DGekKL1tyAgfEyoI9NxENs>`__                                                                    |
 +-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Extractive Version            | `Google Drive <https://drive.google.com/uc?id=1-04fe63b1rgs3llMApHBFAKOihoW0nT9>`__                                                                    |
+| Extractive Version            | `Google Drive <https://drive.google.com/uc?id=1SsenAqbK1wmvd_1oWgAT1fRtLcA9rglS>`__                                                                    |
 +-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 Processing Steps:
