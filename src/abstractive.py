@@ -1,42 +1,42 @@
-import os
-import sys
-import logging
-import random
-import torch
-import datasets as nlp
-import pyarrow
 import itertools
-import spacy
-import numpy as np
-from spacy.lang.en import English
+import logging
+import os
+import random
+import sys
+from argparse import ArgumentParser
+from collections import OrderedDict
 from functools import partial
 from time import time
-from collections import OrderedDict
-from argparse import ArgumentParser
-from torch import nn
-from rouge_score import rouge_scorer, scoring
-from torch.utils.data import DataLoader
+
+import numpy as np
+import pyarrow
 import pytorch_lightning as pl
-from transformers import (
-    AutoTokenizer,
-    EncoderDecoderModel,
-    AutoModelForSeq2SeqLM,
-)
+import spacy
+import torch
+from rouge_score import rouge_scorer, scoring
+from spacy.lang.en import English
+from torch import nn
+from torch.utils.data import DataLoader
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, EncoderDecoderModel
+
+import datasets as nlp
+from convert_to_extractive import tokenize
 from helpers import (
-    pad,
     LabelSmoothingLoss,
     SortishSampler,
+    generic_configure_optimizers,
+    pad,
     pad_tensors,
     test_rouge,
-    generic_configure_optimizers,
 )
-from convert_to_extractive import tokenize
 
 logger = logging.getLogger(__name__)
 
 
 def trim_batch(
-    input_ids, pad_token_id, attention_mask=None,
+    input_ids,
+    pad_token_id,
+    attention_mask=None,
 ):
     """Remove columns that are populated exclusively by ``pad_token_id``."""
     keep_column_mask = input_ids.ne(pad_token_id).any(dim=0)
@@ -74,7 +74,8 @@ def longformer_modifier(final_dictionary, tokenizer, attention_window):
 
     for key, item in final_dictionary.items():
         final_dictionary[key] = pad_tensors(
-            item, nearest_multiple_of=attention_window[0],
+            item,
+            nearest_multiple_of=attention_window[0],
         )
 
     return final_dictionary
@@ -213,8 +214,8 @@ class AbstractiveSummarizer(pl.LightningModule):
         if you are unsure what a forward function is.
 
         Args:
-            source (``torch.LongTensor`` of shape ``(batch_size, sequence_length)``, optional): Indices
-                of input sequence tokens in the vocabulary for the encoder.
+            source (``torch.LongTensor`` of shape ``(batch_size, sequence_length)``, optional):
+                Indices of input sequence tokens in the vocabulary for the encoder.
                 `What are input IDs? <https://huggingface.co/transformers/glossary.html#input-ids>`_
                 Defaults to None.
             target (``torch.LongTensor`` of shape ``(batch_size, target_sequence_length)``, optional): Provide
@@ -235,16 +236,17 @@ class AbstractiveSummarizer(pl.LightningModule):
             tuple: (cross_entropy_loss, prediction_scores) The cross entropy loss and the
             prediction scores, which are the scores for each token in the vocabulary for each
             token in the output.
-        """
+        """  # noqa: E501
         # `self.model.forward()` returns `decoder_outputs + encoder_outputs` where
         # `decoder_outputs` and `encoder_outputs` are dictionaries.
+        # `labels` is None here so that `huggingface/transformers` does not calculate loss
         outputs = self.model.forward(
             input_ids=source.contiguous(),
             attention_mask=source_mask,
             decoder_input_ids=target,
             decoder_attention_mask=target_mask,
             use_cache=(labels is None),
-            labels=None,  # `labels` is None here so that `huggingface/transformers` does not calculate loss
+            labels=None,
             **kwargs
         )
 
@@ -290,7 +292,8 @@ class AbstractiveSummarizer(pl.LightningModule):
         )
         if self.hparams.no_prepare_data or all_tokenized_files_present:
             logger.info(
-                "Skipping data preparation because `--no_prepare_data` was specified or all the final tokenized data files are present."
+                "Skipping data preparation because `--no_prepare_data` was specified or all the "
+                + "final tokenized data files are present."
             )
             if self.hparams.only_preprocess:
                 logger.info(
@@ -309,10 +312,12 @@ class AbstractiveSummarizer(pl.LightningModule):
                 article = article.strip()
                 try:
                     article_encoded = self.tokenizer(
-                        article, padding="max_length", truncation=True,
+                        article,
+                        padding="max_length",
+                        truncation=True,
                     )
                     articles_encoded_step.append(article_encoded)
-                except:  # skipcq: FLK-E722
+                except Exception:  # skipcq: FLK-E722
                     print("Failed to tokenize article: {}".format(article))
                     sys.exit(1)
 
@@ -321,7 +326,7 @@ class AbstractiveSummarizer(pl.LightningModule):
                     first_length = len(articles_encoded_step[0]["input_ids"])
                     assert (
                         current_length == first_length
-                    ), "The length of the current input, {}, does not match the length of the first input, {}.".format(
+                    ), "The length of the current input, {}, does not match the length of the first input, {}.".format(  # noqa: E501
                         current_length, first_length
                     )
 
@@ -407,7 +412,9 @@ class AbstractiveSummarizer(pl.LightningModule):
             # The articles have already been padded because they do not need the extra
             # `boseq` and `eoseq` tokens.
             highlights_input_ids = pad(
-                highlights_input_ids, self.tokenizer.pad_token_id, width=max_length,
+                highlights_input_ids,
+                self.tokenizer.pad_token_id,
+                width=max_length,
             )
             highlights_attention_masks = pad(
                 highlights_attention_masks, 0, width=max_length
@@ -548,7 +555,8 @@ class AbstractiveSummarizer(pl.LightningModule):
         # Exit if set to only preprocess the data
         if self.hparams.only_preprocess:
             logger.info(
-                "Exiting because data has been pre-processed and the `--only_preprocess` option is enabled."
+                "Exiting because data has been pre-processed and the `--only_preprocess` option "
+                + "is enabled."
             )
             sys.exit(0)
 
@@ -689,7 +697,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         return loss
 
     def training_step(self, batch, batch_idx):  # skipcq: PYL-W0613
-        """Training step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.training_step>`__"""
+        """Training step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.training_step>`__"""  # noqa: E501
         cross_entropy_loss = self._step(batch)
 
         self.log("train_loss", cross_entropy_loss, prog_bar=True)
@@ -697,7 +705,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         return cross_entropy_loss
 
     def validation_step(self, batch, batch_idx):  # skipcq: PYL-W0613
-        """Validation step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.validation_step>`__"""
+        """Validation step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.validation_step>`__"""  # noqa: E501
         cross_entropy_loss = self._step(batch)
         self.log("val_loss", cross_entropy_loss, prog_bar=True)
 
@@ -707,7 +715,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         Similar to :meth:`~abstractive.AbstractiveSummarizer.validation_step` in that in runs the inputs
         through the model. However, this method also calculates the ROUGE scores for each example-summary
         pair.
-        """
+        """  # noqa: E501
         source_ids, target_ids, source_mask, _ = (
             batch["source"],
             batch["target"],
@@ -792,7 +800,7 @@ class AbstractiveSummarizer(pl.LightningModule):
         """
         Called at the end of a testing epoch: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.test_epoch_end>`__
         Finds the mean of all the metrics logged by :meth:`~abstractive.AbstractiveSummarizer.test_step`.
-        """
+        """  # noqa: E501
         avg_generation_time = np.array([x["generation_time"] for x in outputs]).mean()
 
         rouge_scores_log = {}
@@ -812,7 +820,8 @@ class AbstractiveSummarizer(pl.LightningModule):
             # and values that are `AggregateScore` objects. Each `AggregateScore` object is a
             # named tuple with a low, mid, and high value. Each value is a `Score` object, which
             # is also a named tuple, that contains the precision, recall, and fmeasure values.
-            # For more info see the source code: https://github.com/google-research/google-research/blob/master/rouge/scoring.py
+            # For more info see the source code:
+            # https://github.com/google-research/google-research/blob/master/rouge/scoring.py
             rouge_result = aggregator.aggregate()
 
             for metric, value in rouge_result.items():
@@ -938,7 +947,9 @@ class AbstractiveSummarizer(pl.LightningModule):
             )
 
         gen_texts = self.tokenizer.batch_decode(
-            generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True,
+            generated_ids,
+            skip_special_tokens=True,
+            clean_up_tokenization_spaces=True,
         )
 
         if len(gen_texts) == 1:
@@ -966,13 +977,19 @@ class AbstractiveSummarizer(pl.LightningModule):
             "--model_name_or_path",
             type=str,
             default="bert-base-uncased",
-            help="Path to pre-trained model or shortcut name. A list of shortcut names can be found at https://huggingface.co/transformers/pretrained_models.html. Community-uploaded models are located at https://huggingface.co/models. Default is 'bert-base-uncased'.",
+            help="Path to pre-trained model or shortcut name. A list of shortcut names can "
+            + "be found at https://huggingface.co/transformers/pretrained_models.html. "
+            + "Community-uploaded models are located at https://huggingface.co/models. "
+            + "Default is 'bert-base-uncased'.",
         )
         parser.add_argument(
             "--decoder_model_name_or_path",
             type=str,
             default=None,
-            help="Path to pre-trained model or shortcut name to use as the decoder if an EncoderDecoderModel architecture is desired. If this option is not specified, the shortcut name specified by `--model_name_or_path` is loaded using the Seq2seq AutoModel. Default is 'bert-base-uncased'.",
+            help="Path to pre-trained model or shortcut name to use as the decoder if an "
+            + "EncoderDecoderModel architecture is desired. If this option is not specified, "
+            + "the shortcut name specified by `--model_name_or_path` is loaded using the "
+            + "Seq2seq AutoModel. Default is 'bert-base-uncased'.",
         )
         parser.add_argument(
             "--batch_size",
@@ -984,19 +1001,23 @@ class AbstractiveSummarizer(pl.LightningModule):
             "--val_batch_size",
             default=None,
             type=int,
-            help="Batch size per GPU/CPU for evaluation. This option overwrites `--batch_size` for evaluation only.",
+            help="Batch size per GPU/CPU for evaluation. This option overwrites `--batch_size` "
+            + "for evaluation only.",
         )
         parser.add_argument(
             "--test_batch_size",
             default=None,
             type=int,
-            help="Batch size per GPU/CPU for testing. This option overwrites `--batch_size` for testing only.",
+            help="Batch size per GPU/CPU for testing. This option overwrites `--batch_size` for "
+            + "testing only.",
         )
         parser.add_argument(
             "--dataloader_num_workers",
             default=3,
             type=int,
-            help="The number of workers to use when loading data. A general place to start is to set num_workers equal to the number of CPUs on your machine. More details here: https://pytorch-lightning.readthedocs.io/en/latest/performance.html#num-workers",
+            help="The number of workers to use when loading data. A general place to start is "
+            + "to set num_workers equal to the number of CPUs on your machine. "
+            + "More details here: https://pytorch-lightning.readthedocs.io/en/latest/performance.html#num-workers",  # noqa: E501
         )
         parser.add_argument(
             "--only_preprocess",
@@ -1012,7 +1033,10 @@ class AbstractiveSummarizer(pl.LightningModule):
             "--dataset",
             nargs="+",
             default="cnn_dailymail",
-            help="The dataset name from the `nlp` library or a list of paths to Apache Arrow files (that can be loaded with `nlp`) in the order train, validation, test to use for training/evaluation/testing. Paths must contain a '/' to be interpreted correctly. Default is `cnn_dailymail`.",
+            help="The dataset name from the `nlp` library or a list of paths to Apache Arrow "
+            + "files (that can be loaded with `nlp`) in the order train, validation, test to "
+            + "use for training/evaluation/testing. Paths must contain a '/' to be interpreted "
+            + "correctly. Default is `cnn_dailymail`.",
         )
         parser.add_argument(
             "--dataset_version",
@@ -1024,13 +1048,15 @@ class AbstractiveSummarizer(pl.LightningModule):
             "--data_example_column",
             type=str,
             default="article",
-            help="The column of the `nlp` dataset that contains the text to be summarized. Default value is for the `cnn_dailymail` dataset.",
+            help="The column of the `nlp` dataset that contains the text to be summarized. "
+            + "Default value is for the `cnn_dailymail` dataset.",
         )
         parser.add_argument(
             "--data_summarized_column",
             type=str,
             default="highlights",
-            help="The column of the `nlp` dataset that contains the summarized text. Default value is for the `cnn_dailymail` dataset.",
+            help="The column of the `nlp` dataset that contains the summarized text. "
+            + "Default value is for the `cnn_dailymail` dataset.",
         )
         parser.add_argument(
             "--cache_file_path",
@@ -1042,25 +1068,27 @@ class AbstractiveSummarizer(pl.LightningModule):
             "--split_char",
             type=str,
             default=None,
-            help="""If the `--data_summarized_column` is already split into sentences then use 
-            this option to specify which token marks sentence boundaries. If the summaries are 
-            not split into sentences then spacy will be used to split them. The default is None, 
+            help="""If the `--data_summarized_column` is already split into sentences then use
+            this option to specify which token marks sentence boundaries. If the summaries are
+            not split into sentences then spacy will be used to split them. The default is None,
             which means to use spacy.""",
         )
         parser.add_argument(
             "--use_percentage_of_data",
             type=float,
             default=False,
-            help="When filtering the dataset, only save a percentage of the data. This is useful for debugging when you don't want to process the entire dataset.",
+            help="When filtering the dataset, only save a percentage of the data. This is "
+            + "useful for debugging when you don't want to process the entire dataset.",
         )
         parser.add_argument(
             "--save_percentage",
             type=float,
             default=0.01,
-            help="""Percentage (divided by batch_size) between 0 and 1 of the predicted and target 
-            summaries from the test set to save to disk during testing. This depends on batch 
-            size: one item from each batch is saved `--save_percentage` percent of the time. 
-            Thus, you can expect `len(dataset)*save_percentage/batch_size` summaries to be saved.""",
+            help="""Percentage (divided by batch_size) between 0 and 1 of the predicted and target
+            summaries from the test set to save to disk during testing. This depends on batch
+            size: one item from each batch is saved `--save_percentage` percent of the time.
+            Thus, you can expect `len(dataset)*save_percentage/batch_size` summaries to be
+            saved.""",
         )
         parser.add_argument(
             "--save_hg_transformer",
@@ -1070,41 +1098,46 @@ class AbstractiveSummarizer(pl.LightningModule):
         parser.add_argument(
             "--test_use_pyrouge",
             action="store_true",
-            help="""Use `pyrouge`, which is an interface to the official ROUGE software, instead of 
-            the pure-python implementation provided by `rouge-score`. You must have the real ROUGE 
-            package installed. More details about ROUGE 1.5.5 here: https://github.com/andersjo/pyrouge/tree/master/tools/ROUGE-1.5.5. 
+            help="""Use `pyrouge`, which is an interface to the official ROUGE software, instead of
+            the pure-python implementation provided by `rouge-score`. You must have the real ROUGE
+            package installed. More details about ROUGE 1.5.5 here: https://github.com/andersjo/pyrouge/tree/master/tools/ROUGE-1.5.5.
             It is recommended to use this option for official scores. The `ROUGE-L` measurements
-            from `pyrouge` are equivalent to the `rougeLsum` measurements from the default 
-            `rouge-score` package.""",
+            from `pyrouge` are equivalent to the `rougeLsum` measurements from the default
+            `rouge-score` package.""",  # noqa: E501
         )
         parser.add_argument(
             "--sentencizer",
             action="store_true",
-            help="Use a spacy sentencizer instead of a statistical model for sentence detection (much faster but less accurate) during data preprocessing; see https://spacy.io/api/sentencizer.",
+            help="Use a spacy sentencizer instead of a statistical model for sentence "
+            + "detection (much faster but less accurate) during data preprocessing; see "
+            + "https://spacy.io/api/sentencizer.",
         )
         parser.add_argument(
             "--model_max_length",
             type=int,
             default=None,
-            help="Changes the `model_max_length` attribute of the tokenizer. Overrides the default length of input sequences generated during data processing.",
+            help="Changes the `model_max_length` attribute of the tokenizer. Overrides the "
+            + "default length of input sequences generated during data processing.",
         )
         parser.add_argument(
             "--gen_max_len",
             type=int,
             default=None,
-            help="Maximum sequence length during generation while testing and when using the `predict()` function.",
+            help="Maximum sequence length during generation while testing and when using the "
+            + "`predict()` function.",
         )
         parser.add_argument(
             "--label_smoothing",
             type=float,
             default=0.1,
-            help="`LabelSmoothingLoss` implementation from OpenNMT (https://bit.ly/2ObgVPP) as stated in the original paper https://arxiv.org/abs/1512.00567.",
+            help="`LabelSmoothingLoss` implementation from OpenNMT (https://bit.ly/2ObgVPP) as "
+            + "stated in the original paper https://arxiv.org/abs/1512.00567.",
         )
         parser.add_argument(
             "--sortish_sampler",
             action="store_true",
-            help="""Reorganize the input_ids by length with a bit of randomness. This can help 
-            to avoid memory errors caused by large batches by forcing large batches to be 
+            help="""Reorganize the input_ids by length with a bit of randomness. This can help
+            to avoid memory errors caused by large batches by forcing large batches to be
             processed first.""",
         )
         parser.add_argument(
@@ -1116,7 +1149,11 @@ class AbstractiveSummarizer(pl.LightningModule):
         parser.add_argument(
             "--tie_encoder_decoder",
             action="store_true",
-            help="Tie the encoder and decoder weights. Only takes effect when using an EncoderDecoderModel architecture with the `--decoder_model_name_or_path` option. Specifying this option is equivalent to the 'share' architecture tested in 'Leveraging Pre-trained Checkpoints for Sequence Generation Tasks' (https://arxiv.org/abs/1907.12461).",
+            help="Tie the encoder and decoder weights. Only takes effect when using an "
+            + "EncoderDecoderModel architecture with the `--decoder_model_name_or_path` "
+            + "option. Specifying this option is equivalent to the 'share' architecture "
+            + "tested in 'Leveraging Pre-trained Checkpoints for Sequence Generation Tasks' "
+            + "(https://arxiv.org/abs/1907.12461).",
         )
 
         return parser

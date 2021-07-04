@@ -59,7 +59,7 @@ This project integrates with `rouge-score <https://pypi.org/project/rouge-score/
 
 ``pyrouge`` is a python interface to the official ROUGE 1.5.5 perl script. Using this option will produce official scores, but it requires a complicated setup. To install ROUGE 1.5.5 I followed `this StackOverflow answer <https://stackoverflow.com/a/28941840>`_ and ran the below `commands from Kavita Ganesan <https://kavita-ganesan.com/rouge-howto/>`_ (`Archive <https://web.archive.org/web/20200624011208/https://kavita-ganesan.com/rouge-howto/>`__) to fix the WordNet exceptions:
 
-.. code-block:: 
+.. code-block::
 
     cd data/WordNet-2.0-Exceptions/
     ./buildExeptionDB.pl . exc WordNet-2.0.exc.db

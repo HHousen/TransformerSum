@@ -1,30 +1,33 @@
 {
-    "zero_allow_untested_optimizer": true,
-    "optimizer": {
-        "type": "OneBitAdam",
-        "params": {
-            "lr": 2e-5,
-            "betas": [0.998, 0.999],
-            "eps": 1e-8,
-            "weight_decay": 1e-2,
-            "cuda_aware": true
-        }
+  "optimizer": {
+    "params": {
+      "betas": [
+        0.998,
+        0.999
+      ],
+      "cuda_aware": true,
+      "eps": 1e-08,
+      "lr": 2e-05,
+      "weight_decay": 0.01
     },
-    "scheduler": {
-        "type": "WarmupLR",
-        "params": {
-            "last_batch_iteration": -1,
-            "warmup_min_lr": 0,
-            "warmup_max_lr": 2e-5,
-            "warmup_num_steps": 2000
-        }
+    "type": "OneBitAdam"
+  },
+  "scheduler": {
+    "params": {
+      "last_batch_iteration": -1,
+      "warmup_max_lr": 2e-05,
+      "warmup_min_lr": 0,
+      "warmup_num_steps": 2000
     },
-    "zero_optimization": {
-        "stage": 2,
-        "cpu_offload": true,
-        "contiguous_gradients": true,
-        "overlap_comm": true,
-        "allgather_bucket_size": 2e8,
-        "reduce_bucket_size": 2e8
-    }
+    "type": "WarmupLR"
+  },
+  "zero_allow_untested_optimizer": true,
+  "zero_optimization": {
+    "allgather_bucket_size": 200000000.0,
+    "contiguous_gradients": true,
+    "cpu_offload": true,
+    "overlap_comm": true,
+    "reduce_bucket_size": 200000000.0,
+    "stage": 2
+  }
 }

@@ -1,51 +1,42 @@
-import os
-import sys
 import glob
 import logging
-import types
-from typing import List, Union
+import os
 import statistics
-import numpy as np
-from functools import partial
-from collections import OrderedDict
+import sys
+import types
 from argparse import ArgumentParser, Namespace
+from collections import OrderedDict
+from functools import partial
+from typing import List, Union
+
+import numpy as np
 import pytorch_lightning as pl
-from rouge_score import rouge_scorer, scoring
 import torch
+from rouge_score import rouge_scorer, scoring
+from spacy.lang.en import English
 from torch import nn
 from torch.utils.data import DataLoader
-from spacy.lang.en import English
-from pooling import Pooling
-from data import SentencesProcessor, FSIterableDataset, pad_batch_collate, FSDataset
+from transformers import AutoConfig, AutoModel, AutoTokenizer
+from transformers.data.metrics import acc_and_f1
+
 from classifier import (
     LinearClassifier,
     SimpleLinearClassifier,
     TransformerEncoderClassifier,
 )
-from helpers import (
-    load_json,
-    block_trigrams,
-    test_rouge,
-    generic_configure_optimizers,
-)
+from data import FSDataset, FSIterableDataset, SentencesProcessor, pad_batch_collate
+from helpers import block_trigrams, generic_configure_optimizers, load_json, test_rouge
+from pooling import Pooling
 
 logger = logging.getLogger(__name__)
 
-from transformers import (
-    AutoConfig,
-    AutoModel,
-    AutoTokenizer,
-)
-from transformers.data.metrics import acc_and_f1
 
 # CUSTOM_MODEL_CLASSES = ("longformer",)
 
 try:
     from transformers.models.auto.modeling_auto import MODEL_MAPPING
 
-    MODEL_CLASSES = tuple(
-        [m.model_type for m in MODEL_MAPPING]
-    )  # + CUSTOM_MODEL_CLASSES
+    MODEL_CLASSES = tuple(m.model_type for m in MODEL_MAPPING)  # + CUSTOM_MODEL_CLASSES
 except ImportError:
     logger.warning(
         "Could not import `MODEL_MAPPING` from transformers because it is an old version."
@@ -118,7 +109,10 @@ class ExtractiveSummarizer(pl.LightningModule):
         self.word_embedding_model = AutoModel.from_config(embedding_model_config)
 
         if (
-            any(x in hparams.model_name_or_path for x in ["roberta", "distil", "longformer"])
+            any(
+                x in hparams.model_name_or_path
+                for x in ["roberta", "distil", "longformer"]
+            )
         ) and not hparams.no_use_token_type_ids:
             logger.warning(
                 (
@@ -148,7 +142,8 @@ class ExtractiveSummarizer(pl.LightningModule):
                 sent_rep_tokens=False, mean_tokens=True, max_tokens=False
             )
 
-        # if a classifier object was passed when creating this model then store that as the `encoder`
+        # if a classifier object was passed when creating this model then store that as the
+        # `encoder`
         if classifier_obj:
             self.encoder = classifier_obj
         # otherwise create the classifier using the `hparams.classifier` parameter if available
@@ -266,7 +261,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             tuple: Contains the sentence scores and mask as ``torch.Tensor``\ s. The mask is either
             the ``sent_rep_mask`` or ``sent_lengths_mask`` depending on the pooling mode used
             during model initialization.
-        """
+        """  # noqa: E501
         inputs = {
             "input_ids": input_ids,
             "attention_mask": attention_mask,
@@ -305,17 +300,18 @@ class ExtractiveSummarizer(pl.LightningModule):
         """Compute the loss between model outputs and ground-truth labels.
 
         Args:
-            outputs (torch.Tensor): Output sentence scores obtained from :meth:`~extractive.ExtractiveSummarizer.forward`
+            outputs (torch.Tensor): Output sentence scores obtained from
+                :meth:`~extractive.ExtractiveSummarizer.forward`
             labels (torch.Tensor): Ground-truth labels (``1`` for sentences that should be in
                 the summary, ``0`` otherwise) from the batch generated during the data
                 preprocessing stage.
             mask (torch.Tensor): Mask returned by :meth:`~extractive.ExtractiveSummarizer.forward`,
-                either ``sent_rep_mask`` or ``sent_lengths_mask`` depending on the pooling mode used
-                during model initialization.
+                either ``sent_rep_mask`` or ``sent_lengths_mask`` depending on the pooling mode
+                used during model initialization.
 
         Returns:
-            [tuple]: Losses: (total_loss, total_norm_batch_loss, sum_avg_seq_loss, mean_avg_seq_loss,
-                average_loss)
+            [tuple]: Losses: (total_loss, total_norm_batch_loss, sum_avg_seq_loss,
+                mean_avg_seq_loss, average_loss)
         """
         try:
             loss = self.loss_func(outputs, labels.float())
@@ -376,7 +372,12 @@ class ExtractiveSummarizer(pl.LightningModule):
             )
 
     def json_to_dataset(
-        self, tokenizer, hparams, inputs=None, num_files=0, processor=None,
+        self,
+        tokenizer,
+        hparams,
+        inputs=None,
+        num_files=0,
+        processor=None,
     ):
         """Convert json output from ``convert_to_extractive.py`` to a ".pt" file containing
         lists or tensors using a :class:`data.SentencesProcessor`. This function is run by
@@ -450,8 +451,11 @@ class ExtractiveSummarizer(pl.LightningModule):
         Algorithm: For each json file outputted by the ``convert_to_extractive.py`` script:
 
         1. Load json file.
-        2. Add each document in json file to ``SentencesProcessor`` defined in ``self.processor``, overwriting any previous data in the processor.
-        3. Run :meth:`data.SentencesProcessor.get_features` to save the extracted features to disk as a ``.pt`` file containing a pickled python list of dictionaries, which each dictionary contains the extracted features.
+        2. Add each document in json file to ``SentencesProcessor`` defined in ``self.processor``,
+            overwriting any previous data in the processor.
+        3. Run :meth:`data.SentencesProcessor.get_features` to save the extracted features to disk
+            as a ``.pt`` file containing a pickled python list of dictionaries, which each
+            dictionary contains the extracted features.
 
         Memory Usage Note: If sharding was turned off during the ``convert_to_extractive`` process
         then this function will run once, loading the entire dataset into memory to process
@@ -466,7 +470,8 @@ class ExtractiveSummarizer(pl.LightningModule):
                 not dataset_files_extensions_equal
             ) and self.hparams.data_type == "none":
                 logger.error(
-                    "Cannot infer data file type because files with different extensions detected. Please set `--data_type`."
+                    "Cannot infer data file type because files with different extensions "
+                    + "detected. Please set `--data_type`."
                 )
                 sys.exit(1)
 
@@ -480,7 +485,9 @@ class ExtractiveSummarizer(pl.LightningModule):
                     and self.hparams.data_type != "none"
                 ):
                     logger.warning(
-                        "`--data_type` is '%s', but the most common file type detected in the `--data_path` is '%s'. Using '%s' as the type. Data will be processed if this type does not exist. Did you choose the correct data type?",
+                        "`--data_type` is '%s', but the most common file type detected in the "
+                        + "`--data_path` is '%s'. Using '%s' as the type. Data will be processed "
+                        + "if this type does not exist. Did you choose the correct data type?",
                         self.hparams.data_type,
                         most_common,
                         self.hparams.data_type,
@@ -488,7 +495,8 @@ class ExtractiveSummarizer(pl.LightningModule):
 
             if len(dataset_files) == 0 and self.hparams.data_type == "none":
                 logger.error(
-                    "Data is going to be processed, but you have not specified an output format. Set `--data_type` to the desired format."
+                    "Data is going to be processed, but you have not specified an output format. "
+                    + "Set `--data_type` to the desired format."
                 )
                 sys.exit(1)
 
@@ -535,7 +543,8 @@ class ExtractiveSummarizer(pl.LightningModule):
                 )
                 if len(json_files) == 0:
                     logger.error(
-                        "No JSON dataset files detected for %s split. Make sure the `--data_path` is correct.",
+                        "No JSON dataset files detected for %s split. Make sure the `--data_path`"
+                        + " is correct.",
                         corpus_type,
                     )
                     sys.exit(1)
@@ -572,7 +581,8 @@ class ExtractiveSummarizer(pl.LightningModule):
                 )
 
                 for _ in map(
-                    json_to_dataset_processor, zip(range(len(json_files)), json_files),
+                    json_to_dataset_processor,
+                    zip(range(len(json_files)), json_files),
                 ):
                     pass
                 # pool.close()
@@ -587,20 +597,22 @@ class ExtractiveSummarizer(pl.LightningModule):
                     )
                 )
 
-            # if set to only preprocess the data then continue to next loop (aka next split of dataset)
+            # if set to only preprocess the data then continue to next loop
+            # (aka next split of dataset)
             if self.hparams.only_preprocess:
                 continue
 
             # always create actual dataset, either after writing the shard  files to disk
-            # or by skipping that step (because preprocessed files detected) and going right to loading.
+            # or by skipping that step (because preprocessed files detected) and going right to
+            # loading.
             if self.hparams.dataloader_type == "map":
                 if inferred_data_type != "txt":
                     logger.error(
-                        """The `--dataloader_type` is 'map' but the `--data_type` was not 
-                        inferred to be 'txt'. The map-style dataloader requires 'txt' data. 
-                        Either set `--dataloader_type` to 'iterable' to use the old data 
+                        """The `--dataloader_type` is 'map' but the `--data_type` was not
+                        inferred to be 'txt'. The map-style dataloader requires 'txt' data.
+                        Either set `--dataloader_type` to 'iterable' to use the old data
                         format or process the JSON to TXT by setting `--data_type` to
-                        'txt'. Alternatively, you can convert directly from PT to TXT 
+                        'txt'. Alternatively, you can convert directly from PT to TXT
                         using `scripts/convert_extractive_pt_to_txt.py`."""
                     )
                     sys.exit(1)
@@ -616,7 +628,8 @@ class ExtractiveSummarizer(pl.LightningModule):
         # if set to only preprocess the data then exit after all loops have been completed
         if self.hparams.only_preprocess:
             logger.warning(
-                "Exiting since data has been preprocessed and written to disk and `hparams.only_preprocess` is True."
+                "Exiting since data has been preprocessed and written to disk "
+                + "and `hparams.only_preprocess` is True."
             )
             sys.exit(0)
 
@@ -694,7 +707,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         )
 
     def training_step(self, batch, batch_idx):  # skipcq: PYL-W0613
-        """Training step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.training_step>`__"""
+        """Training step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.training_step>`__"""  # noqa: E501
         # Get batch information
         labels = batch["labels"]
 
@@ -741,11 +754,11 @@ class ExtractiveSummarizer(pl.LightningModule):
     def validation_step(self, batch, batch_idx):  # skipcq: PYL-W0613
         """
         Validation step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.validation_step>`__
-        Similar to :meth:`~extractive.ExtractiveSummarizer.training_step` in that in runs the inputs
-        through the model. However, this method also calculates accuracy and f1 score by marking every
-        sentence score >0.5 as 1 (meaning should be in the summary) and each score <0.5 as 0 (meaning
-        should not be in the summary).
-        """
+        Similar to :meth:`~extractive.ExtractiveSummarizer.training_step` in that in runs the
+        inputs through the model. However, this method also calculates accuracy and f1 score by
+        marking every sentence score >0.5 as 1 (meaning should be in the summary) and each score
+        <0.5 as 0 (meaning should not be in the summary).
+        """  # noqa: E501
         # Get batch information
         labels = batch["labels"]
 
@@ -795,7 +808,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         """
         Called at the end of a validation epoch: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.validation_epoch_end>`__
         Finds the mean of all the metrics logged by :meth:`~extractive.ExtractiveSummarizer.validation_step`.
-        """
+        """  # noqa: E501
         # Get the average loss and accuracy metrics over all evaluation runs
         avg_loss_total = torch.stack([x["val_loss_total"] for x in outputs]).mean()
         avg_loss_total_norm_batch = torch.stack(
@@ -832,16 +845,17 @@ class ExtractiveSummarizer(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         """
         Test step: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.test_step>`__
-        Similar to :meth:`~extractive.ExtractiveSummarizer.validation_step` in that in runs the inputs
-        through the model. However, this method also calculates the ROUGE scores for each example-summary
-        pair.
-        """
+        Similar to :meth:`~extractive.ExtractiveSummarizer.validation_step` in that in runs the
+        inputs through the model. However, this method also calculates the ROUGE scores for each
+        example-summary pair.
+        """  # noqa: E501
         # Get batch information
         labels = batch["labels"]
         sources = batch["source"]
         targets = batch["target"]
 
-        # delete labels, sources, and targets so now batch contains everything to be inputted into the model
+        # delete labels, sources, and targets so now batch contains everything to be inputted into
+        # the model
         del batch["labels"]
         del batch["source"]
         del batch["target"]
@@ -922,7 +936,9 @@ class ExtractiveSummarizer(pl.LightningModule):
             for sent_idx, i in enumerate(source_ids):
                 if i >= len(source):
                     logger.debug(
-                        "Only %i examples selected from document %i in batch %i. This is likely because some sentences received ranks so small they rounded to zero and a padding 'sentence' was randomly chosen.",
+                        "Only %i examples selected from document %i in batch %i. This is likely "
+                        + "because some sentences received ranks so small they rounded to zero "
+                        + "and a padding 'sentence' was randomly chosen.",
                         sent_idx + 1,
                         idx,
                         batch_idx,
@@ -930,11 +946,11 @@ class ExtractiveSummarizer(pl.LightningModule):
                     continue
 
                 candidate = source[i].strip()
-                # If trigram blocking is enabled and searching for matching trigrams finds no matches
-                # then add the candidate to the current prediction list.
-                # During the predicting process, Trigram Blocking is used to reduce redundancy. Given
-                # selected summary S and a candidate sentence c, we will skip c is there exists a
-                # trigram overlapping between c and S.
+                # If trigram blocking is enabled and searching for matching trigrams finds no
+                # matches then add the candidate to the current prediction list.
+                # During the predicting process, Trigram Blocking is used to reduce redundancy.
+                # Given selected summary S and a candidate sentence c, we will skip c is there
+                # exists a trigram overlapping between c and S.
                 if (not self.hparams.no_test_block_trigrams) and (
                     not block_trigrams(candidate, current_prediction)
                 ):
@@ -950,7 +966,7 @@ class ExtractiveSummarizer(pl.LightningModule):
 
             # See this issue https://github.com/google-research/google-research/issues/168
             # for info about the differences between `pyrouge` and `rouge-score`.
-            # Archive Link: https://web.archive.org/web/20200622205503/https://github.com/google-research/google-research/issues/168
+            # Archive Link: https://web.archive.org/web/20200622205503/https://github.com/google-research/google-research/issues/168  # noqa: E501
             if self.hparams.test_use_pyrouge:
                 # Convert `current_prediction` from list to string with a "<q>" between each
                 # item/sentence. In ROUGE 1.5.5 (`pyrouge`), a "\n" indicates sentence
@@ -992,7 +1008,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         """
         Called at the end of a testing epoch: `PyTorch Lightning Documentation <https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.core.html#pytorch_lightning.core.LightningModule.test_epoch_end>`__
         Finds the mean of all the metrics logged by :meth:`~extractive.ExtractiveSummarizer.test_step`.
-        """
+        """  # noqa: E501
         # Get the accuracy metrics over all testing runs
         avg_test_acc = torch.stack([x["test_acc"] for x in outputs]).mean()
         avg_test_f1 = torch.stack([x["test_f1"] for x in outputs]).mean()
@@ -1024,7 +1040,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             # and values that are `AggregateScore` objects. Each `AggregateScore` object is a
             # named tuple with a low, mid, and high value. Each value is a `Score` object, which
             # is also a named tuple, that contains the precision, recall, and fmeasure values.
-            # For more info see the source code: https://github.com/google-research/google-research/blob/master/rouge/scoring.py
+            # For more info see the source code: https://github.com/google-research/google-research/blob/master/rouge/scoring.py  # noqa: E501
             rouge_result = aggregator.aggregate()
 
             for metric, value in rouge_result.items():
@@ -1176,7 +1192,9 @@ class ExtractiveSummarizer(pl.LightningModule):
             "--model_name_or_path",
             type=str,
             default="bert-base-uncased",
-            help="Path to pre-trained model or shortcut name. A list of shortcut names can be found at https://huggingface.co/transformers/pretrained_models.html. Community-uploaded models are located at https://huggingface.co/models.",
+            help="Path to pre-trained model or shortcut name. A list of shortcut names can be "
+            + "found at https://huggingface.co/transformers/pretrained_models.html. "
+            + "Community-uploaded models are located at https://huggingface.co/models.",
         )
         parser.add_argument(
             "--model_type",
@@ -1188,7 +1206,8 @@ class ExtractiveSummarizer(pl.LightningModule):
         parser.add_argument(
             "--tokenizer_no_use_fast",
             action="store_true",
-            help="Don't use the fast version of the tokenizer for the specified model. More info: https://huggingface.co/transformers/main_classes/tokenizer.html.",
+            help="Don't use the fast version of the tokenizer for the specified model. "
+            + "More info: https://huggingface.co/transformers/main_classes/tokenizer.html.",
         )
         parser.add_argument(
             "--max_seq_length",
@@ -1204,11 +1223,11 @@ class ExtractiveSummarizer(pl.LightningModule):
             default="none",
             type=str,
             choices=["txt", "pt", "none"],
-            help="""The file extension of the prepared data. The 'map' `--dataloader_type` 
-            requires `txt` and the 'iterable' `--dataloader_type` works with both. If the data 
-            is not prepared yet (in JSON format) this value specifies the output format 
-            after processing. If the data is prepared, this value specifies the format to load. 
-            If it is `none` then the type of data to be loaded will be inferred from the 
+            help="""The file extension of the prepared data. The 'map' `--dataloader_type`
+            requires `txt` and the 'iterable' `--dataloader_type` works with both. If the data
+            is not prepared yet (in JSON format) this value specifies the output format
+            after processing. If the data is prepared, this value specifies the format to load.
+            If it is `none` then the type of data to be loaded will be inferred from the
             `data_path`. If data needs to be prepared, this cannot be set to `none`.""",
         )
         parser.add_argument("--num_threads", type=int, default=4)
@@ -1243,10 +1262,10 @@ class ExtractiveSummarizer(pl.LightningModule):
             "--dataloader_num_workers",
             default=4,
             type=int,
-            help="""The number of workers to use when loading data. A general place to 
-            start is to set num_workers equal to the number of CPU cores on your machine. 
-            If `--dataloader_type` is 'iterable' then this setting has no effect and 
-            num_workers will be 1. More details here: https://pytorch-lightning.readthedocs.io/en/latest/performance.html#num-workers""",
+            help="""The number of workers to use when loading data. A general place to
+            start is to set num_workers equal to the number of CPU cores on your machine.
+            If `--dataloader_type` is 'iterable' then this setting has no effect and
+        num_workers will be 1. More details here: https://pytorch-lightning.readthedocs.io/en/latest/performance.html#num-workers""",  # noqa: E501
         )
         parser.add_argument(
             "--processor_no_bert_compatible_cls",
@@ -1263,7 +1282,9 @@ class ExtractiveSummarizer(pl.LightningModule):
         parser.add_argument(
             "--preprocess_resume",
             action="store_true",
-            help='Resume preprocessing. `--only_preprocess` must be set in order to resume. Determines which files to process by finding the shards that do not have a coresponding ".pt" file in the data directory.',
+            help="Resume preprocessing. `--only_preprocess` must be set in order to resume. "
+            + "Determines which files to process by finding the shards that do not have a "
+            + 'coresponding ".pt" file in the data directory.',
         )
         parser.add_argument(
             "--create_token_type_ids",
@@ -1289,7 +1310,7 @@ class ExtractiveSummarizer(pl.LightningModule):
                                     `nn.TransformerEncoderLayer`s and then a simple `nn.Linear` layer.
                     `transformer_linear` - a `TransformerEncoderClassifier` with a `LinearClassifier` as the
                                            `reduction` parameter, which results in the same thing as the `transformer` option but with a
-                                           `LinearClassifier` instead of a `nn.Linear` layer.""",
+                                           `LinearClassifier` instead of a `nn.Linear` layer.""",  # noqa: E501
         )
         parser.add_argument(
             "--classifier_dropout",
@@ -1301,7 +1322,8 @@ class ExtractiveSummarizer(pl.LightningModule):
             "--classifier_transformer_num_layers",
             type=int,
             default=2,
-            help='The number of layers for the `transformer` classifier. Only has an effect if `--classifier` contains "transformer".',
+            help="The number of layers for the `transformer` classifier. Only has an effect if "
+            + '`--classifier` contains "transformer".',
         )
         parser.add_argument(
             "--train_name",
@@ -1332,12 +1354,14 @@ class ExtractiveSummarizer(pl.LightningModule):
             "--test_k",
             type=float,
             default=3,
-            help="The `k` parameter for the `--test_id_method`. Must be set if using the `greater_k` option. (default: 3)",
+            help="The `k` parameter for the `--test_id_method`. Must be set if using the "
+            + "`greater_k` option. (default: 3)",
         )
         parser.add_argument(
             "--no_test_block_trigrams",
             action="store_true",
-            help="Disable trigram blocking when calculating ROUGE scores during testing. This will increase repetition and thus decrease accuracy.",
+            help="Disable trigram blocking when calculating ROUGE scores during testing. "
+            + "This will increase repetition and thus decrease accuracy.",
         )
         parser.add_argument(
             "--test_use_pyrouge",
@@ -1347,7 +1371,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             package installed. More details about ROUGE 1.5.5 here: https://github.com/andersjo/pyrouge/tree/master/tools/ROUGE-1.5.5.
             It is recommended to use this option for official scores. The `ROUGE-L` measurements
             from `pyrouge` are equivalent to the `rougeLsum` measurements from the default
-            `rouge-score` package.""",
+            `rouge-score` package.""",  # noqa: E501
         )
         parser.add_argument(
             "--loss_key",
@@ -1360,6 +1384,8 @@ class ExtractiveSummarizer(pl.LightningModule):
                 "loss_avg",
             ],
             default="loss_avg_seq_mean",
-            help="Which reduction method to use with BCELoss. See the `experiments/loss_functions/` folder for info on how the default (`loss_avg_seq_mean`) was chosen.",
+            help="Which reduction method to use with BCELoss. See the "
+            + "`experiments/loss_functions/` folder for info on how the default "
+            + "(`loss_avg_seq_mean`) was chosen.",
         )
         return parser

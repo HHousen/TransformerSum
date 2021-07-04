@@ -36,19 +36,19 @@ class Pooling(nn.Module):
         Args:
             word_vectors (torch.Tensor, optional): Vectors representing words created by
                 a ``word_embedding_model``. Defaults to None.
-            sent_rep_token_ids (torch.Tensor, optional): See :meth:`extractive.ExtractiveSummarizer.forward`.
-                Defaults to None.
-            sent_rep_mask (torch.Tensor, optional): See :meth:`extractive.ExtractiveSummarizer.forward`.
-                Defaults to None.
-            sent_lengths (torch.Tensor, optional): See :meth:`extractive.ExtractiveSummarizer.forward`.
-                Defaults to None.
-            sent_lengths_mask (torch.Tensor, optional): See :meth:`extractive.ExtractiveSummarizer.forward`.
-                Defaults to None.
+            sent_rep_token_ids (torch.Tensor, optional): See
+                :meth:`extractive.ExtractiveSummarizer.forward`. Defaults to None.
+            sent_rep_mask (torch.Tensor, optional): See
+                :meth:`extractive.ExtractiveSummarizer.forward`. Defaults to None.
+            sent_lengths (torch.Tensor, optional): See
+                :meth:`extractive.ExtractiveSummarizer.forward`. Defaults to None.
+            sent_lengths_mask (torch.Tensor, optional): See
+                :meth:`extractive.ExtractiveSummarizer.forward`. Defaults to None.
 
         Returns:
             tuple: (output_vector, output_mask) Contains the sentence scores and mask as
-            ``torch.Tensor``\ s. The mask is either the ``sent_rep_mask`` or ``sent_lengths_mask``
-            depending on the pooling mode used during model initialization.
+            ``torch.Tensor``\ s. The mask is either the ``sent_rep_mask`` or
+            ``sent_lengths_mask`` depending on the pooling mode used during model initialization.
         """
         output_vectors = []
         output_masks = []
@@ -77,7 +77,8 @@ class Pooling(nn.Module):
                         )
                         # if the sequence contains values that are not zero
                         if ((sequence != 0).sum() != 0)
-                        # any tensor with 2 dimensions (one being the hidden size) that has already been created (will be set to zero from padding)
+                        # any tensor with 2 dimensions (one being the hidden size) that has already
+                        # been created (will be set to zero from padding)
                         else word_vectors[0, 0].float()
                         # for each sentence
                         for sequence in sequences

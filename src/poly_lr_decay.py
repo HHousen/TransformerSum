@@ -5,11 +5,12 @@ from torch.optim.lr_scheduler import _LRScheduler
 
 class PolynomialLRDecay(_LRScheduler):
     """Polynomial learning rate decay until step reach to max_decay_step
-    
+
     Args:
         optimizer (Optimizer): Wrapped optimizer.
         max_decay_steps: after this step, we stop decreasing learning rate
-        end_learning_rate: scheduler stoping learning rate decay, value of learning rate must be this value
+        end_learning_rate: scheduler stoping learning rate decay, value of learning rate must be
+            this value
         power: The power of the polynomial.
     """
 

@@ -1,18 +1,20 @@
-import logging
-import torch
-import numpy as np
-import random
 import json
-import datasets as nlp
-from pytorch_lightning import Trainer
-from extractive import ExtractiveSummarizer
-from abstractive import AbstractiveSummarizer
-from helpers import StepCheckpointCallback
+import logging
+import random
 from argparse import ArgumentParser
-from pytorch_lightning.loggers import WandbLogger
-from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
+
+import numpy as np
+import torch
+from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
+from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.plugins import DeepSpeedPlugin
+
+import datasets as nlp
+from abstractive import AbstractiveSummarizer
+from extractive import ExtractiveSummarizer
+from helpers import StepCheckpointCallback
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +26,10 @@ def set_seed(seed):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     logger.warning(
-        "Deterministic mode can have a performance impact, depending on your model. This means that due to the deterministic nature of the model, the processing speed (i.e. processed batch items per second) can be lower than when the model is non-deterministic."
+        "Deterministic mode can have a performance impact, depending on your model. This means "
+        + "that due to the deterministic nature of the model, the processing speed (i.e. "
+        + "processed batch items per second) can be lower than when the model is "
+        + "non-deterministic."
     )
 
 
@@ -55,12 +60,10 @@ def main(args):
                 or "word_embedding_model.embeddings.position_ids" in e_str
             ):
                 print(
-                    (
-                        "The below is a common issue. Due to the `transformers` update "
-                        "from 3.0.2 to 3.1.0, models trained in versions <3.0.2 need to be "
-                        "loaded with the `--no_strict` argument. More details can be found at "
-                        "huggingface/transformers#6882."
-                    )
+                    "The below is a common issue. Due to the `transformers` update "
+                    "from 3.0.2 to 3.1.0, models trained in versions <3.0.2 need to be "
+                    "loaded with the `--no_strict` argument. More details can be found at "
+                    "huggingface/transformers#6882."
                 )
             raise e
 
@@ -87,7 +90,9 @@ def main(args):
 
     if args.use_custom_checkpoint_callback:
         args.checkpoint_callback = ModelCheckpoint(
-            save_top_k=-1, period=1, verbose=True,
+            save_top_k=-1,
+            period=1,
+            verbose=True,
         )
     if args.custom_checkpoint_every_n:
         custom_checkpoint_callback = StepCheckpointCallback(
@@ -111,7 +116,8 @@ def main(args):
         new_lr = lr_finder.suggestion()
         logger.info("Recommended Learning Rate: %s", new_lr)
 
-    # remove `args.callbacks` if it exists so it does not get saved with the model (would result in crash)
+    # remove `args.callbacks` if it exists so it does not get saved with the model
+    # (would result in crash)
     if args.custom_checkpoint_every_n:
         del args.callbacks
 
@@ -133,17 +139,19 @@ if __name__ == "__main__":
         help="Extractive or abstractive summarization training. Default is 'extractive'.",
     )
     parser.add_argument(
-        "--default_root_dir", type=str, help="Default path for logs and weights.",
+        "--default_root_dir",
+        type=str,
+        help="Default path for logs and weights.",
     )
     parser.add_argument(
         "--weights_save_path",
         type=str,
-        help="""Where to save weights if specified. Will override `--default_root_dir` for 
-        checkpoints only. Use this if for whatever reason you need the checkpoints stored in 
+        help="""Where to save weights if specified. Will override `--default_root_dir` for
+        checkpoints only. Use this if for whatever reason you need the checkpoints stored in
         a different place than the logs written in `--default_root_dir`.
         If you are using the `wandb` logger, then you must also set `--no_wandb_logger_log_model`
-        when using this option. Model weights are saved with the wandb logs to be uploaded to 
-        wandb.ai by default. Setting this option without setting `--no_wandb_logger_log_model` 
+        when using this option. Model weights are saved with the wandb logs to be uploaded to
+        wandb.ai by default. Setting this option without setting `--no_wandb_logger_log_model`
         effectively creates two save paths, which may crash the script.""",
     )
     parser.add_argument(
@@ -202,7 +210,8 @@ if __name__ == "__main__":
         "--overfit_batches",
         default=0.0,
         type=float,
-        help="Uses this much data of all datasets (training, validation, test). Useful for quickly debugging or trying to overfit on purpose.",
+        help="Uses this much data of all datasets (training, validation, test). Useful "
+        + "for quickly debugging or trying to overfit on purpose.",
     )
     parser.add_argument(
         "--fast_dev_run",
@@ -213,13 +222,15 @@ if __name__ == "__main__":
         "--limit_train_batches",
         default=1.0,
         type=float,
-        help="How much of training dataset to check. Useful when debugging or testing something that happens at the end of an epoch.",
+        help="How much of training dataset to check. Useful when debugging or testing "
+        + "something that happens at the end of an epoch.",
     )
     parser.add_argument(
         "--limit_val_batches",
         default=1.0,
         type=float,
-        help="How much of validation dataset to check. Useful when debugging or testing something that happens at the end of an epoch.",
+        help="How much of validation dataset to check. Useful when debugging or testing something "
+        + "that happens at the end of an epoch.",
     )
     parser.add_argument(
         "--limit_test_batches",
@@ -231,7 +242,8 @@ if __name__ == "__main__":
         "--amp_level",
         type=str,
         default="O1",
-        help="The optimization level to use (O1, O2, etc…) for 16-bit GPU precision (using NVIDIA apex under the hood).",
+        help="The optimization level to use (O1, O2, etc…) for 16-bit GPU precision (using "
+        + "NVIDIA apex under the hood).",
     )
     parser.add_argument(
         "--precision",
@@ -256,25 +268,32 @@ if __name__ == "__main__":
         "--progress_bar_refresh_rate",
         default=50,
         type=int,
-        help="How often to refresh progress bar (in steps). In notebooks, faster refresh rates (lower number) is known to crash them because of their screen refresh rates, so raise it to 50 or more.",
+        help="How often to refresh progress bar (in steps). In notebooks, faster refresh rates "
+        + "(lower number) is known to crash them because of their screen refresh rates, so raise "
+        + "it to 50 or more.",
     )
     parser.add_argument(
         "--num_sanity_val_steps",
         default=2,
         type=int,
-        help="Sanity check runs n batches of val before starting the training routine. This catches any bugs in your validation without having to wait for the first validation check.",
+        help="Sanity check runs n batches of val before starting the training routine. This "
+        + "catches any bugs in your validation without having to wait for the first "
+        + "validation check.",
     )
     parser.add_argument(
         "--val_check_interval",
         default=1.0,
-        help="How often within one training epoch to check the validation set. Can specify as float or int. Use float to check within a training epoch. Use int to check every n steps (batches).",
+        help="How often within one training epoch to check the validation set. Can specify "
+        + "as float or int. Use float to check within a training epoch. Use int to check every "
+        + "n steps (batches).",
     )
     parser.add_argument(
         "--use_logger",
         default="wandb",
         type=str,
         choices=["tensorboard", "wandb"],
-        help="Which program to use for logging. If `wandb` is chosen then model weights will automatically be uploaded to wandb.ai.",
+        help="Which program to use for logging. If `wandb` is chosen then model weights "
+        + "will automatically be uploaded to wandb.ai.",
     )
     parser.add_argument(
         "--wandb_project",
@@ -285,7 +304,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--gradient_checkpointing",
         action="store_true",
-        help="Enable gradient checkpointing (save memory at the expense of a slower backward pass) for the word embedding model. More info: https://github.com/huggingface/transformers/pull/4659#issue-424841871",
+        help="Enable gradient checkpointing (save memory at the expense of a slower backward "
+        + "pass) for the word embedding model. "
+        + "More info: https://github.com/huggingface/transformers/pull/4659#issue-424841871",
     )
     parser.add_argument(
         "--accelerator",
@@ -304,8 +325,8 @@ if __name__ == "__main__":
         "--load_weights",
         default=False,
         type=str,
-        help="""Loads the model weights from a given checkpoint. Hyperparameters are initialized 
-        from command line arguments. This can be used to change paramters between the training 
+        help="""Loads the model weights from a given checkpoint. Hyperparameters are initialized
+        from command line arguments. This can be used to change paramters between the training
         and testing stages, for example.""",
     )
     parser.add_argument(
@@ -318,56 +339,63 @@ if __name__ == "__main__":
         "--resume_from_checkpoint",
         default=None,
         type=str,
-        help="To resume training from a specific checkpoint pass in the path here. Automatically restores model, epoch, step, LR schedulers, apex, etc...",
+        help="To resume training from a specific checkpoint pass in the path here. Automatically "
+        + "restores model, epoch, step, LR schedulers, apex, etc...",
     )
     parser.add_argument(
         "--use_custom_checkpoint_callback",
         action="store_true",
-        help="""Use the custom checkpointing callback specified in `main()` by 
-        `args.checkpoint_callback`. By default this custom callback saves the model every 
-        epoch and never deletes the saved weights files. You can change the save path by 
+        help="""Use the custom checkpointing callback specified in `main()` by
+        `args.checkpoint_callback`. By default this custom callback saves the model every
+        epoch and never deletes the saved weights files. You can change the save path by
         setting the `--weights_save_path` option.""",
     )
     parser.add_argument(
         "--custom_checkpoint_every_n",
         type=int,
         default=None,
-        help="""The number of steps between additional checkpoints. By default checkpoints are saved 
-        every epoch. Setting this value will save them every epoch and every N steps. This does not 
-        use the same callback as `--use_custom_checkpoint_callback` but instead uses a different class 
-        called `StepCheckpointCallback`. When using this callback, you must specify the save path with the 
-        `--weights_save_path` option.""",
+        help="""The number of steps between additional checkpoints. By default checkpoints are
+        saved every epoch. Setting this value will save them every epoch and every N steps. This
+        does not use the same callback as `--use_custom_checkpoint_callback` but instead uses a
+        different class called `StepCheckpointCallback`. When using this callback, you must specify
+        the save path with the `--weights_save_path` option.""",
     )
     parser.add_argument(
         "--no_wandb_logger_log_model",
         action="store_true",
-        help="Only applies when using the `wandb` logger. Set this argument to NOT save checkpoints in wandb directory to upload to W&B servers.",
+        help="Only applies when using the `wandb` logger. Set this argument to NOT save "
+        + "checkpoints in wandb directory to upload to W&B servers.",
     )
     parser.add_argument(
         "--auto_scale_batch_size",
         default=None,
         type=str,
-        help="""Auto scaling of batch size may be enabled to find the largest batch size that fits 
-        into memory. Larger batch size often yields better estimates of gradients, but may also 
-        result in longer training time. Currently, this feature supports two modes 'power' scaling 
-        and 'binsearch' scaling. In 'power' scaling, starting from a batch size of 1 keeps doubling 
-        the batch size until an out-of-memory (OOM) error is encountered. Setting the argument to 
+        help="""Auto scaling of batch size may be enabled to find the largest batch size that fits
+        into memory. Larger batch size often yields better estimates of gradients, but may also
+        result in longer training time. Currently, this feature supports two modes 'power' scaling
+        and 'binsearch' scaling. In 'power' scaling, starting from a batch size of 1 keeps doubling
+        the batch size until an out-of-memory (OOM) error is encountered. Setting the argument to
         'binsearch' continues to finetune the batch size by performing a binary search. 'binsearch'
         is the recommended option.""",
     )
     parser.add_argument(
         "--lr_find",
         action="store_true",
-        help="Runs a learning rate finder algorithm (see https://arxiv.org/abs/1506.01186) before any training, to find optimal initial learning rate.",
+        help="Runs a learning rate finder algorithm (see https://arxiv.org/abs/1506.01186) "
+        + "before any training, to find optimal initial learning rate.",
     )
     parser.add_argument(
-        "--adam_epsilon", default=1e-8, type=float, help="Epsilon for Adam optimizer.",
+        "--adam_epsilon",
+        default=1e-8,
+        type=float,
+        help="Epsilon for Adam optimizer.",
     )
     parser.add_argument(
         "--optimizer_type",
         type=str,
         default="adam",
-        help="""Which optimizer to use: `adamw` (default), `ranger`, `qhadam`, `radam`, or `adabound`.""",
+        help="""Which optimizer to use: `adamw` (default), `ranger`, `qhadam`, `radam`, or
+        `adabound`.""",
     )
     parser.add_argument(
         "--ranger-k",
@@ -375,7 +403,8 @@ if __name__ == "__main__":
         type=int,
         help="""Ranger (LookAhead) optimizer k value (default: 6). LookAhead keeps a single
         extra copy of the weights, then lets the internalized 'faster' optimizer (for Ranger,
-        that's RAdam) explore for 5 or 6 batches. The batch interval is specified via the k parameter.""",
+        that's RAdam) explore for 5 or 6 batches. The batch interval is specified via the
+        k parameter.""",
     )
     parser.add_argument(
         "--warmup_steps",
@@ -386,7 +415,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--no_strict",
         action="store_false",
-        help="Load a model with `strict` mode disabled. This will *not* enforce that the keys in `state_dict` match the keys returned by the module's `state_dict()` function.",
+        help="Load a model with `strict` mode disabled. This will *not* enforce that the keys "
+        + "in `state_dict` match the keys returned by the module's `state_dict()` function.",
     )
     parser.add_argument(
         "--use_scheduler",
@@ -395,7 +425,7 @@ if __name__ == "__main__":
         1. `linear`: Use a linear schedule that inceases linearly over `--warmup_steps` to `--learning_rate` then decreases linearly for the rest of the training process.
         2. `onecycle`: Use the one cycle policy with a maximum learning rate of `--learning_rate`.
         (default: False, don't use any scheduler)
-        3. `poly`: polynomial learning rate decay from `--learning_rate` to `--end_learning_rate`""",
+        3. `poly`: polynomial learning rate decay from `--learning_rate` to `--end_learning_rate`""",  # noqa: E501
     )
     parser.add_argument(
         "--end_learning_rate",
@@ -408,7 +438,8 @@ if __name__ == "__main__":
         "--plugins",
         default=None,
         type=str,
-        help="Allows you to connect arbitrary backends. Run `pip install deepspeed mpi4py` to use deepspeed plugin.",
+        help="Allows you to connect arbitrary backends. Run `pip install deepspeed mpi4py` to use"
+        + "deepspeed plugin.",
     )
     parser.add_argument(
         "-l",
@@ -437,7 +468,8 @@ if __name__ == "__main__":
         and (":" not in main_args[0].plugins)
     ):
         logger.error(
-            "If you are using the 'deepspeed' plugin, you must specify the path the to deepspeed config like so: `--plugins deepspeed:/path/to/config.json`."
+            "If you are using the 'deepspeed' plugin, you must specify the path the to "
+            + "deepspeed config like so: `--plugins deepspeed:/path/to/config.json`."
         )
 
     main_args = parser.parse_args()
@@ -450,7 +482,8 @@ if __name__ == "__main__":
 
     # Set the `nlp` logging verbosity since its default is not INFO.
     # If the verbosity is not set back to the default for the library, an abundance
-    # of output will be printed. See https://huggingface.co/docs/datasets/package_reference/logging_methods.html.
+    # of output will be printed.
+    # See https://huggingface.co/docs/datasets/package_reference/logging_methods.html.
     nlp.logging.set_verbosity(nlp.logging.WARNING)
 
     # Train

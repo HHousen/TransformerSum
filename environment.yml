@@ -9,6 +9,7 @@ dependencies:
     - spacy
     - sphinx
     - pyarrow
+    - pre-commit
     - pip
     - pip:
       - pytorch_lightning

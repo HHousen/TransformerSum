@@ -1,17 +1,18 @@
-import os
-import math
-import time
-import shutil
-import json
 import gzip
+import json
 import logging
+import math
+import os
+import shutil
+import time
+from functools import partial
+
+import numpy as np
 import pytorch_lightning as pl
 import torch
-import torch_optimizer
-import numpy as np
-from torch import nn
 import torch.nn.functional as F
-from functools import partial
+import torch_optimizer
+from torch import nn
 from torch.utils.data import Sampler
 
 logger = logging.getLogger(__name__)
@@ -93,7 +94,7 @@ def lr_lambda_func(current_step, num_warmup_steps, num_training_steps):
 
 
 def block_trigrams(candidate, prediction):
-    """Decrease repetition in summaries by checking if a trigram from ``prediction`` 
+    """Decrease repetition in summaries by checking if a trigram from ``prediction``
     exists in ``candidate``
 
     Args:
@@ -142,9 +143,12 @@ def _get_word_ngrams(n, sentences):
 
 
 def pad(data, pad_id, width=None, pad_on_left=False, nearest_multiple_of=False):
-    """Pad ``data`` with ``pad_id`` to ``width`` on the right by default but if ``pad_on_left`` then left."""
+    """
+    Pad ``data`` with ``pad_id`` to ``width`` on the right by default but if
+    ``pad_on_left`` then left.
+    """
     if not width:
-        width = max([len(d) for d in data])
+        width = max(len(d) for d in data)
     if nearest_multiple_of:
         width = math.ceil(width / nearest_multiple_of) * nearest_multiple_of
     if pad_on_left:
@@ -157,9 +161,12 @@ def pad(data, pad_id, width=None, pad_on_left=False, nearest_multiple_of=False):
 def pad_tensors(
     tensors, pad_id=0, width=None, pad_on_left=False, nearest_multiple_of=False
 ):
-    """Pad ``tensors`` with ``pad_id`` to ``width`` on the right by default but if ``pad_on_left`` then left."""
+    """
+    Pad ``tensors`` with ``pad_id`` to ``width`` on the right by default but
+    if ``pad_on_left`` then left.
+    """
     if not width:
-        width = max([len(d) for d in tensors])
+        width = max(len(d) for d in tensors)
     if nearest_multiple_of:
         width = math.ceil(width / nearest_multiple_of) * nearest_multiple_of
     if pad_on_left:
@@ -170,25 +177,28 @@ def pad_tensors(
             value=pad_id,
         )
     return F.pad(
-        tensors, pad=(0, (width - tensors.size()[-1])), mode="constant", value=pad_id,
+        tensors,
+        pad=(0, (width - tensors.size()[-1])),
+        mode="constant",
+        value=pad_id,
     )
 
 
 def test_rouge(temp_dir, cand, ref):
     r"""Compute ROUGE scores using the official ROUGE 1.5.5 package. This function uses the
-    ``pyrouge`` python module to interface with the office ROUGE script. There should be a 
-    "<q>" token between each sentence in the ``cand`` and ``ref`` files. ``pyrouge`` splits 
-    sentences based on newlines but we cannot store all the summaries easily in a single text 
-    file if there is a newline between each sentence since newlines mark new summaries. Thus, 
+    ``pyrouge`` python module to interface with the office ROUGE script. There should be a
+    "<q>" token between each sentence in the ``cand`` and ``ref`` files. ``pyrouge`` splits
+    sentences based on newlines but we cannot store all the summaries easily in a single text
+    file if there is a newline between each sentence since newlines mark new summaries. Thus,
     the "<q>" token is used in the text files and is converted to a newline in this function.
     Using "<q>" instead of ``\\n`` also makes it easier to store the ground-truth summaries
     in the ``convert_to_extractive.py`` script.
 
     Args:
         temp_dir (str): A temporary folder to store files for input to the ROUGE script.
-        cand (str): The path to the file containing one candidate summary per line with 
+        cand (str): The path to the file containing one candidate summary per line with
             "<q>" tokens in between each sentence.
-        ref (str): The path to the file containing one ground-truth/gold summary per line 
+        ref (str): The path to the file containing one ground-truth/gold summary per line
             with "<q>" tokens in between each sentence.
 
     Returns:
@@ -244,7 +254,7 @@ class LabelSmoothingLoss(nn.Module):
     KL-divergence between q_{smoothed ground truth prob.}(w)
     and p_{prob. computed by model}(w) is minimized.
     From OpenNMT with modifications: https://github.com/OpenNMT/OpenNMT-py/blob/e8622eb5c6117269bb3accd8eb6f66282b5e67d9/onmt/utils/loss.py#L186
-    """
+    """  # noqa: E501
 
     def __init__(self, label_smoothing, tgt_vocab_size, ignore_index=-100):
         assert 0.0 < label_smoothing <= 1.0
@@ -275,7 +285,7 @@ class LabelSmoothingLoss(nn.Module):
 # https://github.com/huggingface/transformers/blob/dc31a72f505bc115a2214a68c8ea7c956f98fd1b/examples/seq2seq/utils.py#L158
 class SortishSampler(Sampler):
     """
-    Go through the text data by order of src length with a bit of randomness. 
+    Go through the text data by order of src length with a bit of randomness.
     From fastai repo with modifications.
     """
 
@@ -369,7 +379,7 @@ def generic_configure_optimizers(hparams, train_dataloader, params_to_update):
         # the global_step every gradient accumulation cycle. Therefore, the
         # scheduler needs to have `accumulate_grad_batches` * `max_steps` in
         # order to reach `max_steps`.
-        # See: https://github.com/PyTorchLightning/pytorch-lightning/blob/f293c9b5f4b4f9fabb2eec0c369f08a66c57ef14/pytorch_lightning/trainer/training_loop.py#L624
+        # See: https://github.com/PyTorchLightning/pytorch-lightning/blob/f293c9b5f4b4f9fabb2eec0c369f08a66c57ef14/pytorch_lightning/trainer/training_loop.py#L624  # noqa: E501
         t_total = hparams.max_steps * hparams.accumulate_grad_batches
     else:
         t_total = int(
@@ -404,10 +414,10 @@ def generic_configure_optimizers(hparams, train_dataloader, params_to_update):
     if hparams.use_scheduler:
         if hparams.use_scheduler == "linear":
             # We have to import the function and create a partial because functions cannot be
-            # serialized by python pickle. Therefore, if the normal `get_linear_schedule_with_warmup`
-            # function provided by `transformers` was used, the program would fail to save
-            # `hparams` because the optimizer would contain a locale function that cannot be
-            # pickled.
+            # serialized by python pickle. Therefore, if the normal
+            # `get_linear_schedule_with_warmup` function provided by `transformers` was used,
+            # the program would fail to save `hparams` because the optimizer would contain a
+            # locale function that cannot be pickled.
             lr_lambda = partial(
                 lr_lambda_func,
                 num_warmup_steps=hparams.warmup_steps * hparams.accumulate_grad_batches,
@@ -434,7 +444,8 @@ def generic_configure_optimizers(hparams, train_dataloader, params_to_update):
             )
         else:
             logger.error(
-                "The value %s for `--use_scheduler` is invalid.", hparams.use_scheduler,
+                "The value %s for `--use_scheduler` is invalid.",
+                hparams.use_scheduler,
             )
         # the below interval is called "step" but the scheduler is moved forward
         # every batch.

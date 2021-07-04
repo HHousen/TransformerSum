@@ -95,7 +95,7 @@ Commit `dfefd15` added a :class:`~classifier.SimpleLinearClassifier`. This exper
 
 Command used to run the tests:
 
-.. code-block:: 
+.. code-block::
 
    python main.py \
    --model_name_or_path distilbert-base-uncased \

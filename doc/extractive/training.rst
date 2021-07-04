@@ -6,7 +6,7 @@ Training an Extractive Summarization Model
 Details
 -------
 
-Once the dataset has been converted to the extractive task, it can be used as input to a :class:`data.SentencesProcessor`, which has a :meth:`~data.SentencesProcessor.add_examples()` function to add sets of ``(example, labels)`` and a :meth:`~data.SentencesProcessor.get_features()` function that processes the data and prepares it to be inputted into the model (``input_ids``, ``attention_masks``, ``labels``, ``token_type_ids``, ``sent_rep_token_ids``, ``sent_rep_token_ids_masks``). Feature extraction runs in parallel and tokenizes text using the tokenizer appropriate for the model specified with ``--model_name_or_path``. The tokenizer can be changed to another ``huggingface/transformers`` tokenizer with the ``--tokenizer_name`` option. 
+Once the dataset has been converted to the extractive task, it can be used as input to a :class:`data.SentencesProcessor`, which has a :meth:`~data.SentencesProcessor.add_examples()` function to add sets of ``(example, labels)`` and a :meth:`~data.SentencesProcessor.get_features()` function that processes the data and prepares it to be inputted into the model (``input_ids``, ``attention_masks``, ``labels``, ``token_type_ids``, ``sent_rep_token_ids``, ``sent_rep_token_ids_masks``). Feature extraction runs in parallel and tokenizes text using the tokenizer appropriate for the model specified with ``--model_name_or_path``. The tokenizer can be changed to another ``huggingface/transformers`` tokenizer with the ``--tokenizer_name`` option.
 
 For the :ref:`CNN/DM dataset <extractive_dataset_cnn_dm>`, to train a model for 50,000 steps on the data run:
 

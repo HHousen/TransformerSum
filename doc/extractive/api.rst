@@ -27,4 +27,3 @@ Convert To Extractive
 ---------------------
 
 .. automodule:: convert_to_extractive
-

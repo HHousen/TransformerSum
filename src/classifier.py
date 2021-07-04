@@ -1,7 +1,8 @@
-import sys
 import logging
-from packaging import version
+import sys
+
 import torch
+from packaging import version
 from torch import nn
 
 logger = logging.getLogger(__name__)
@@ -10,7 +11,8 @@ try:
     from transformers.activations import get_activation
 except ImportError:
     logger.warning(
-        "Could not import `get_activation` from `transformers.activations`. Only GELU will be available for use in the classifier."
+        "Could not import `get_activation` from `transformers.activations`. Only GELU will be "
+        + "available for use in the classifier."
     )
 
 
@@ -101,11 +103,12 @@ class TransformerEncoderClassifier(nn.Module):
     Arguments:
         d_model (int): The number of expected features in the input
         nhead (int, optional): The number of heads in the multiheadattention models. Default is 8.
-        dim_feedforward (int, optional): The dimension of the feedforward network model. Default is 2048.
+        dim_feedforward (int, optional): The dimension of the feedforward network model.
+            Default is 2048.
         dropout (float, optional): The dropout value. Default is 0.1.
         num_layers (int, optional): The number of ``TransformerEncoderLayer``\ s. Default is 2.
-        reduction (nn.Module, optional): a nn.Module that maps `d_model` inputs to 1 value; if not specified
-            then a ``nn.Sequential()`` module consisting of a linear layer and a
+        reduction (nn.Module, optional): a nn.Module that maps `d_model` inputs to 1 value; if not
+            specified then a ``nn.Sequential()`` module consisting of a linear layer and a
             sigmoid will automatically be created. Default is ``nn.Sequential(linear, sigmoid)``.
     """
 
@@ -122,7 +125,8 @@ class TransformerEncoderClassifier(nn.Module):
 
         if version.parse(torch.__version__) < version.parse("1.5.0"):
             logger.error(
-                "You have PyTorch version %s installed, but `TransformerEncoderClassifier` requires at least version 1.5.0.",
+                "You have PyTorch version %s installed, but `TransformerEncoderClassifier` "
+                + "requires at least version 1.5.0.",
                 torch.__version__,
             )
             sys.exit(1)
@@ -150,19 +154,22 @@ class TransformerEncoderClassifier(nn.Module):
         """
         # add dimension in the middle
         attn_mask = mask.unsqueeze(1)
-        # expand the middle dimension to the same size as the last dimension (the number of sentences/source length)
-        # Example with batch size 2: There are two masks since there are two sequences in the batch. Each mask
-        # is a list of booleans for each sentence vector. The below line expands each of these lists by duplicating
-        # them until they are each as long as the number of sentences. Now instead of a list of booleans, each mask
-        # is a matrix where each row is identical. This effectively masks tokens where the entire column is False.
-        # Slight Explanation (for 2D not 3D): https://discuss.pytorch.org/t/how-to-add-padding-mask-to-nn-transformerencoder-module/63390/3
-        # Detailed Explanation for Beginners: https://github.com/bentrevett/pytorch-seq2seq/blob/master/4%20-%20Packed%20Padded%20Sequences%2C%20Masking%2C%20Inference%20and%20BLEU.ipynb
-        # PyTorch MultiheadAttention Docs: https://pytorch.org/docs/stable/nn.html#torch.nn.MultiheadAttention.forward
+        # expand the middle dimension to the same size as the last dimension (the number of
+        # sentences/source length)
+        # Example with batch size 2: There are two masks since there are two sequences in the
+        # batch. Each mask is a list of booleans for each sentence vector. The below line expands
+        # each of these lists by duplicating them until they are each as long as the number of
+        # sentences. Now instead of a list of booleans, each mask is a matrix where each row is
+        # identical. This effectively masks tokens where the entire column is False.
+        # Slight Explanation (for 2D not 3D): https://discuss.pytorch.org/t/how-to-add-padding-mask-to-nn-transformerencoder-module/63390/3  # noqa: E501
+        # Detailed Explanation for Beginners: https://github.com/bentrevett/pytorch-seq2seq/blob/master/4%20-%20Packed%20Padded%20Sequences%2C%20Masking%2C%20Inference%20and%20BLEU.ipynb # noqa: E501
+        # PyTorch MultiheadAttention Docs: https://pytorch.org/docs/stable/nn.html#torch.nn.MultiheadAttention.forward # noqa: E501
         attn_mask = attn_mask.expand(-1, attn_mask.size(2), -1)
         # repeat the mask for each attention head
         attn_mask = attn_mask.repeat(self.nhead, 1, 1)
         # attn_mask is shape (batch size*num_heads, target sequence length, source sequence length)
-        # set all the 0's (False) to negative infinity and the 1's (True) to 0.0 because the attn_mask is additive
+        # set all the 0's (False) to negative infinity and the 1's (True) to 0.0 because the
+        # attn_mask is additive
         attn_mask = (
             attn_mask.float()
             .masked_fill(attn_mask == 0, float("-inf"))

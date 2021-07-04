@@ -1,6 +1,8 @@
 from argparse import ArgumentParser
+
 import pyarrow as pa
 from pyarrow import json
+
 import datasets as nlp
 
 
@@ -55,7 +57,8 @@ if __name__ == "__main__":
         "--cache_path_prefix",
         type=str,
         default="./data_chunk",
-        help="The cache path and file name prefix for the converted JSON files. Defaults to './data_chunk'.",
+        help="The cache path and file name prefix for the converted JSON files. "
+        + "Defaults to './data_chunk'.",
     )
     parser.add_argument(
         "--no_combine",

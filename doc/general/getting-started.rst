@@ -31,7 +31,7 @@ If all you want to do is summarize a text string using a pre-trained model then 
 
 1. Download a summarization model. Link to :ref:`pre-trained extractive models <pretrained_ext>`. Link to :ref:`pre-trained abstractive models <pretrained_abs>`.
 2. Put the model in a folder named ``models`` in the project root.
-3. Run ``python predictions_website.py`` and open the link. 
+3. Run ``python predictions_website.py`` and open the link.
 4. On the website enter your text, select your downloaded model, and click "SUBMIT".
 
 Programmatically
@@ -59,7 +59,7 @@ If you want to summarize text using a pre-trained model from python code then fo
 3. Run prediction on a string of text:
 
     .. code-block:: python
-    
+
         text_to_summarize = "Something Awesome"
         summary = model.predict(text_to_summarize)
 
@@ -85,15 +85,15 @@ To be clear, this is an abstractive dataset so we will convert it to the extract
 
 Command to convert dataset to extractive (:ref:`more info <convert_to_extractive>`):
 
-.. code-block:: 
+.. code-block::
 
     python convert_to_extractive.py ./datasets/cnn_dailymail_processor/cnn_dm --shard_interval 5000 --compression --add_target_to test
 
-Once we have an extractive dataset, we need to convert the text into features that the computer can understand. This includes ``input_ids``, ``attention_mask``, ``sent_rep_token_ids``, and more. The :meth:`extractive.ExtractiveSummarizer.forward` and :meth:`data.SentencesProcessor.get_features` docstrings explains these features nicely. The `huggingface/transformers glossary <https://huggingface.co/transformers/glossary.html>`_ is a good resource as well. This conversion to model-specific features happens automatically before training begins. Since the features are model-specific, the training script is responsible for converting the data. It creates a :class:`~data.SentencesProcessor` that does most of the heavy lifting. You can learn more about this automatic preprocessing on the :ref:`data_automatic_preprocessing` page. 
+Once we have an extractive dataset, we need to convert the text into features that the computer can understand. This includes ``input_ids``, ``attention_mask``, ``sent_rep_token_ids``, and more. The :meth:`extractive.ExtractiveSummarizer.forward` and :meth:`data.SentencesProcessor.get_features` docstrings explains these features nicely. The `huggingface/transformers glossary <https://huggingface.co/transformers/glossary.html>`_ is a good resource as well. This conversion to model-specific features happens automatically before training begins. Since the features are model-specific, the training script is responsible for converting the data. It creates a :class:`~data.SentencesProcessor` that does most of the heavy lifting. You can learn more about this automatic preprocessing on the :ref:`data_automatic_preprocessing` page.
 
 Command to only pre-process the data and stop right before training would begin (:ref:`more info <data_automatic_preprocessing>`):
 
-.. code-block:: 
+.. code-block::
 
     python main.py --data_path ./datasets/cnn_dailymail_processor/cnn_dm --use_logger tensorboard --model_name_or_path bert-base-uncased --model_type bert --do_train --only_preprocess
 
@@ -101,7 +101,7 @@ If you didn't run the above commands then download the ``bert-base-uncased-ext-s
 
 Training command:
 
-.. code-block:: 
+.. code-block::
 
     python main.py \
     --model_name_or_path bert-base-uncased \
@@ -123,7 +123,7 @@ You can learn more about the above command on :ref:`train_extractive_model`.
 Abstractive Summarization
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Lets train a model that performs abstractive summarization. Whereas autoencoding models are used for extractive summarization, sequence-to-sequence (seq2seq) models are used for abstractive summarization. In short, autoregressive models correspond to the decoder of the original transformer model, autoencoding models correspond to the encoder, and sequence-to-sequence models use both the encoder and the decoder of the original transformer. 
+Lets train a model that performs abstractive summarization. Whereas autoencoding models are used for extractive summarization, sequence-to-sequence (seq2seq) models are used for abstractive summarization. In short, autoregressive models correspond to the decoder of the original transformer model, autoencoding models correspond to the encoder, and sequence-to-sequence models use both the encoder and the decoder of the original transformer.
 
 .. note:: Sequence-to-sequence models use both the encoder and the decoder of the original transformer, either for translation tasks or by transforming other tasks to sequence-to-sequence problems. They can be fine-tuned to many tasks but their most natural applications are translation, summarization and question answering. The original transformer model is an example of such a model (only for translation), T5 is an example that can be fine-tuned on other tasks.
 

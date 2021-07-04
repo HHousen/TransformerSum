@@ -23,7 +23,7 @@ Simply run ``convert_to_extractive.py`` with the path to the data. For example, 
 
 * ``--shard_interval`` processes the file in chunks of ``5000`` and writes results to disk in chunks of ``5000`` (saves RAM)
 * ``--compression`` compresses each output chunk with gzip (depending on the dataset reduces space usage requirement by about 1/2 to 1/3)
-* ``--add_target_to`` will save the abstractive target text to the splits (in ``--split_names``) specified. 
+* ``--add_target_to`` will save the abstractive target text to the splits (in ``--split_names``) specified.
 
 The default output directory is the input directory that was specified, but the output directory can be changed with ``--base_output_path`` if desired.
 
@@ -36,7 +36,7 @@ Option 2: Automatic pre-processing through ``nlp``
 
 You will need to run the ``convert_to_extractive.py`` command with the ``--dataset``, ``--dataset_version``, ``--data_example_column``, and ``--data_summarized_column`` options set. To use the CNN/DM dataset you would set these arguments as shown below:
 
-.. code-block:: 
+.. code-block::
 
     --dataset cnn_dailymail \
     --dataset_version 3.0.0 \
@@ -66,7 +66,7 @@ Extractive Dataset Format
 
 This section briefly discusses the format of datasets created by the ``convert_to_extractive`` script.
 
-The training and validation sets only need the ``src`` and ``labels`` keys saved as json. The ``src`` value should be a list of lists where each list contains a series of tokens (see below). The ``labels`` value is a list of 0s (not in summary) and 1s (sentence should be in summary) that is the same length as the ``src`` value (the number of sentences). Each value in this list corresponds to a sentence in ``src``. The testing set is special because it needs the ``src``, ``labels``, and ``tgt`` keys. The ``tgt`` key represents the target summary as a single string with a ``<q>`` between each sentence. 
+The training and validation sets only need the ``src`` and ``labels`` keys saved as json. The ``src`` value should be a list of lists where each list contains a series of tokens (see below). The ``labels`` value is a list of 0s (not in summary) and 1s (sentence should be in summary) that is the same length as the ``src`` value (the number of sentences). Each value in this list corresponds to a sentence in ``src``. The testing set is special because it needs the ``src``, ``labels``, and ``tgt`` keys. The ``tgt`` key represents the target summary as a single string with a ``<q>`` between each sentence.
 
 First document in **CNN/DM** extractive **training** set:
 

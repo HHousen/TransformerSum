@@ -1,14 +1,16 @@
-import os
-import gc
 import copy
+import gc
 import json
-import random
-import logging
 import linecache
-import torch
-import numpy as np
-from multiprocessing import Pool
+import logging
+import os
+import random
 from functools import partial
+from multiprocessing import Pool
+
+import numpy as np
+import torch
+
 from helpers import pad
 
 logger = logging.getLogger(__name__)
@@ -54,7 +56,7 @@ def pad_batch_collate(batch, modifier=None):
     ``modifier`` function will be called directly before
     ``final_dictionary`` is returned in :meth:`~data.pad_batch_collate`. This allows
     for easy extendability.
-    """
+    """  # noqa: E501
     elem = batch[0]
     final_dictionary = {}
 
@@ -82,7 +84,7 @@ def pad_batch_collate(batch, modifier=None):
             # tokens are attended to.
             attention_mask = [[1] * len(ids) for ids in input_ids]
 
-            input_ids_width = max([len(ids) for ids in input_ids])
+            input_ids_width = max(len(ids) for ids in input_ids)
             input_ids = pad(input_ids, 0, width=input_ids_width)
             input_ids = torch.tensor(input_ids)
             attention_mask = pad(attention_mask, 0)
@@ -91,7 +93,7 @@ def pad_batch_collate(batch, modifier=None):
             if "sent_lengths" in elem:
                 sent_lengths = []
                 sent_lengths_mask = []
-                sent_lengths_width = max([len(d["sent_lengths"]) + 1 for d in batch])
+                sent_lengths_width = max(len(d["sent_lengths"]) + 1 for d in batch)
                 for d in batch:
                     current_sent_lens = d["sent_lengths"]
                     current_sent_lengths_mask = [True] * len(current_sent_lens)
@@ -103,9 +105,10 @@ def pad_batch_collate(batch, modifier=None):
                         current_sent_lens.append(0)
                         current_sent_lengths_mask.append(False)
                     # if a value needs to be added to make `sum(current_sent_lens)` the total input
-                    # sequence length OR there is one more number to add (this can happen if the input
-                    # sequence exactly ends with a sentence, making the total of the lengths the length
-                    # of the sequence, or if there is one sentence that takes up the entire sequence)
+                    # sequence length OR there is one more number to add (this can happen if the
+                    # input sequence exactly ends with a sentence, making the total of the lengths
+                    # the length of the sequence, or if there is one sentence that takes up the
+                    # entire sequence)
                     if total_value_to_add > 0 or num_to_add == 1:
                         current_sent_lens.append(total_value_to_add)
                         current_sent_lengths_mask.append(False)
@@ -179,7 +182,7 @@ class FSDataset(torch.utils.data.Dataset):
         line_str = linecache.getline(file_path, linecache_index).rstrip("\n")
         try:
             line_json = json.loads(line_str)
-        except:
+        except Exception:
             print("** JSON Loading Error **")
             print(file_path)
             print(index)
@@ -254,7 +257,8 @@ class FSIterableDataset(torch.utils.data.IterableDataset):
             return self.total_length
 
         logger.debug(
-            "Calculating length of `IterableDataset` by loading each file, getting the length, and unloading, which is slow."
+            "Calculating length of `IterableDataset` by loading each file, getting the length, "
+            + "and unloading, which is slow."
         )
         total_length = 0
         for data_file in self.files_list:
@@ -364,13 +368,15 @@ class SentencesProcessor:
     r"""Create a `SentencesProcessor`
 
     Arguments:
-        name (str, optional): A label for the ``SentencesProcessor`` object, used internally for saving if
-            a save name is not specified in :meth:`data.SentencesProcessor.get_features`, Default is None.
+        name (str, optional): A label for the ``SentencesProcessor`` object, used internally for
+            saving if a save name is not specified in :meth:`data.SentencesProcessor.get_features`,
+            Default is None.
         labels (list, optional): The label that goes with each sample, can be a list of lists where
             the inside lists are the labels for each sentence in the coresponding
             example. Default is None.
         examples (list, optional): List of ``InputExample``\ s. Default is None.
-        verbose (bool, optional): Log extra information (such as examples of processed data points). Default is False.
+        verbose (bool, optional): Log extra information (such as examples of processed data
+            points). Default is False.
     """
 
     def __init__(self, name=None, labels=None, examples=None, verbose=False):
@@ -416,7 +422,8 @@ class SentencesProcessor:
 
         if max_length > 1_000_000:
             logger.warning(
-                "Tokenizer maximum length is greater than 1,000,000. This is likely a mistake. Resetting to 512 tokens."
+                "Tokenizer maximum length is greater than 1,000,000. This is likely a mistake. "
+                + "Resetting to 512 tokens."
             )
             max_length = 512
 
@@ -431,7 +438,8 @@ class SentencesProcessor:
             ]
 
             if not len(src_txt) < 2:  # if there is NOT 1 sentence
-                # separate each sentence with ' [SEP] [CLS] ' (or model equivalent tokens) and convert to string
+                # separate each sentence with ' [SEP] [CLS] ' (or model equivalent tokens) and
+                # convert to string
                 separation_string = " " + sep_token + " " + cls_token + " "
                 text = separation_string.join(src_txt)
             else:
@@ -473,18 +481,24 @@ class SentencesProcessor:
 
         Arguments:
             texts (list): A list of documents where each document is a list of sentences where each
-                            sentence is a list of tokens. This is the output of `convert_to_extractive.py`
-                            and is in the 'src' field for each doc. See :meth:`extractive.ExtractiveSummarizer.prepare_data`.
-            labels (list, optional): A list of the labels for each document where each label is a list of labels
-                where the index of the label coresponds with the index of the sentence in the
-                respective entry in `texts.` Similarly to `texts`, this is handled automatically
-                by `ExtractiveSummarizer.prepare_data`. Default is None.
-            ids (list, optional): A list of ids for each document. Not used by `ExtractiveSummarizer`. Default is None.
-            oracle_ids (list, optional): Similar to labels but is a list of indexes of the chosen sentences
-                instead of a one-hot encoded vector. These will be converted to labels. Default is None.
-            targets (list, optional): A list of the abstractive target for each document. Default is None.
-            overwrite_labels (bool, optional): Replace any labels currently stored by the ``SentencesProcessor``. Default is False.
-            overwrite_examples (bool, optional): Replace any examples currently stored by the ``SentencesProcessor``. Default is False.
+                sentence is a list of tokens. This is the output of `convert_to_extractive.py`
+                and is in the 'src' field for each doc. See
+                :meth:`extractive.ExtractiveSummarizer.prepare_data`.
+            labels (list, optional): A list of the labels for each document where each label is a
+                list of labels where the index of the label coresponds with the index of the
+                sentence in the respective entry in `texts.` Similarly to `texts`, this is handled
+                automatically by `ExtractiveSummarizer.prepare_data`. Default is None.
+            ids (list, optional): A list of ids for each document. Not used by
+                `ExtractiveSummarizer`. Default is None.
+            oracle_ids (list, optional): Similar to labels but is a list of indexes of the chosen
+                sentences instead of a one-hot encoded vector. These will be converted to labels.
+                Default is None.
+            targets (list, optional): A list of the abstractive target for each document.
+                Default is None.
+            overwrite_labels (bool, optional): Replace any labels currently stored by the
+                ``SentencesProcessor``. Default is False.
+            overwrite_examples (bool, optional): Replace any examples currently stored by the
+                ``SentencesProcessor``. Default is False.
 
         Returns:
             list: The examples as ``InputExample``\ s that have been added.
@@ -502,8 +516,8 @@ class SentencesProcessor:
                 labels = []
                 for text_set, oracle_id in zip(texts, oracle_ids):
                     text_label = [0] * len(text_set)
-                    for l in oracle_id:
-                        text_label[l] = 1
+                    for l_id in oracle_id:
+                        text_label[l_id] = 1
                     labels.append(text_label)
             else:
                 labels = [None] * len(texts)
@@ -558,9 +572,10 @@ class SentencesProcessor:
         pad_ids_and_attention=True,
     ):
         """
-        The process that actually creates the features. :meth:`~data.SentencesProcessor.get_features`
-        is the driving function, look there for a description of how this function works. This
-        function only exists so that processing can easily be done in parallel using ``Pool.map``.
+        The process that actually creates the features.
+        :meth:`~data.SentencesProcessor.get_features` is the driving function, look there for a
+        description of how this function works. This function only exists so that processing can
+        easily be done in parallel using ``Pool.map``.
         """
         ex_index, example, label = input_information
         if ex_index % 1000 == 0:
@@ -721,28 +736,30 @@ class SentencesProcessor:
         save_to_name=None,
         save_as_type="txt",
     ):
-        r"""Convert the examples stored by the ``SentencesProcessor`` to features that can be used by
-        a model. The following processes can be performed: tokenization, token type ids (to separate
-        sentences), sentence representation token ids (the locations of each sentence representation
-        token), sentence lengths, and the attention mask. Padding can be applied to the tokenized
-        examples and the attention masks but it is recommended to instead use the
+        r"""Convert the examples stored by the ``SentencesProcessor`` to features that can be used
+        by a model. The following processes can be performed: tokenization, token type ids (to
+        separate sentences), sentence representation token ids (the locations of each sentence
+        representation token), sentence lengths, and the attention mask. Padding can be applied to
+        the tokenized examples and the attention masks but it is recommended to instead use the
         :meth:`data.pad_batch_collate` function so each batch is padded individually for efficiency
         (less zeros passed through model).
 
         Arguments:
-            tokenizer (transformers.PreTrainedTokenizer): The tokenizer used to tokenize the examples.
-            bert_compatible_cls (bool, optional): Adds '[CLS]' tokens in front of each sentence. This is useful
-                so that the '[CLS]' token can be used to obtain sentence
+            tokenizer (transformers.PreTrainedTokenizer): The tokenizer used to tokenize the
+                examples.
+            bert_compatible_cls (bool, optional): Adds '[CLS]' tokens in front of each sentence.
+                This is useful so that the '[CLS]' token can be used to obtain sentence
                 embeddings. This only works if the chosen model has the '[CLS]'
                 token in its vocabulary. Default is True.
-            create_sent_rep_token_ids (bool, optional): Option to create sentence representation token ids. This
-                will store a list of the indexes of all the ``sent_rep_token_id``\ s
-                in the tokenized example. Default is True.
-            sent_rep_token_id ([type], optional): The token id that should be captured for each sentence (should have
-                one per sentence and each should represent that sentence).
+            create_sent_rep_token_ids (bool, optional): Option to create sentence representation
+                token ids. This will store a list of the indexes of all the
+                ``sent_rep_token_id``\ s in the tokenized example. Default is True.
+            sent_rep_token_id ([type], optional): The token id that should be captured for each
+                sentence (should have one per sentence and each should represent that sentence).
                 Default is ``'[CLS]' token if bert_compatible_cls else '[SEP]' token``.
-            create_sent_lengths (bool, optional): Option to create a list of sentence lengths where each index in
-                the list coresponds to the respective sentence in the example. Default is True.
+            create_sent_lengths (bool, optional): Option to create a list of sentence lengths where
+                each index in the list coresponds to the respective sentence in the example.
+                Default is True.
             create_segment_ids (str, optional): Option to create segment ids (aka token type ids).
                 See https://huggingface.co/transformers/glossary.html#token-type-ids for more info.
                 Set to either "binary", "sequential", or False.
@@ -758,38 +775,47 @@ class SentencesProcessor:
                 "binary" mode exists so that these pretrained models can easily
                 be used.
                 Default is "binary".
-            segment_token_id (str, optional): The token id to be used when creating segment ids. Can be set to 'period'
-                to treat periods as sentence separation tokens, but this is a terrible
-                idea for obvious reasons. Default is '[SEP]' token id.
-            create_source (bool, optional): Option to save the source text (non-tokenized) as a string. Default is False.
-            n_process (int, optional): How many processes to use for multithreading for running get_features_process().
-                Set higher to run faster and set lower is you experience OOM issues. Default is 2.
-            max_length (int, optional): If ``pad_ids_and_attention`` is True then pad to this amount. Default is ``tokenizer.max_len``.
-            pad_on_left (bool, optional): Optionally, pad on the left instead of right. Default is False.
-            pad_token (int, optional): Which token to use for padding the ``input_ids``. Default is 0.
-            mask_padding_with_zero (bool, optional): Use zeros to pad the attention. Uses ones otherwise. Default is True.
-            create_attention_mask (bool, optional): Option to create the attention mask. It is recommended to use
-                the :meth:`data.pad_batch_collate` function, which will automatically create
-                attention masks and pad them on a per batch level. Default is ``False if return_type == "lists" else True``.
-            pad_ids_and_attention (bool, optional): Pad the ``input_ids`` with ``pad_token`` and attention masks
-                with 0s or 1s deneding on ``mask_padding_with_zero``. Pad both to
+            segment_token_id (str, optional): The token id to be used when creating segment ids.
+                Can be set to 'period' to treat periods as sentence separation tokens, but this
+                is a terrible idea for obvious reasons. Default is '[SEP]' token id.
+            create_source (bool, optional): Option to save the source text (non-tokenized) as a
+                string. Default is False.
+            n_process (int, optional): How many processes to use for multithreading for running
+                get_features_process(). Set higher to run faster and set lower is you experience
+                OOM issues. Default is 2.
+            max_length (int, optional): If ``pad_ids_and_attention`` is True then pad to this
+                amount. Default is ``tokenizer.max_len``.
+            pad_on_left (bool, optional): Optionally, pad on the left instead of right. Default
+                is False.
+            pad_token (int, optional): Which token to use for padding the ``input_ids``. Default
+                is 0.
+            mask_padding_with_zero (bool, optional): Use zeros to pad the attention. Uses ones
+                otherwise. Default is True.
+            create_attention_mask (bool, optional): Option to create the attention mask. It is
+                recommended to use the :meth:`data.pad_batch_collate` function, which will
+                automatically create attention masks and pad them on a per batch level. Default
+                is ``False if return_type == "lists" else True``.
+            pad_ids_and_attention (bool, optional): Pad the ``input_ids`` with ``pad_token`` and
+                attention masks with 0s or 1s deneding on ``mask_padding_with_zero``. Pad both to
                 ``max_length``. Default is ``False if return_type == "lists" else True``
-            return_type (str, optional): Either "tensors", "lists", or None. See "Returns" section below. Default is None.
-            save_to_path (str, optional): The folder/directory to save the data to OR None to not save.
-                Will save the data specified by ``return_type`` to disk. Default is None.
-            save_to_name (str, optional): The name of the file to save. The extension '.pt' is automatically
-                appended. Default is ``'dataset_' + self.name + '.pt'``.
-            save_as_type (str, optional): The file extension of saved file if `save_to_path` is set. Supports "pt" (PyTorch)
-                and "txt" (Text). Saving as "txt" requires the ``return_type`` to be ``lists``. If ``return_type`` is
-                ``tensors`` the only ``save_as_type`` available is "pt". Defaults to "txt".
+            return_type (str, optional): Either "tensors", "lists", or None. See "Returns" section
+                below. Default is None.
+            save_to_path (str, optional): The folder/directory to save the data to OR None to not
+                save. Will save the data specified by ``return_type`` to disk. Default is None.
+            save_to_name (str, optional): The name of the file to save. The extension '.pt' is
+                automatically appended. Default is ``'dataset_' + self.name + '.pt'``.
+            save_as_type (str, optional): The file extension of saved file if `save_to_path` is
+                set. Supports "pt" (PyTorch) and "txt" (Text). Saving as "txt" requires the
+                ``return_type`` to be ``lists``. If ``return_type`` is ``tensors`` the only
+                ``save_as_type`` available is "pt". Defaults to "txt".
 
         Returns:
             list or torch.TensorDataset: If ``return_type is None`` return the list of calculated
             features. If ``return_type == "tensors"`` return the features converted to tensors
             and stacked such that features are grouped together into individual tensors. If
             ``return_type == "lists"``, which is the recommended option then exports each
-            ``InputFeatures`` object in the exported ``features`` list as a dictionary and appends each
-            dictionary to a list. Returns that list.
+            ``InputFeatures`` object in the exported ``features`` list as a dictionary and appends
+            each dictionary to a list. Returns that list.
         """
         assert return_type in ["tensors", "lists"] or return_type is None
         assert save_as_type in ["txt", "pt"] or save_to_path is None

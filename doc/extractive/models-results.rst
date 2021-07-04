@@ -3,7 +3,7 @@
 Extractive Pre-trained Models & Results
 =======================================
 
-The recommended model to use is ``distilroberta-base-ext-sum`` because of its fast performance, relatively low number of parameters, and good performance. 
+The recommended model to use is ``distilroberta-base-ext-sum`` because of its fast performance, relatively low number of parameters, and good performance.
 
 Notes
 -----
@@ -14,7 +14,7 @@ The remarkable performance to size ratio of the distil* models can be transferre
 
 `MobileBERT <https://arxiv.org/abs/2004.02984>`_ is similar to ``distilbert`` in that it is a smaller version of BERT that achieves amazing performance at a very small size. `According to the authors <https://openreview.net/forum?id=SJxjVaNKwB&noteId=S1gxqk_7jH>`__, MobileBERT is *2.64x smaller and 2.45x faster* than DistilBERT. DistilBERT successfully halves the depth of BERT model by knowledge distillation in the pre-training stage and an optional fine-tuning stage. MobileBERT only uses knowledge transfer in the pre-training stage and does not require a fine-tuned teacher or data augmentation in the down-stream tasks. DistilBERT compresses BERT by reducing its depth, while MobileBERT compresses BERT by reducing its width, which has been shown to be more effective. MobileBERT usually needs a larger learning rate and more training epochs in fine-tuning than the original BERT.
 
-.. important:: Interactive charts, graphs, raw data, run commands, hyperparameter choices, and more for all trained models are publicly available on the `TransformerSum Weights & Biases page <https://app.wandb.ai/hhousen/transformerextsum>`__. You can download the raw data for each model on this site, or `download an overview as a CSV <../_static/summarization-model-experiments-raw-data.csv>`__. Please open an `issue <https://github.com/HHousen/TransformerSum/issues/new>`__ if you have questions about these models. 
+.. important:: Interactive charts, graphs, raw data, run commands, hyperparameter choices, and more for all trained models are publicly available on the `TransformerSum Weights & Biases page <https://app.wandb.ai/hhousen/transformerextsum>`__. You can download the raw data for each model on this site, or `download an overview as a CSV <../_static/summarization-model-experiments-raw-data.csv>`__. Please open an `issue <https://github.com/HHousen/TransformerSum/issues/new>`__ if you have questions about these models.
 
 Additionally, all of the models on this page were trained completely for free using Tesla P100-PCIE-16GB GPUs on `Google Colaboratory <https://colab.research.google.com/>`_. Those that took over 12 hours to train were split into multiple training sessions since ``pytorch_lightning`` enables easy resuming with the ``--resume_from_checkpoint`` argument.
 
@@ -130,7 +130,7 @@ Test set results on the WikiHow dataset using ROUGE F\ :sub:`1`\ .
 +---------------------------------+------------+------------+------------+-------------+
 | distilroberta-base-ext-sum      | 31.07      | 8.96       | 19.34      | 28.95       |
 +---------------------------------+------------+------------+------------+-------------+
-| bert-base-uncased-ext-sum       | 30.68      | 08.67      | 19.16      | 28.59       | 
+| bert-base-uncased-ext-sum       | 30.68      | 08.67      | 19.16      | 28.59       |
 +---------------------------------+------------+------------+------------+-------------+
 | roberta-base-ext-sum            | 31.26      | 09.09      | 19.47      | 29.14       |
 +---------------------------------+------------+------------+------------+-------------+

@@ -70,7 +70,7 @@ Step-by-Step Instructions
 2. Extract (≈90GB): ``tar -xzvf longformer-encdec-base-8192.tar.gz``
 3. Training command:
 
-    .. code-block:: 
+    .. code-block::
 
         python main.py \
         --mode abstractive \

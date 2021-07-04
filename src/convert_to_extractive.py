@@ -1,22 +1,24 @@
+import gc
+import glob
+import gzip
+import itertools
+import json
+import logging
+import math
 import os
 import re
-import gc
 import sys
-import json
-import gzip
-import glob
-import math
-import itertools
-import logging
-import spacy
-import datasets as hf_nlp
-from spacy.lang.en import English
 from argparse import ArgumentParser
 from functools import partial
 from multiprocessing import Pool
-from tqdm import tqdm
 from time import time
-from helpers import load_json, _get_word_ngrams
+
+import spacy
+from spacy.lang.en import English
+from tqdm import tqdm
+
+import datasets as hf_nlp
+from helpers import _get_word_ngrams, load_json
 
 logger = logging.getLogger(__name__)
 
@@ -29,11 +31,13 @@ logger = logging.getLogger(__name__)
 #       Run source and target through oracle_id algorithm
 #       Run current preprocess_examples() function (data cleaning) in data processor
 #       Return source (as list of sentences) and target
-#   In map() loop: append each (source, target, labels) to variable and save (as cnn_dm_extractive) once done
+#   In map() loop: append each (source, target, labels) to variable and save (as
+#   cnn_dm_extractive) once done
 
 # BertSum:
 # 1. Tokenize all files into tokenized json versions
-# 2. Split json into source and target AND concat stories into chunks of `shard_size` number of stories
+# 2. Split json into source and target AND concat stories into chunks of `shard_size`
+#    number of stories
 # 3. Process to obtain extractive summary and labels for each shard
 # 4. Save each processed shard as list of dictionaries with processed values
 
@@ -66,8 +70,9 @@ def read_in_chunks(file_object, chunk_size=5000):
 def convert_to_extractive_driver(args):
     """
     Driver function to convert an abstractive summarization dataset to an extractive dataset.
-    The abstractive dataset must be formatted with two files for each split: a source and target file.
-    Example file list for two splits: ``["train.source", "train.target", "val.source", "val.target"]``
+    The abstractive dataset must be formatted with two files for each split: a source and target
+    file. Example file list for two splits:
+    ``["train.source", "train.target", "val.source", "val.target"]``
     """
     # default is to output to input data directory if no output directory specified
     if not args.base_output_path:
@@ -111,7 +116,7 @@ def convert_to_extractive_driver(args):
             if args.dataset:
                 target_file_len = len(current_dataset)
             else:
-                target_file_len = sum([1 for line in target_file])
+                target_file_len = sum(1 for line in target_file)
                 # reset pointer back to beginning after getting length
                 target_file.seek(0)
 
@@ -230,7 +235,8 @@ def convert_to_extractive_process(
     logger.info("Processing %s", name)
     t0 = time()
     for (preprocessed_data, target_doc) in pool.map(
-        _example_processor, zip(source_docs_tokenized, target_docs_tokenized),
+        _example_processor,
+        zip(source_docs_tokenized, target_docs_tokenized),
     ):
         if preprocessed_data is not None:
             # preprocessed_data is (source_doc, labels)
@@ -277,7 +283,8 @@ def resume(output_path, split, chunk_size):
         return None
 
     # get the first match because and convert to int so max() operator works
-    # more info about the below RegEx: https://stackoverflow.com/a/1454936 (https://web.archive.org/web/20200701145857/https://stackoverflow.com/questions/1454913/regular-expression-to-find-a-string-included-between-two-characters-while-exclud/1454936)
+    # more info about the below RegEx: https://stackoverflow.com/a/1454936
+    # (https://web.archive.org/web/20200701145857/https://stackoverflow.com/questions/1454913/regular-expression-to-find-a-string-included-between-two-characters-while-exclud/1454936) # noqa: E501
     shard_file_idxs = [
         int(re.search(r"(?<=\.)(.*?)(?=\.)", a).group(1)) for a in all_json_in_split
     ]
@@ -336,12 +343,16 @@ def check_resume_success(
         logger.info("Previous (to resume line) Source Line: %s", preprocessed_line)
         # skipcq: PYL-W1201
         logger.info(
-            (
-                "Common causes of this issue:\n"
-                + "1. You changed the `--shard_interval`. You used a different interval previously than you used in the command to resume.\n"
-                + "2. The abstractive (`.source` and `.target`) or extractive (`.json`) dataset files were modified or removed. The last `.json` file needs to be in the same folder it was originally outputted to so the last shard index and be determined and the last line can be read.\n"
-                + "3. It is entirely possible that there is a bug in this script. If you have checked that the above were not the cause and that there were no issues pertaining to your dataset then open an issue at https://github.com/HHousen/TransformerSum/issues/new."
-            )
+            "Common causes of this issue:\n"
+            + "1. You changed the `--shard_interval`. You used a different interval previously "
+            + "than you used in the command to resume.\n"
+            + "2. The abstractive (`.source` and `.target`) or extractive (`.json`) dataset "
+            + "files were modified or removed. The last `.json` file needs to be in the same "
+            + "folder it was originally outputted to so the last shard index and be determined "
+            + "and the last line can be read.\n"
+            + "3. It is entirely possible that there is a bug in this script. If you have checked "
+            + "that the above were not the cause and that there were no issues pertaining to your "
+            + "dataset then open an issue at https://github.com/HHousen/TransformerSum/issues/new."
         )
         return False
 
@@ -395,7 +406,11 @@ def tokenize(
     tokenized = []
 
     for doc in tqdm(
-        nlp.pipe(docs, n_process=n_process, batch_size=batch_size,),
+        nlp.pipe(
+            docs,
+            n_process=n_process,
+            batch_size=batch_size,
+        ),
         total=len(docs),
         desc="Tokenizing" + name,
         mininterval=tokenizer_log_interval,
@@ -416,7 +431,8 @@ def tokenize(
     del doc_sents
 
     logger.debug("Done in %.2f seconds", time() - t0)
-    # `sents` is an array of documents where each document is an array sentences where each sentence is an array of tokens
+    # `sents` is an array of documents where each document is an array sentences where each
+    # sentence is an array of tokens
     return sents
 
 
@@ -433,8 +449,8 @@ def example_processor(inputs, args, oracle_mode="greedy", no_preprocess=False):
 
     # `oracle_ids` to labels
     labels = [0] * len(source_doc)
-    for l in oracle_ids:
-        labels[l] = 1
+    for l_id in oracle_ids:
+        labels[l_id] = 1
 
     # The number of sentences in the source document should equal the number of labels.
     # There should be one label per sentence.
@@ -443,7 +459,9 @@ def example_processor(inputs, args, oracle_mode="greedy", no_preprocess=False):
         + str(source_doc)
         + "\nLabels: "
         + str(labels)
-        + "\n^^ The above document and label combination are not equal in length. The cause of this problem in not known. This check exists to prevent further problems down the data processing pipeline."
+        + "\n^^ The above document and label combination are not equal in length. The cause of "
+        + "this problem in not known. This check exists to prevent further problems down the "
+        + "data processing pipeline."
     )
 
     if no_preprocess:
@@ -491,7 +509,7 @@ def preprocess(
 
 
 # Section Methods (to convert abstractive summary to extractive)
-# Copied from https://github.com/nlpyang/BertSum/blob/9aa6ab84faf3a50724ce7112c780a4651de289b0/src/prepro/data_builder.py
+# Copied from https://github.com/nlpyang/BertSum/blob/9aa6ab84faf3a50724ce7112c780a4651de289b0/src/prepro/data_builder.py  # noqa: E501
 def combination_selection(doc_sent_list, abstract_sent_list, summary_size):
     def _rouge_clean(s):
         return re.sub(r"[^a-zA-Z0-9 ]", "", s)
@@ -650,7 +668,9 @@ if __name__ == "__main__":
         help="use gzip compression when saving data",
     )
     parser.add_argument(
-        "--resume", action="store_true", help="resume from last shard",
+        "--resume",
+        action="store_true",
+        help="resume from last shard",
     )
     parser.add_argument(
         "--tokenizer_log_interval",
@@ -661,12 +681,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--sentencizer",
         action="store_true",
-        help="use a spacy sentencizer instead of a statistical model for sentence detection (much faster but less accurate); see https://spacy.io/api/sentencizer",
+        help="use a spacy sentencizer instead of a statistical model for sentence "
+        + "detection (much faster but less accurate); see https://spacy.io/api/sentencizer",
     )
     parser.add_argument(
         "--no_preprocess",
         action="store_true",
-        help="do not run the preprocess function, which removes sentences that are too long/short and examples that have too few/many sentences",
+        help="do not run the preprocess function, which removes sentences that are too "
+        + "long/short and examples that have too few/many sentences",
     )
     parser.add_argument(
         "--min_sentence_ntokens",
@@ -696,7 +718,8 @@ if __name__ == "__main__":
         "--dataset",
         type=str,
         default=None,
-        help="The dataset name from the `nlp` library to use for training/evaluation/testing. Default is None.",
+        help="The dataset name from the `nlp` library to use for training/evaluation/testing. "
+        + "Default is None.",
     )
     parser.add_argument(
         "--dataset_version",
@@ -708,7 +731,8 @@ if __name__ == "__main__":
         "--data_example_column",
         type=str,
         default=None,
-        help="The column of the `nlp` dataset that contains the text to be summarized. Default is None.",
+        help="The column of the `nlp` dataset that contains the text to be summarized. "
+        + "Default is None.",
     )
     parser.add_argument(
         "--data_summarized_column",
@@ -728,7 +752,9 @@ if __name__ == "__main__":
 
     if main_args.resume and not main_args.shard_interval:
         parser.error(
-            "Resuming requires both shard mode (--shard_interval) to be enabled and shards to be created. Must use same 'shard_interval' that was used previously to create the files to be resumed from."
+            "Resuming requires both shard mode (--shard_interval) to be enabled and "
+            + "shards to be created. Must use same 'shard_interval' that was used "
+            + "previously to create the files to be resumed from."
         )
 
     # The `nlp` library has specific names for the dataset split names so set them
