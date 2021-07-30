@@ -63,6 +63,15 @@ If you want to summarize text using a pre-trained model from python code then fo
         text_to_summarize = "Something Awesome"
         summary = model.predict(text_to_summarize)
 
+.. important:: When loading a pre-trained model you may encounter this common error:
+
+    .. code-block::
+
+        RuntimeError: Error(s) in loading state_dict for ExtractiveSummarizer:
+        Missing key(s) in state_dict: "word_embedding_model.embeddings.position_ids".
+
+    To solve this issue, set ``strict=False`` like so: ``model = ExtractiveSummarizer.load_from_checkpoint("distilroberta-base-ext-sum.ckpt", strict=False)``.
+
 .. note:: If you are using an :class:`~extractive.ExtractiveSummarizer`, then you can pass ``num_summary_sentences`` to specify the number of sentences in the output summary. For instance, ``summary = model.predict(text_to_summarize, num_summary_sentences=5)``. The default is 3 sentences. More info at :meth:`extractive.ExtractiveSummarizer.predict`.
 
 Extractive Summarization
