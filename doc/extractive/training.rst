@@ -8,6 +8,15 @@ Details
 
 Once the dataset has been converted to the extractive task, it can be used as input to a :class:`data.SentencesProcessor`, which has a :meth:`~data.SentencesProcessor.add_examples()` function to add sets of ``(example, labels)`` and a :meth:`~data.SentencesProcessor.get_features()` function that processes the data and prepares it to be inputted into the model (``input_ids``, ``attention_masks``, ``labels``, ``token_type_ids``, ``sent_rep_token_ids``, ``sent_rep_token_ids_masks``). Feature extraction runs in parallel and tokenizes text using the tokenizer appropriate for the model specified with ``--model_name_or_path``. The tokenizer can be changed to another ``huggingface/transformers`` tokenizer with the ``--tokenizer_name`` option.
 
+.. important:: When loading a pre-trained model you may encounter this common error:
+
+    .. code-block::
+
+        RuntimeError: Error(s) in loading state_dict for ExtractiveSummarizer:
+        Missing key(s) in state_dict: "word_embedding_model.embeddings.position_ids".
+
+    To solve this issue, set ``strict=False`` like so: ``model = ExtractiveSummarizer.load_from_checkpoint("distilroberta-base-ext-sum.ckpt", strict=False)``. If you are using the ``main.py`` script, then you can alternatively sepcify the ``--no_strict`` option.
+
 For the :ref:`CNN/DM dataset <extractive_dataset_cnn_dm>`, to train a model for 50,000 steps on the data run:
 
 .. code-block:: bash
