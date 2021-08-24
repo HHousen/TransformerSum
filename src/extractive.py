@@ -1173,8 +1173,7 @@ class ExtractiveSummarizer(pl.LightningModule):
             of input sentences and their corespoding scores.
         """
         nlp = English()
-        sentencizer = nlp.create_pipe("sentencizer")
-        nlp.add_pipe(sentencizer)
+        nlp.add_pipe("sentencizer")
         doc = nlp(input_text)
 
         return self.predict_sentences(
