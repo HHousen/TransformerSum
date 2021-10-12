@@ -34,12 +34,12 @@ logger = logging.getLogger(__name__)
 # CUSTOM_MODEL_CLASSES = ("longformer",)
 
 try:
-    from transformers.models.auto.modeling_auto import MODEL_MAPPING
+    from transformers.models.auto.modeling_auto import MODEL_MAPPING_NAMES
 
-    MODEL_CLASSES = tuple(m.model_type for m in MODEL_MAPPING)  # + CUSTOM_MODEL_CLASSES
+    MODEL_CLASSES = tuple(MODEL_MAPPING_NAMES.keys())  # + CUSTOM_MODEL_CLASSES
 except ImportError:
     logger.warning(
-        "Could not import `MODEL_MAPPING` from transformers because it is an old version."
+        "Could not import `MODEL_MAPPING_NAMES` from transformers because it is an old version."
     )
 
     MODEL_CLASSES = (
