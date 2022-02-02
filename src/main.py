@@ -89,11 +89,22 @@ def main(args):
         args.logger = wandb_logger
 
     if args.use_custom_checkpoint_callback:
-        args.checkpoint_callback = ModelCheckpoint(
-            save_top_k=-1,
-            period=1,
-            verbose=True,
-        )
+        try:
+            args.checkpoint_callback = ModelCheckpoint(
+                save_top_k=-1,
+                period=1,
+                verbose=True,
+            )
+        except TypeError:
+            logger.warning(
+                "'period' parameter of ModelCheckpoint has been renamed to 'every_n_epochs'."
+            )
+            args.checkpoint_callback = ModelCheckpoint(
+                save_top_k=-1,
+                every_n_epochs=1,
+                verbose=True,
+            )
+
     if args.custom_checkpoint_every_n:
         custom_checkpoint_callback = StepCheckpointCallback(
             step_interval=args.custom_checkpoint_every_n,
