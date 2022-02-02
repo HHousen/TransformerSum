@@ -92,16 +92,17 @@ def main(args):
         try:
             args.checkpoint_callback = ModelCheckpoint(
                 save_top_k=-1,
-                period=1,
+                every_n_epochs=1,
                 verbose=True,
             )
         except TypeError:
             logger.warning(
-                "'period' parameter of ModelCheckpoint has been renamed to 'every_n_epochs'."
+                "'every_n_epochs' parameter of ModelCheckpoint is not found. "
+                + "Defaulting to its old name, 'period'."
             )
             args.checkpoint_callback = ModelCheckpoint(
                 save_top_k=-1,
-                every_n_epochs=1,
+                period=1,
                 verbose=True,
             )
 
