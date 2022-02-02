@@ -248,7 +248,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--amp_backend",
         type=str,
-        default="apex",
+        default="native",
         choices=["native", "apex"],
         help="PyTorch Lightning amp_backend ('native' or 'apex')",
     )
