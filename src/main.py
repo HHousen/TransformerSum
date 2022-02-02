@@ -241,9 +241,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "--amp_level",
         type=str,
-        default="O1",
+        default=None,
         help="The optimization level to use (O1, O2, etc…) for 16-bit GPU precision (using "
         + "NVIDIA apex under the hood).",
+    )
+    parser.add_argument(
+        "--amp_backend",
+        type=str,
+        default="apex",
+        choices=["native", "apex"],
+        help="PyTorch Lightning amp_backend ('native' or 'apex')",
     )
     parser.add_argument(
         "--precision",
