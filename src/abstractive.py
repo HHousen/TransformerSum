@@ -142,6 +142,7 @@ class AbstractiveSummarizer(pl.LightningModule):
             self.target_eoseq_token = self.tokenizer.pad_token
         else:
             self.target_eoseq_token = "[unused1]"
+            self.tokenizer.pad_token = "[unused2]"
             do_seq_special_add = True
 
         # Convert `target_boseq_token` and `target_eoseq_token` to IDs
