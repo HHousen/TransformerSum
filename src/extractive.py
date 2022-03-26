@@ -1152,6 +1152,7 @@ class ExtractiveSummarizer(pl.LightningModule):
         logger.debug("Selected sentence ids: %s", selected_ids)
 
         selected_sents = []
+        selected_ids.sort()
         for i in selected_ids:
             selected_sents.append(src_txt[i])
 
