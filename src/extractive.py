@@ -1098,7 +1098,14 @@ class ExtractiveSummarizer(pl.LightningModule):
         else:
             nlp = English()
             sentencizer = nlp.create_pipe("sentencizer")
-            nlp.add_pipe(sentencizer)
+            try:
+                nlp.add_pipe(sentencizer)
+            except ValueError as e:
+                if e.args[0].startswith("[E966]"):
+                    nlp.add_pipe("sentencizer")
+                else:
+                    raise e
+
 
             src_txt = [
                 " ".join([token.text for token in nlp(sentence) if str(token) != "."])
