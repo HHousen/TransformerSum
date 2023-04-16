@@ -9,7 +9,7 @@ from extractive import ExtractiveSummarizer  # noqa: E402
 
 
 def summarize_text(text, model_choice):
-    summarizer = ExtractiveSummarizer.load_from_checkpoint(model_choice)
+    summarizer = ExtractiveSummarizer.load_from_checkpoint(model_choice, strict=False)
     return summarizer.predict(text)
 
 
