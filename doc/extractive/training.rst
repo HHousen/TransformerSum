@@ -21,7 +21,7 @@ For the :ref:`CNN/DM dataset <extractive_dataset_cnn_dm>`, to train a model for 
 
 .. code-block:: bash
 
-    python main.py --data_path ./datasets/cnn_dailymail_processor/cnn_dm --weights_save_path ./trained_models --do_train --max_steps 50000
+    python main.py --data_path ./datasets/cnn_dailymail_processor/cnn_dm --weights_save_path ./trained_models --do_train --max_steps 50000 --data_type txt
 
 * The ``--do_train`` argument runs the training process. Set `--do_test` to test after training.
 * The ``--data_path`` argument specifies where the extractive dataset json file are located.
