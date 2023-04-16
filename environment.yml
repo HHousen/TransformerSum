@@ -4,13 +4,13 @@ channels:
     - pytorch
 dependencies:
     - python=3.10
-    - pytorch==2.0.*
-    - scikit-learn==1.2.*
-    - tensorboard==2.12.*
-    - spacy==3.5.*
-    - sphinx==6.1.*
-    - pyarrow==11.0.*
-    - pre-commit==3.2.*
+    - pytorch=2.0.*
+    - scikit-learn=1.2.*
+    - tensorboard
+    - spacy
+    - sphinx
+    - pyarrow
+    - pre-commit=3.2.*
     - pip
     - pip:
       - pytorch_lightning==1.6.5
