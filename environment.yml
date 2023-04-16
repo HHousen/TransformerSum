@@ -3,20 +3,21 @@ channels:
     - conda-forge
     - pytorch
 dependencies:
-    - pytorch
-    - scikit-learn
-    - tensorboard
-    - spacy
-    - sphinx
-    - pyarrow
-    - pre-commit
+    - python=3.10
+    - pytorch==2.0.*
+    - scikit-learn==1.2.*
+    - tensorboard==2.12.*
+    - spacy==3.5.*
+    - sphinx==6.1.*
+    - pyarrow==11.0.*
+    - pre-commit==3.2.*
     - pip
     - pip:
-      - pytorch_lightning
-      - transformers
-      - torch_optimizer
-      - wandb
-      - rouge-score
+      - pytorch_lightning==1.6.5
+      - transformers==4.*
+      - torch_optimizer==0.3.*
+      - wandb==0.14.*
+      - rouge-score==0.1.*
       - packaging
-      - datasets
-      - gradio
+      - datasets==2.*
+      - gradio==3.*
