@@ -955,6 +955,8 @@ class ExtractiveSummarizer(pl.LightningModule):
                     not block_trigrams(candidate, current_prediction)
                 ):
                     current_prediction.append(candidate)
+                if self.hparams.no_test_block_trigrams:
+                    current_prediction.append(candidate)
 
                 # If the testing method is "top_k" and correct number of sentences have been
                 # added then break the loop and stop adding sentences. If the testing method
