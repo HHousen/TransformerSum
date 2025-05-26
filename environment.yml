@@ -21,3 +21,4 @@ dependencies:
       - packaging
       - datasets==2.*
       - gradio==3.*
+      - sphinx_rtd_theme
