@@ -20,17 +20,17 @@ CNN/DM
 
 The **CNN/DailyMail** (Hermann et al., 2015) dataset contains 93k articles from the CNN, and 220k articles the Daily Mail newspapers. Both publishers supplement their articles with bullet point summaries. Non-anonymized variant in See et al. (2017).
 
-+-------------------------------+--------------------------------------------------------------------------------------+
-| Type                          | Link                                                                                 |
-+===============================+======================================================================================+
-| Processor Repository          | `artmatsak/cnn-dailymail <https://github.com/artmatsak/cnn-dailymail>`_              |
-+-------------------------------+--------------------------------------------------------------------------------------+
-| Data Download Link            | `CNN/DM official website <https://cs.nyu.edu/~kcho/DMQA/>`__                         |
-+-------------------------------+--------------------------------------------------------------------------------------+
-| Processed Abstractive Dataset | `Hugging Face <https://huggingface.co/HHousen/TransformerSum/blob/main/CNN-DM/cnn_dm_abstractive/cnn_dm.tar.gz>`__  |
-+-------------------------------+--------------------------------------------------------------------------------------+
-| Extractive Version            | `Hugging Face <https://huggingface.co/HHousen/TransformerSum/blob/main/CNN-DM/cnn_dm_extractive_compressed_5000/cnn_dm_extractive_compressed_5000.tar.gz>`__  |
-+-------------------------------+--------------------------------------------------------------------------------------+
++-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|             Type              |                                                                             Link                                                                             |
++===============================+==============================================================================================================================================================+
+| Processor Repository          | `artmatsak/cnn-dailymail <https://github.com/artmatsak/cnn-dailymail>`_                                                                                      |
++-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Data Download Link            | `CNN/DM official website <https://cs.nyu.edu/~kcho/DMQA/>`__                                                                                                 |
++-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Processed Abstractive Dataset | `Hugging Face <https://huggingface.co/HHousen/TransformerSum/blob/main/CNN-DM/cnn_dm_abstractive/cnn_dm.tar.gz>`__                                           |
++-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Extractive Version            | `Hugging Face <https://huggingface.co/HHousen/TransformerSum/blob/main/CNN-DM/cnn_dm_extractive_compressed_5000/cnn_dm_extractive_compressed_5000.tar.gz>`__ |
++-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 Download and unzip the stories directories from `here <https://cs.nyu.edu/~kcho/DMQA/>`_ for both CNN and Daily Mail. The files can be downloaded from the terminal with `gdown`, which can be installed with `pip install gdown`.
 
@@ -56,7 +56,7 @@ WikiHow
 **WikiHow** (Koupaee and Wang, 2018) is a large-scale dataset of instructions from the online WikiHow.com website. Each of 200k examples consists of multiple instruction-step paragraphs along with a summarizing sentence. The task is to generate the concatenated summary-sentences from the paragraphs.
 
 +------------------------+---------+
-| Dataset Size           | 230,843 |
+|      Dataset Size      | 230,843 |
 +========================+=========+
 | Average Article Length | 579.8   |
 +------------------------+---------+
@@ -65,17 +65,17 @@ WikiHow
 | Vocabulary Size        | 556,461 |
 +------------------------+---------+
 
-+-------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Type                          | Link                                                                                                                                                                      |
-+===============================+===========================================================================================================================================================================+
-| Processor Repository          | `HHousen/WikiHow-Dataset <https://github.com/HHousen/WikiHow-Dataset>`_ (`Original Repo <https://github.com/mahnazkoupaee/WikiHow-Dataset>`__)                            |
-+-------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Data Download Link            | `wikihowAll.csv <https://bit.ly/3cueodA>`_ (`mirror <https://huggingface.co/HHousen/TransformerSum/blob/main/WikiHow/wikihowAll.csv.gz>`_) and `wikihowSep.csv <https://bit.ly/3btJ12G>`_  |
-+-------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Processed Abstractive Dataset | `Hugging Face <https://huggingface.co/HHousen/TransformerSum/blob/main/WikiHow/wikihow_abstractive/wikihow_abstractive.tar.gz>`__                                                                                       |
-+-------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Extractive Version            | `Hugging Face <https://huggingface.co/HHousen/TransformerSum/blob/main/WikiHow/wikihow_extractive_compressed_5000/wikihow_extractive_compressed_5000.tar.gz>`__                                                                                       |
-+-------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
++-------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|             Type              |                                                                                           Link                                                                                            |
++===============================+===========================================================================================================================================================================================+
+| Processor Repository          | `HHousen/WikiHow-Dataset <https://github.com/HHousen/WikiHow-Dataset>`_ (`Original Repo <https://github.com/mahnazkoupaee/WikiHow-Dataset>`__)                                            |
++-------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Data Download Link            | `wikihowAll.csv <https://bit.ly/3cueodA>`_ (`mirror <https://huggingface.co/HHousen/TransformerSum/blob/main/WikiHow/wikihowAll.csv.gz>`_) and `wikihowSep.csv <https://bit.ly/3btJ12G>`_ |
++-------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Processed Abstractive Dataset | `Hugging Face <https://huggingface.co/HHousen/TransformerSum/blob/main/WikiHow/wikihow_abstractive/wikihow_abstractive.tar.gz>`__                                                         |
++-------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Extractive Version            | `Hugging Face <https://huggingface.co/HHousen/TransformerSum/blob/main/WikiHow/wikihow_extractive_compressed_5000/wikihow_extractive_compressed_5000.tar.gz>`__                           |
++-------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 Processing Steps:
 
@@ -89,7 +89,7 @@ PubMed/ArXiv
 from [arXiv.org](http://arxiv.org/) (113k) and PubMed (215k). The task is to generate the abstract from the paper body.
 
 +-----------------------+--------+--------------------------+-----------------------------+
-| Datasets              | # docs | avg. doc. length (words) | avg. summary length (words) |
+|       Datasets        | # docs | avg. doc. length (words) | avg. summary length (words) |
 +=======================+========+==========================+=============================+
 | CNN                   | 92K    | 656                      | 43                          |
 +-----------------------+--------+--------------------------+-----------------------------+
@@ -102,17 +102,17 @@ from [arXiv.org](http://arxiv.org/) (113k) and PubMed (215k). The task is to gen
 | arXiv (this dataset)  | 215K   | 4938                     | 220                         |
 +-----------------------+--------+--------------------------+-----------------------------+
 
-+-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Type                          | Link                                                                                                                                                   |
-+===============================+========================================================================================================================================================+
-| Processor Repository          | `HHousen/ArXiv-PubMed-Sum <https://github.com/HHousen/ArXiv-PubMed-Sum>`_ (`Original Repo <https://github.com/armancohan/long-summarization>`__)       |
-+-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Data Download Link            | `PubMed <https://bit.ly/2VsKNvt>`_ (`mirror <https://bit.ly/2VLPJuh>`__) and `ArXiv <https://bit.ly/2wWeVpp>`_ (`mirror <https://bit.ly/2VPWnzs>`__)   |
-+-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Processed Abstractive Dataset | `Hugging Face <https://huggingface.co/HHousen/TransformerSum/blob/main/arXiv-PubMed/arxiv-pubmed_abstractive/arxiv-pubmed_abstractive.tar.gz>`__                                                                    |
-+-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Extractive Version            | `Hugging Face <https://huggingface.co/HHousen/TransformerSum/blob/main/arXiv-PubMed/arxiv-pubmed_extractive_compressed_5000/arxiv-pubmed_extractive_compressed_5000.tar.gz>`__                                                                    |
-+-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------+
++-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|             Type              |                                                                                      Link                                                                                      |
++===============================+================================================================================================================================================================================+
+| Processor Repository          | `HHousen/ArXiv-PubMed-Sum <https://github.com/HHousen/ArXiv-PubMed-Sum>`_ (`Original Repo <https://github.com/armancohan/long-summarization>`__)                               |
++-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Data Download Link            | `PubMed <https://bit.ly/2VsKNvt>`_ (`mirror <https://bit.ly/2VLPJuh>`__) and `ArXiv <https://bit.ly/2wWeVpp>`_ (`mirror <https://bit.ly/2VPWnzs>`__)                           |
++-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Processed Abstractive Dataset | `Hugging Face <https://huggingface.co/HHousen/TransformerSum/blob/main/arXiv-PubMed/arxiv-pubmed_abstractive/arxiv-pubmed_abstractive.tar.gz>`__                               |
++-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Extractive Version            | `Hugging Face <https://huggingface.co/HHousen/TransformerSum/blob/main/arXiv-PubMed/arxiv-pubmed_extractive_compressed_5000/arxiv-pubmed_extractive_compressed_5000.tar.gz>`__ |
++-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 Processing Steps:
 
