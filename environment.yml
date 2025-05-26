@@ -11,7 +11,7 @@ dependencies:
     - sphinx
     - pyarrow
     - pre-commit=3.2.*
-    - pip
+    - pip<24.1
     - pip:
       - pytorch_lightning==1.6.5
       - transformers==4.*
