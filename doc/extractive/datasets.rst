@@ -27,9 +27,9 @@ The **CNN/DailyMail** (Hermann et al., 2015) dataset contains 93k articles from 
 +-------------------------------+--------------------------------------------------------------------------------------+
 | Data Download Link            | `CNN/DM official website <https://cs.nyu.edu/~kcho/DMQA/>`__                         |
 +-------------------------------+--------------------------------------------------------------------------------------+
-| Processed Abstractive Dataset | `Google Drive <https://drive.google.com/uc?id=1jlo6kFUBxKZmTe4JHbGsdi5jPq-03-Ke>`__  |
+| Processed Abstractive Dataset | `Hugging Face <https://huggingface.co/HHousen/TransformerSum/blob/main/CNN-DM/cnn_dm_abstractive/cnn_dm.tar.gz>`__  |
 +-------------------------------+--------------------------------------------------------------------------------------+
-| Extractive Version            | `Google Drive <https://drive.google.com/uc?id=1ucg-6WpFm3hV_OGsE35Jq-UQrL3s4AJY>`__  |
+| Extractive Version            | `Hugging Face <https://huggingface.co/HHousen/TransformerSum/blob/main/CNN-DM/cnn_dm_extractive_compressed_5000/cnn_dm_extractive_compressed_5000.tar.gz>`__  |
 +-------------------------------+--------------------------------------------------------------------------------------+
 
 Download and unzip the stories directories from `here <https://cs.nyu.edu/~kcho/DMQA/>`_ for both CNN and Daily Mail. The files can be downloaded from the terminal with `gdown`, which can be installed with `pip install gdown`.
@@ -70,11 +70,11 @@ WikiHow
 +===============================+===========================================================================================================================================================================+
 | Processor Repository          | `HHousen/WikiHow-Dataset <https://github.com/HHousen/WikiHow-Dataset>`_ (`Original Repo <https://github.com/mahnazkoupaee/WikiHow-Dataset>`__)                            |
 +-------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Data Download Link            | `wikihowAll.csv <https://bit.ly/3cueodA>`_ (`mirror <https://drive.google.com/uc?id=1cl11A9aDcWxGn8qMibEy7ovY9UnOVzP6>`_) and `wikihowSep.csv <https://bit.ly/3btJ12G>`_  |
+| Data Download Link            | `wikihowAll.csv <https://bit.ly/3cueodA>`_ (`mirror <https://huggingface.co/HHousen/TransformerSum/blob/main/WikiHow/wikihowAll.csv.gz>`_) and `wikihowSep.csv <https://bit.ly/3btJ12G>`_  |
 +-------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Processed Abstractive Dataset | `Google Drive <https://drive.google.com/uc?id=1v5rDxh5WrXYh-u8eyHfNKTKy89QI7Dkd>`__                                                                                       |
+| Processed Abstractive Dataset | `Hugging Face <https://huggingface.co/HHousen/TransformerSum/blob/main/WikiHow/wikihow_abstractive/wikihow_abstractive.tar.gz>`__                                                                                       |
 +-------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Extractive Version            | `Google Drive <https://drive.google.com/uc?id=1jyNdc0fhrriZXArV-9R2UJMHfdQaQV3D>`__                                                                                       |
+| Extractive Version            | `Hugging Face <https://huggingface.co/HHousen/TransformerSum/blob/main/WikiHow/wikihow_extractive_compressed_5000/wikihow_extractive_compressed_5000.tar.gz>`__                                                                                       |
 +-------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 Processing Steps:
@@ -109,9 +109,9 @@ from [arXiv.org](http://arxiv.org/) (113k) and PubMed (215k). The task is to gen
 +-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------+
 | Data Download Link            | `PubMed <https://bit.ly/2VsKNvt>`_ (`mirror <https://bit.ly/2VLPJuh>`__) and `ArXiv <https://bit.ly/2wWeVpp>`_ (`mirror <https://bit.ly/2VPWnzs>`__)   |
 +-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Processed Abstractive Dataset | `Google Drive <https://drive.google.com/uc?id=1a32oPIzIJ7DGekKL1tyAgfEyoI9NxENs>`__                                                                    |
+| Processed Abstractive Dataset | `Hugging Face <https://huggingface.co/HHousen/TransformerSum/blob/main/arXiv-PubMed/arxiv-pubmed_abstractive/arxiv-pubmed_abstractive.tar.gz>`__                                                                    |
 +-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Extractive Version            | `Google Drive <https://drive.google.com/uc?id=1SsenAqbK1wmvd_1oWgAT1fRtLcA9rglS>`__                                                                    |
+| Extractive Version            | `Hugging Face <https://huggingface.co/HHousen/TransformerSum/blob/main/arXiv-PubMed/arxiv-pubmed_extractive_compressed_5000/arxiv-pubmed_extractive_compressed_5000.tar.gz>`__                                                                    |
 +-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 Processing Steps:

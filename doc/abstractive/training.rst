@@ -66,7 +66,7 @@ GitHub issues that discussed the creation of ``LongformerEncoderDecoder``:
 Step-by-Step Instructions
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1. Download dataset (≈2.8GB): ``gdown https://drive.google.com/uc?id=1rRzLwCl-s84Ji4ZfvfKV_iWunOy_cbE2``
+1. Download dataset (≈2.8GB): ``wget https://huggingface.co/HHousen/TransformerSum/blob/main/Abstractive/arXiv-PubMed/arxiv_pubmed_abs_preprocessed/longformer-encdec-base-8192/longformer-encdec-base-8192.tar.gz``
 2. Extract (≈90GB): ``tar -xzvf longformer-encdec-base-8192.tar.gz``
 3. Training command:
 

@@ -16,19 +16,19 @@ The models output from the ``convert_bart_to_longformerencoderdecoder.py`` scrip
 
 These are ``huggingface/transformers`` models, so they need to be used with the ``--model_name_or_path`` option. They can also be loaded directly in ``huggingface/transformers`` using ``LEDForConditionalGeneration.from_pretrained()``.
 
-The Google Drive folder containing my contributions to the below models is available `at this link <https://drive.google.com/drive/folders/1dEdD0Nh-uyILYRIMAHOVuqdY3H0gqEQa>`__.
+The models listed below are available on Hugging Face.
 
-+---------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+
-| Name (Shortcut Code)                                                                              | Initialized From                                                                        | GDrive Download                                                                            |
-+===================================================================================================+=========================================================================================+============================================================================================+
-| `allenai/led-base-16384 <https://huggingface.co/allenai/led-base-16384>`_                         | `facebook/bart-base <https://huggingface.co/facebook/bart-large>`_                      |                                                                                            |
-+---------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+
-| `allenai/led-large-16384 <https://huggingface.co/allenai/led-large-16384>`_                       | `facebook/bart-large <https://huggingface.co/facebook/bart-large>`_                     |                                                                                            |
-+---------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+
-| `HHousen/distil-led-large-cnn-16384 <https://huggingface.co/HHousen/distil-led-large-cnn-16384>`_ | `sshleifer/distilbart-cnn-12-6 <https://huggingface.co/sshleifer/distilbart-cnn-12-6>`_ | `Folder Link <https://drive.google.com/drive/folders/1smiMCFRpKEukNUfWvX_bL_m8nID0jMUv>`__ |
-+---------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------+
++---------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------+
+| Name (Shortcut Code)                                                                              | Initialized From                                                                        |
++===================================================================================================+=========================================================================================+
+| `allenai/led-base-16384 <https://huggingface.co/allenai/led-base-16384>`_                         | `facebook/bart-base <https://huggingface.co/facebook/bart-large>`_                      |
++---------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------+
+| `allenai/led-large-16384 <https://huggingface.co/allenai/led-large-16384>`_                       | `facebook/bart-large <https://huggingface.co/facebook/bart-large>`_                     |
++---------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------+
+| `HHousen/distil-led-large-cnn-16384 <https://huggingface.co/HHousen/distil-led-large-cnn-16384>`_ | `sshleifer/distilbart-cnn-12-6 <https://huggingface.co/sshleifer/distilbart-cnn-12-6>`_ |
++---------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------+
 
-.. note:: In pervious versions of TransformerSum, this section listed models that could be used with the outdated LED model (using custom versions of ``huggingface/transformers`` and ``allenai/longformer``). Those models can still be found in `this Google Drive Folder <https://drive.google.com/drive/folders/1r0gBhI3L5CgvHuJMDsbDHagXMCB23uJ9>`__.
+.. note:: In previous versions of TransformerSum, this section listed models that could be used with the outdated LED model (using custom versions of ``huggingface/transformers`` and ``allenai/longformer``).
 
 
 arXiv-PubMed
@@ -37,7 +37,7 @@ arXiv-PubMed
 +------------------------------+----------+-------------------------------------------------------------------------------------------------------------+---------------+
 | Name                         | Comments | Model Download                                                                                              | Data Download |
 +==============================+==========+=============================================================================================================+===============+
-| led-base-4096-arxiv-pubmed   | None     | `Model <https://drive.google.com/uc?id=>`__ & `All Checkpoints <https://drive.google.com/drive/folders/>`__ | Not yet..     |
+| led-base-4096-arxiv-pubmed   | None     | Not yet...                                                                                                  | Not yet..     |
 +------------------------------+----------+-------------------------------------------------------------------------------------------------------------+---------------+
 | led-large-4096-arxiv-pubmed  | None     | Not yet...                                                                                                  | Not yet..     |
 +------------------------------+----------+-------------------------------------------------------------------------------------------------------------+---------------+
